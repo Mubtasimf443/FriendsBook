@@ -140,3 +140,13 @@ export async function uploadVideoToCloudinary({ path, folder = "", maxDuration =
         };
     }
 }
+
+export default async function detroyCloudinaryFile(id:string) {
+    try {
+        await cloudinary.uploader.destroy(id);
+        return true
+    } catch (error) {
+        console.error(error);
+        return false;
+    }
+}
