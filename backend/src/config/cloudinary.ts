@@ -141,7 +141,7 @@ export async function uploadVideoToCloudinary({ path, folder = "", maxDuration =
     }
 }
 
-export default async function detroyCloudinaryFile(id:string) {
+export async function destroyCloudinaryFile(id:string) {
     try {
         await cloudinary.uploader.destroy(id);
         return true
