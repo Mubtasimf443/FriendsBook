@@ -2,17 +2,21 @@
 
 import express, { Express, Request, Response, Application } from 'express';
 import { PORT } from './config/env';
+import { connectDB } from './config/connectDB';
 
-
-
-const app: Application = express();
 const port : number = Number(PORT ?? 4000) 
+async function main() {
 
+    const app: Application = express();
 
-app.get('/', (req: Request, res: Response) => {
-    res.send('Welcome to Express & TypeScript Server');
-});
-
-app.listen(port, () => {
-    console.log(`Server is Fire at http://localhost:${port}`);
-});
+    await connectDB();
+    
+    app.get('/', (req: Request, res: Response) => {
+        res.send('Welcome to Express & TypeScript Server');
+    });
+    
+    app.listen(port, () => {
+        console.log(`Server is Fire at http://localhost:${port}`);
+    });
+}
+main();
