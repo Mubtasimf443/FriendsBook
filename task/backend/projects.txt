@@ -1,0 +1,70 @@
+# Matrimony Backend
+
+## Model Creation (Urgent + Important )
+I need to create Users + assets + privacy setting + auth_session + rooms 
+
+## Auth system (Urgent + Important )
+Registration
+Login
+email verification 
+sms verification 
+reset Password 
+Register By Previous Account 
+Account Deleted 
+Logout 
+
+## Users 
+Find User 
+Mutual User 
+Suggested Match User 
+Just Joined 
+Matching User
+Premioum
+Not viewed
+Online Users
+Daily Match
+
+## Manage users account
+get profile details
+Update Photo
+Update details
+Online status
+edit Patner preference 
+Account setting 
+Notification settings 
+Delete option
+
+## Search and Filter 
+Emty search Search Api
+Search by filter and else
+Search By ID
+
+## Membership
+Get membership
+Update Membership
+
+## Notification
+Enter Notification
+
+# Message rooms 
+Request Message
+Chat History
+Get Message Request
+send message Request 
+Approve message request
+Send Message 
+Get Messages history of rooms 
+Delete previous message every 7 days
+Call User
+Video call User
+
+
+# Online status 
+Socket io Online status check every 1 Minutes 
+
+
+
+
+
+
+
