@@ -120,7 +120,7 @@ export enum EducationLevel {
     OTHER = 'Other'
 }
 
-export interface Education {
+interface Education {
     level: EducationLevel;
     certificate: string;
     institution: string;
@@ -240,17 +240,36 @@ export enum Language {
     IGBO = "Igbo"
 }
 
-
-
-
 interface IPhoneCountry {
     name : string ;
     phone_code :string;
 }
 
-export interface IPhone {
+interface IPhone {
     country: IPhoneCountry;  
     number: string;  
+}
+
+
+export enum SettingsType {
+    allowed = 'allowed',
+    notAllowed = 'not_allowed'
+
+}
+
+interface NotificationSettings {
+    dailyRecommendations : SettingsType,
+    todaysMatch : SettingsType,
+    viewedMyProfile : SettingsType
+}
+
+interface PrivacySettings {
+    sendNotificationOnProfileView : SettingsType
+}
+
+interface UserSettings {
+    privacy : PrivacySettings,
+    notifications : NotificationSettings
 }
 
 export interface IUser extends Document {
@@ -273,4 +292,6 @@ export interface IUser extends Document {
     religion: Religion;
     preferences: IUserPreferences;
     createdAt: Date;
+    settings : UserSettings
+    isSuspended : boolean,
 }

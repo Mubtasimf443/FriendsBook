@@ -1,7 +1,7 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 import mongoose, { Schema } from 'mongoose';
-import { IUser, ProfileCreatedBy, Gender, Height, Religion, Language, EducationLevel } from '../lib/types/user.types';
+import { IUser, ProfileCreatedBy, Gender, Height, Religion, Language, EducationLevel, SettingsType } from '../lib/types/user.types';
 import { countryCodes } from '../lib/data/countryCodes';
 
 const userSchema = new Schema<IUser>({
@@ -152,6 +152,41 @@ const userSchema = new Schema<IUser>({
         type: Date,
         required: true,
         default: Date.now
+    },
+    settings :{
+        notifications :{
+            dailyRecommendations : {
+                type : String ,
+                required : true,
+                enum : Object.values(SettingsType),
+                default : Object.values(SettingsType)[0]
+            },
+            todaysMatch : {
+                type : String ,
+                required : true,
+                enum : Object.values(SettingsType),
+                default : Object.values(SettingsType)[0]
+            },
+            viewedMyProfile : {
+                type : String ,
+                required : true,
+                enum : Object.values(SettingsType),
+                default : Object.values(SettingsType)[0]
+            },
+        },
+        privacy :{
+            sendNotificationOnProfileView : {
+                type : String ,
+                required : true,
+                enum : Object.values(SettingsType),
+                default : Object.values(SettingsType)[0]
+            }
+        }
+    },
+    isSuspended : {
+        type : Boolean,
+        required : true ,
+        default : false
     }
 });
 
