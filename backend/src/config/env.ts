@@ -33,3 +33,7 @@ export const SMTP_PORT: ENV_VALUE = process.env.SMTP_PORT;
 export const SMTP_USERNAME: ENV_VALUE = process.env.SMTP_USERNAME;
 export const SMTP_PASSWORD: ENV_VALUE = process.env.SMTP_PASSWORD;
 export const SMTP_API_KEY: ENV_VALUE = process.env.SMTP_API_KEY;
+
+// Email Accent Colors
+export const EMAIL_PRIMARY_COLOR: ENV_VALUE = process.env.EMAIL_PRIMARY_COLOR || '#4CAF50'; // Green
+export const EMAIL_SECONDARY_COLOR: ENV_VALUE = process.env.EMAIL_SECONDARY_COLOR || '#FFC0CB'; // Pink
