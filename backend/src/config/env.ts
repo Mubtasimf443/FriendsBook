@@ -25,3 +25,11 @@ export const COMPANY_CONTACT_EMAIL: ENV_VALUE = process.env.COMPANY_CONTACT_EMAI
 export const COMPANY_CONTACT_ADDRESS: ENV_VALUE = process.env.COMPANY_CONTACT_ADDRESS;
 export const COMPANY_CONTACT_PHONE: ENV_VALUE = process.env.COMPANY_CONTACT_PHONE;
 
+
+
+// SMTP Configuration
+export const SMTP_HOST: ENV_VALUE = process.env.SMTP_HOST;
+export const SMTP_PORT: ENV_VALUE = process.env.SMTP_PORT;
+export const SMTP_USERNAME: ENV_VALUE = process.env.SMTP_USERNAME;
+export const SMTP_PASSWORD: ENV_VALUE = process.env.SMTP_PASSWORD;
+export const SMTP_API_KEY: ENV_VALUE = process.env.SMTP_API_KEY;
