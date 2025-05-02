@@ -55,3 +55,20 @@ export function hashPassword(password: string, salt: string): Promise<string> {
     let token:string = crypto.randomBytes(512).toString("hex").normalize();
     return token;
   }
+
+
+  export async function sendRegistrationOTP(email: string, otp: number): Promise<boolean> {
+    try {
+        // TODO: Implement email sending logic here
+        // This should use your email service to send the OTP
+        // Return true if email sent successfully, false otherwise
+        return true;
+    } catch (error) {
+        console.error("Send registration OTP error:", error);
+        return false;
+    }
+}
+
+export function generateAuthToken(): string {
+    return crypto.randomBytes(32).toString('hex');
+}

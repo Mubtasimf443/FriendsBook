@@ -2,10 +2,9 @@
 
 import mongoose, { Document, Schema } from 'mongoose';
 
-enum SessionNames {
+export enum SessionNames {
     AUTH_SESSION = "auth_session",
     REGISTRATION_SESSION = 'registration_session'
-
 }
 
 

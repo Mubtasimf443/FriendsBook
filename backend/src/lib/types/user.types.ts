@@ -255,8 +255,6 @@ interface IPassword {
     salt : string
 }
 
-
-
 export enum SettingsType {
     allowed = 'allowed',
     notAllowed = 'not_allowed'
