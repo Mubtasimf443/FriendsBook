@@ -2,7 +2,7 @@
 
 import mongoose from "mongoose";
 import { log } from "console";
-import { MONGO_DB_URL } from "./env.js";
+import { MONGO_DB_URL } from "./env";
 
 export async function connectDB() { 
     if (!MONGO_DB_URL) throw new Error("You have not added mongo db url in env files error as geting Undefined in MONGO_DB_URL");

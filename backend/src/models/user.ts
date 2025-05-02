@@ -108,7 +108,7 @@ const userSchema = new Schema<IUser>({
     address:{
         type : String ,
         required : true,
-        minlength : 40 ,
+        minlength : 30 ,
         maxlength : 120 ,
     },
     phoneInfo: {
