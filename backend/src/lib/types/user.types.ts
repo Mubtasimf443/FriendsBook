@@ -250,6 +250,12 @@ interface IPhone {
     number: string;  
 }
 
+interface IPassword {
+    hashed : string ,
+    salt : string
+}
+
+
 
 export enum SettingsType {
     allowed = 'allowed',
@@ -288,6 +294,7 @@ export interface IUser extends Document {
     country: string;
     address: string;
     phoneInfo: IPhone;
+    password : IPassword,
     languages: Language[];
     religion: Religion;
     preferences: IUserPreferences;

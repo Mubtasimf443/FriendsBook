@@ -63,7 +63,9 @@ const userSchema = new Schema<IUser>({
     },
     weight: {
         type: Number,
-        required: true
+        required: true,
+        min : 30 ,
+        max : 200
     },
     isEducated: {
         type: Boolean,
@@ -100,6 +102,8 @@ const userSchema = new Schema<IUser>({
     country: {
         type: String,
         required: true,
+        minlength : 2,
+        maxlength : 100
     },
     address:{
         type : String ,
@@ -187,6 +191,16 @@ const userSchema = new Schema<IUser>({
         type : Boolean,
         required : true ,
         default : false
+    },
+    password : {
+        hashed :{
+            type : String ,
+            required : true
+        },
+        salt : {
+            type : String ,
+            required : true
+        },
     }
 });
 

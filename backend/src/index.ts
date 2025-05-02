@@ -8,6 +8,7 @@ import authRouter from './routes/auth';
 import searchRouter from './routes/search';
 import assetsRouter from './routes/asset';
 import userRouter from './routes/user';
+import cookieParser from 'cookie-parser'
 
 const port : number = Number(PORT ?? 4000) 
 async function main() {
@@ -19,6 +20,9 @@ async function main() {
 
     // Environmemt
     await connectDB();
+    app.use(cookieParser());
+    app.use(express.json());
+
 
 
     // routes
