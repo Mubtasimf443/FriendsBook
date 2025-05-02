@@ -1,12 +1,172 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 import { z } from "zod";
-import { ProfileCreatedBy, Gender } from "../types/user.types";
+import { ProfileCreatedBy, Gender, Height, Religion, Language, EducationLevel, SettingsType } from "../types/user.types";
+import { countryCodes } from "../data/countryCodes";
+
+
+const countryNames = countryCodes.map(c => c.country);
+const phoneCountryCodes = countryCodes.map(c => c.code);
+const CountryNameEnum = z.enum([countryNames[0], ...countryNames]);
+const CountryPhoneCodeEnum = z.enum([phoneCountryCodes[0], ...phoneCountryCodes]);
 
 export const registrationUserSchema = z.object({
-    profileCreatedBy: z.nativeEnum(ProfileCreatedBy),
-    gender: z.nativeEnum(Gender, { message: "Gender of the user must be male of " }),
+    profileCreatedBy: z.nativeEnum(ProfileCreatedBy, {
+        required_error: "Profile creator type is required",
+        invalid_type_error: "Invalid profile creator type"
+    }),
+
+    gender: z.nativeEnum(Gender, {
+        required_error: "Gender is required",
+        invalid_type_error: "Invalid gender type"
+    }),
+
     name: z.string()
         .min(2, 'Name must be at least 2 characters')
         .max(50, 'Name must not exceed 50 characters')
+        .trim(),
+
+    dateOfBirth: z.string()
+        .transform((str) => new Date(str))
+        .refine((date) => date instanceof Date && !isNaN(date.getTime()), {
+            message: "Invalid date format"
+        })
+        .refine((date) => date < new Date(), {
+            message: "Date of birth cannot be in the future"
+        })
+        .refine((date) => {
+            const age = Math.floor((new Date().getTime() - date.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+            return age >= 18;
+        }, {
+            message: "You must be at least 18 years old"
+        }),
+
+    email: z.string()
+        .email('Invalid email format')
+        .toLowerCase()
+        .trim(),
+
+    height: z.nativeEnum(Height, {
+        required_error: "Height is required",
+        invalid_type_error: "Invalid height value"
+    }),
+
+    weight: z.number()
+        .min(30, 'Weight must be at least 30 kg')
+        .max(200, 'Weight must not exceed 200 kg'),
+
+    isEducated: z.boolean(),
+
+    education: z.array(
+        z.object({
+            level: z.nativeEnum(EducationLevel),
+            certificate: z.string().min(2, "Certificate name is too short"),
+            institution: z.string().min(2, "Institution name is too short"),
+            yearOfCompletion: z.number()
+                .min(1950, "Year must be after 1950")
+                .max(new Date().getFullYear(), "Year cannot be in the future"),
+            grade: z.string().optional(),
+            additionalInfo: z.string().optional()
+        })
+    ).optional()
+        .default([]),
+
+    country: z.string()
+        .min(2, "Country name is too short")
+        .max(100, "Country name is too long"),
+
+    address: z.string()
+        .min(40, "Address must be at least 40 characters")
+        .max(120, "Address must not exceed 120 characters"),
+
+    phoneInfo: z.object({
+        number: z.string()
+            .regex(/^\d{10,15}$/, "Phone number must be between 10 and 15 digits"),
+        country: z.object({
+            name: CountryNameEnum.describe("Country name must be from the provided list"),
+            phone_code: CountryPhoneCodeEnum.describe("Phone code must be from the provided list")
+        }).refine((data) => {
+            // Verify that the country name and phone code match
+            const countryCode = countryCodes.find(c => c.country === data.name);
+            return countryCode?.code === data.phone_code;
+        }, {
+            message: "Country name and phone code do not match"
+        })
+    }),
+
+    languages: z.array(
+        z.nativeEnum(Language, {
+            invalid_type_error: "Invalid language selection"
+        })
+    ).min(1, "At least one language is required"),
+
+    religion: z.nativeEnum(Religion, {
+        required_error: "Religion is required",
+        invalid_type_error: "Invalid religion selection"
+    }),
+
+    password: z.string()
+        .min(8, "Password must be at least 8 characters")
+        .max(100, "Password must not exceed 100 characters")
+        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+            "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character")
+        .transform((val) => val.trim()),
+
+    // Optional: Add confirm password field if needed
+    confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
 });
+// You might want to create a type from the schema
+export type RegistrationUserInput = z.infer<typeof registrationUserSchema>;
+
+
+// Base schema for common fields
+const baseLoginSchema = z.object({
+    password: z.string({
+        required_error: "Password is required",
+        invalid_type_error: "Password must be a string"
+    })
+        .min(1, "Password cannot be empty")
+        .transform(val => val.trim())
+});
+
+// Email login schema
+export const loginWithEmailSchema = baseLoginSchema.extend({
+    email: z.string({
+        required_error: "Email is required",
+        invalid_type_error: "Email must be a string"
+    })
+        .email("Invalid email format")
+        .toLowerCase()
+        .trim()
+});
+
+// Phone login schema
+export const loginWithPhoneSchema = baseLoginSchema.extend({
+    phoneInfo: z.object({
+        number: z.string({
+            required_error: "Phone number is required",
+            invalid_type_error: "Phone number must be a string"
+        })
+            .regex(/^\d{10,15}$/, "Phone number must be between 10 and 15 digits"),
+
+        phone_code: CountryPhoneCodeEnum.describe("Phone code must be from the provided list")
+    })
+});
+
+export type LoginWithEmailInput = z.infer<typeof loginWithEmailSchema>;
+export type LoginWithPhoneInput = z.infer<typeof loginWithPhoneSchema>;
+
+// Type to represent either login method
+export type LoginInput = LoginWithEmailInput | LoginWithPhoneInput;
+
+
+export const zodOTP = z.string({
+    required_error: "OTP is required",
+    invalid_type_error: "OTP must be a string"
+})
+    .length(6, "OTP must be exactly 6 digits")
+    .regex(/^[0-9]{6}$/, "OTP must contain only numbers")
+    .transform(val => val.trim())
