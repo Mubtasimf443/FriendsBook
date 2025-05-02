@@ -13,16 +13,14 @@ export enum AssetType {
 
 // Interface for Asset document
 export interface IAsset extends Document {
-  name: string;
+  name?: string;
   path: string;
   url: string;
   asset_type: AssetType;
-  cloudinary_id: string;
+  id: string;
   size?: number;
-  format?: string;
   created_at: Date;
   updated_at?: Date;
-  user_id: mongoose.Types.ObjectId;
 }
 
 // Create the Asset Schema
@@ -30,7 +28,7 @@ const AssetSchema = new Schema<IAsset>(
   {
     name: {
       type: String,
-      required: [true, 'Asset name is required'],
+      required:false,
       trim: true,
     },
     path: {
@@ -40,28 +38,21 @@ const AssetSchema = new Schema<IAsset>(
     url: {
       type: String,
       required: [true, 'Asset URL is required'],
+      unique : true
     },
     asset_type: {
       type: String,
       enum: Object.values(AssetType),
       required: [true, 'Asset type is required'],
     },
-    cloudinary_id: {
+    id: {
       type: String,
       required: [true, 'Cloudinary ID is required'],
       unique: true,
     },
     size: {
-      type: Number,
+      type: Number
     },
-    format: {
-      type: String,
-    },
-    user_id: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: [true, 'User ID is required'],
-    }
   },
   {
     timestamps: {
