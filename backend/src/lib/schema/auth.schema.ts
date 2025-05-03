@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { ProfileCreatedBy, Gender, Height, Religion, Language, EducationLevel, SettingsType } from "../types/user.types";
 import { countryCodes } from "../data/countryCodes";
+import { _idValidator, passwordValidator } from "./schemaComponents";
 
 const calculateAge = (dateOfBirth: Date): number => {
     const diff = new Date().getTime() - dateOfBirth.getTime();
@@ -110,15 +111,10 @@ export const registrationUserSchema = z.object({
         invalid_type_error: "Invalid religion selection"
     }),
 
-    password: z.string()
-        .min(8, "Password must be at least 8 characters")
-        .max(100, "Password must not exceed 100 characters")
-        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-            "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character")
-        .transform((val) => val.trim()),
+    password:passwordValidator ,
 
-    // Optional: Add confirm password field if needed
-    confirmPassword: z.string(),
+  
+    confirmPassword: z.string().trim(),
 })
     .refine(
         function (data) {
@@ -162,12 +158,7 @@ export enum LoginEnum {
 
 // Base schema for common fields
 export const LoginSchema = z.object({
-    password: z.string()
-        .min(8, "Password must be at least 8 characters")
-        .max(100, "Password must not exceed 100 characters")
-        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-            "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character")
-        .transform((val) => val.trim()),
+    password: passwordValidator,
     email: z.string({
         required_error: "Email is required",
         invalid_type_error: "Email must be a string"
@@ -234,28 +225,49 @@ export const tempSessionValidation = z.string({
     invalid_type_error: "Session key must be a string"
 })
     .trim()
-    .min(30, "Invalid session key length")
-    .max(35, "Invalid session key length")
-    .regex(/^[0-9a-fA-F]{40}$/, "Session key must be a valid hex string")
+    .min(64, "Invalid session key length")
+    .max(64, "Invalid session key length")
+    .regex(/^[0-9a-fA-F]{64}$/, "Session key must be a valid hex string")
 
 
  // Session key validation
- export const authSessionValidation = z.string({
+export const authSessionValidation = z.string({
     required_error: "Auth Token is required",
     invalid_type_error: "Auth Token must be a string"
 })
     .trim()
-    .min(500, "Invalid session key length")
-    .max(520, "Invalid session key length")
-    .regex(/^[0-9a-fA-F]{40}$/, "Session key must be a valid hex string")
+    .min(1024, "Invalid session key length")
+    .max(1024, "Invalid session key length")
+    .regex(/^[0-9a-fA-F]{1024}$/, "Session key must be a valid hex string")
 
 
-
-
-
-
- // OTP validation
-    export const VerifyOtpSchema = z.object({   
+export const VerifyOtpSchema = z.object({   
         sessionKey: tempSessionValidation,
         otp:zodOTPValidation
-    });
+});
+
+
+
+
+export const ResetPasswordSchema = z.object({
+   
+    // User ID validation using MongoDB ObjectId
+    userId: z.optional(_idValidator),
+
+    // New password validation with strong password requirements
+    password: passwordValidator,
+
+    // Confirm password validation
+    confirmPassword: passwordValidator,
+
+    // new Password
+    newPassword: passwordValidator,
+
+})
+    .refine(
+        (data) => data.password === data.confirmPassword,
+        {
+            message: "Passwords do not match",
+            path: ["confirmPassword"] // Path helps client identify which field caused the error
+        }
+    );

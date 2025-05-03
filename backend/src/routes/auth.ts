@@ -2,7 +2,7 @@
 
 import express, { Router, Request, Response } from "express";
 import TemporarySession, { TemporarySessionNames } from "../models/temporarySession";
-import { registrationUserSchema, LoginEnum, LoginSchema ,tempSessionValidation , zodOTPValidation , VerifyOtpSchema } from "../lib/schema/auth.schema";
+import { registrationUserSchema, LoginEnum, LoginSchema ,tempSessionValidation , zodOTPValidation , VerifyOtpSchema, ResetPasswordSchema } from "../lib/schema/auth.schema";
 import { generateAuthToken, sendRegistrationOTP, comparePasswords, GenerateOtp, giveAuthSessionId, generateSalt, hashPassword } from "../controllers/auth.controller";
 import crypto from 'crypto';
 import { catchError } from "../lib/core/catchError";
@@ -21,7 +21,7 @@ router.use(rateLimiter(600 * 100, 100));
 
 router.post("/create-registration-session", async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        const validationResult = registrationUserSchema.safeParse(req.body);
+        const validationResult =await registrationUserSchema.safeParseAsync(req.body);
 
         if (!validationResult.success) {
             return res.status(400).json({
@@ -33,6 +33,16 @@ router.post("/create-registration-session", async function (req: Request, res: R
         }
 
         const userData = validationResult.data;
+
+
+        const existingUser = await User.findOne({ email: userData.email });
+        if (existingUser) {
+            return res.status(400).json({
+                success: false,
+                message: "Email is already registered",
+                data: null
+            });
+        }
 
         const sessionKey = crypto.randomBytes(32).toString('hex').normalize();
 
@@ -69,7 +79,7 @@ router.post("/create-registration-session", async function (req: Request, res: R
 router.post("/request-registration-otp", async function (req: Request, res: Response): Promise<Response | any> {
     try {
 
-        let validationResult = tempSessionValidation.safeParse(req.body.sessionKey)
+        let validationResult =await tempSessionValidation.safeParseAsync(req.body.sessionKey)
         
         if (!validationResult.success) {
             return res.status(400).json({
@@ -301,6 +311,7 @@ router.post('/login', async function (req: Request, res: Response): Promise<Resp
     try {
         // Validate the request body using Zod schema
         const loginValidationResult = LoginSchema.safeParse(req.body);
+
         if (!loginValidationResult.success) {
             return res.status(400).json({
                 success: false,
@@ -368,6 +379,73 @@ router.post('/login', async function (req: Request, res: Response): Promise<Resp
                 authToken: authToken
             }
         });
+
+    } catch (error) {
+        console.error("Login error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error. Please try again later.",
+            data: null
+        });
+    }
+});
+
+
+
+router.post('/reset-password' , async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        let validationResult =await ResetPasswordSchema.safeParseAsync(req.body);
+
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message:validationResult.error.errors[0].message,
+                data: null,
+                error : validationResult.error
+            });
+        }
+
+        let {userId  , password , newPassword } = validationResult.data;
+
+        let existingUser =await User.findById(userId);
+
+        if (!existingUser) {
+            return res.status(401).json({
+                success: false,
+                message: "There is no user registered with this account",
+                data: null
+            });
+        }
+
+        const isPasswordEqual = await comparePasswords({
+            password:password,
+            hashedPassword: existingUser.password.hashed,
+            salt: existingUser.password.salt
+        });
+
+
+        if (!isPasswordEqual) {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid password. Please try again.",
+                data: null
+            });
+        }
+
+        let newPasswordSalt = generateSalt();
+        let newPasswordHash = await hashPassword(newPassword , newPasswordSalt);
+      
+        existingUser.password.salt =newPasswordSalt;
+        existingUser.password.hashed =newPasswordHash;
+
+        await existingUser.save();
+
+        return res.status(200).json({
+            success : true ,
+            message : "Password reset successfull",
+            data : null
+        })
+
 
     } catch (error) {
         console.error("Login error:", error);
