@@ -154,18 +154,20 @@ export const registrationUserSchema = z.object({
 export type RegistrationUserInput = z.infer<typeof registrationUserSchema>;
 
 
-// Base schema for common fields
-const baseLoginSchema = z.object({
-    password: z.string({
-        required_error: "Password is required",
-        invalid_type_error: "Password must be a string"
-    })
-        .min(1, "Password cannot be empty")
-        .transform(val => val.trim())
-});
 
-// Email login schema
-export const loginWithEmailSchema = baseLoginSchema.extend({
+export enum LoginEnum {
+    withPhone = "with_phone",
+    withEmail = "with_email"
+}
+
+// Base schema for common fields
+export const LoginSchema = z.object({
+    password: z.string()
+        .min(8, "Password must be at least 8 characters")
+        .max(100, "Password must not exceed 100 characters")
+        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+            "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character")
+        .transform((val) => val.trim()),
     email: z.string({
         required_error: "Email is required",
         invalid_type_error: "Email must be a string"
@@ -173,27 +175,49 @@ export const loginWithEmailSchema = baseLoginSchema.extend({
         .email("Invalid email format")
         .toLowerCase()
         .trim()
-});
-
-// Phone login schema
-export const loginWithPhoneSchema = baseLoginSchema.extend({
+        .optional(),
     phoneInfo: z.object({
         number: z.string({
             required_error: "Phone number is required",
             invalid_type_error: "Phone number must be a string"
         })
             .regex(/^\d{10,15}$/, "Phone number must be between 10 and 15 digits"),
-
         phone_code: CountryPhoneCodeEnum.describe("Phone code must be from the provided list")
-    })
-});
+    }).optional(),
 
-export type LoginWithEmailInput = z.infer<typeof loginWithEmailSchema>;
-export type LoginWithPhoneInput = z.infer<typeof loginWithPhoneSchema>;
-
-// Type to represent either login method
-export type LoginInput = LoginWithEmailInput | LoginWithPhoneInput;
-
+    loginType: z.nativeEnum(LoginEnum)
+})
+    .refine(
+        (data) => !!data.email || (!!data.phoneInfo?.number || !!data?.phoneInfo?.phone_code),
+        {
+            message: 'Either email or phone information (number and phone code) must be provided.',
+            path: ['phoneInfo', 'email']
+        }
+    )
+    .refine(
+        (data) => {
+            if (data.loginType === LoginEnum.withEmail) {
+                return !!data.email;
+            } 
+            return true;
+        },
+        {
+            message: 'Email must be provided when login type is "with_email".',
+            path: ['loginType', 'email']
+        }
+    )
+    .refine(
+        (data) => {
+            if (data.loginType === LoginEnum.withPhone) {
+                return !!data.phoneInfo?.number || !!data?.phoneInfo?.phone_code;
+            } 
+            return true;
+        },
+        {
+            message: 'Phone number and phone code must be provided when login type is "with_phone".',
+            path: ['loginType', 'phoneInfo']
+        }
+    );
 
 export const zodOTP = z.string({
     required_error: "OTP is required",

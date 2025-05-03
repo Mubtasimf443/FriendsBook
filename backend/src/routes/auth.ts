@@ -2,8 +2,8 @@
 
 import express, { Router, Request, Response } from "express";
 import TemporarySession, { TemporarySessionNames } from "../models/temporarySession";
-import { registrationUserSchema, loginWithEmailSchema, loginWithPhoneSchema } from "../lib/schema/auth.schema";
-import { generateAuthToken, sendRegistrationOTP, comparePasswords, GenerateOtp, giveAuthSessionId } from "../controllers/auth.controller";
+import { registrationUserSchema, LoginEnum, LoginSchema } from "../lib/schema/auth.schema";
+import { generateAuthToken, sendRegistrationOTP, comparePasswords, GenerateOtp, giveAuthSessionId, generateSalt, hashPassword } from "../controllers/auth.controller";
 import crypto from 'crypto';
 import { catchError } from "../lib/core/catchError";
 import { User } from "../models/user";
@@ -12,14 +12,15 @@ import { authEmails } from "../lib/mails/auth.emails";
 import morgan from 'morgan'
 import AuthSession from "../models/AuthSession";
 import rateLimiter from "../config/rateRimiter";
+import { IUser } from "../lib/types/user.types";
 
 const router: Router = express.Router();
 
-router.use(rateLimiter(600 * 100 , 100));
+router.use(rateLimiter(600 * 100, 100));
 // Create registration session endpoint
+
 router.post("/create-registration-session", async function (req: Request, res: Response): Promise<Response | any> {
     try {
-
         const validationResult = registrationUserSchema.safeParse(req.body);
 
         if (!validationResult.success) {
@@ -39,7 +40,10 @@ router.post("/create-registration-session", async function (req: Request, res: R
         const session = await TemporarySession.create({
             name: TemporarySessionNames.REGISTRATION_SESSION,
             key: sessionKey,
-            value: JSON.stringify(userData)
+            value: JSON.stringify({
+                hasOtpRequest : 10, // this is the limit of requesting otp 
+                ...userData
+            })
         });
 
         // Return the session key to the client
@@ -76,7 +80,6 @@ router.post("/request-registration-otp", async function (req: Request, res: Resp
 
         // Find the session
         const session = await TemporarySession.findOne().where('key').equals(sessionKey);
-            
 
         if (!session) {
             return res.status(400).json({
@@ -92,14 +95,26 @@ router.post("/request-registration-otp", async function (req: Request, res: Resp
         // Generate OTP
         const otp = GenerateOtp(); // 6-digit OTP
 
+        // Now User Has less request left
+        userData.hasOtpRequest -= 1;
+
         // Store OTP in session
         session.value = JSON.stringify({
             ...userData,
             otp,
             otpExpiry: Date.now() + 70 * 1000 // OTP valid for 1 minutes 25 seconds
         });
+        
+        switch (userData.hasOtpRequest  < 1) {
+            case true:
+                await session.deleteOne()
+                break;
 
-        await session.save();
+            case false:
+                await session.save();
+                break;
+        }
+       
 
         // Send OTP via email
         const emailSent = await authEmails.signUpOtpEmail(otp, userData.email)
@@ -185,6 +200,9 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
             });
         }
 
+        let passwordSalt = generateSalt();
+        let passwordHash = await hashPassword(sessionData.password, passwordSalt)
+
         // Save user data to the database
         const newUser = await User.create({
             profileCreatedBy: sessionData.profileCreatedBy,
@@ -202,13 +220,13 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
             languages: sessionData.languages,
             religion: sessionData.religion,
             password: {
-                hashed: sessionData.password, // Ensure password is hashed before saving
-                salt: crypto.randomBytes(16).toString('hex') // Generate a random salt
+                hashed: passwordHash, // Ensure password is hashed before saving
+                salt: passwordSalt// Generate a random salt
             },
             createdAt: new Date(),
-            age : sessionData.age
+            age: sessionData.age
         });
-        
+
 
         // Send registration success email
         authEmails.registrationSuccessEmail(newUser.email)
@@ -220,14 +238,14 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
 
 
         // Create auth token for successful verification
-        const authToken = generateAuthToken();
+        const authToken = giveAuthSessionId();
 
         // Create auth session
         await AuthSession.create({
-            key : authToken,
-            value : {
-                email : newUser.email,
-                userId : newUser._id
+            key: authToken,
+            value: {
+                email: newUser.email,
+                userId: newUser._id
             }
         })
 
@@ -252,6 +270,87 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
 });
 
 
+router.post('/login', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        // Validate the request body using Zod schema
+        const loginValidationResult = LoginSchema.safeParse(req.body);
+        if (!loginValidationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid input data. Please check your email, phone, or password format.",
+                data: null
+            });
+        }
+
+        const loginData = loginValidationResult.data;
+        let existingUser: null | IUser = null;
+
+        // Check for user based on login type
+        if (loginData.loginType === LoginEnum.withEmail) {
+            existingUser = await User.findOne({ email: loginData.email });
+        } else if (loginData.loginType === LoginEnum.withPhone) {
+            existingUser = await User.findOne({})
+                .where("phoneInfo.number").equals(loginData.phoneInfo?.number)
+                .where("phoneInfo.country.phone_code").equals(loginData.phoneInfo?.phone_code);
+        }
+
+        // If user doesn't exist, return an error
+        if (!existingUser) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found. Please check your login credentials.",
+                data: null
+            });
+        }
+
+        // Verify the password
+        const isPasswordEqual = await comparePasswords({
+            password: loginData.password,
+            hashedPassword: existingUser.password.hashed,
+            salt: existingUser.password.salt
+        });
+
+        if (!isPasswordEqual) {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid password. Please try again.",
+                data: null
+            });
+        }
+
+        // Generate an authentication token
+        const authToken = giveAuthSessionId();
+
+        // Remove any previous auth session for the user
+        await AuthSession.deleteOne({ 'value.email': existingUser.email });
+
+        // Create a new auth session for the user
+        await AuthSession.create({
+            key: authToken,
+            value: {
+                email: existingUser.email,
+                userId: existingUser._id
+            }
+        });
+
+        // Return the response with the new auth token
+        return res.status(200).json({
+            success: true,
+            message: "Login successful.",
+            data: {
+                authToken: authToken
+            }
+        });
+
+    } catch (error) {
+        console.error("Login error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error. Please try again later.",
+            data: null
+        });
+    }
+});
 
 
 
