@@ -3,7 +3,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export enum TemporarySessionNames {
-    AUTH_SESSION = "auth_session",
+    FORGET_PASSWORD_SESSION = "forget_password_session",
     REGISTRATION_SESSION = 'registration_session'
 }
 
