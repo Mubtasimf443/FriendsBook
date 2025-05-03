@@ -21,7 +21,7 @@ export const extractBearerToken = (header: string | undefined): string | null =>
 };
 
 // Middleware to extract and validate bearer token
-export const validateUser = async (req: AuthenticatedRequest | any , res: Response, next: NextFunction) => {
+export async function validateUser(req: AuthenticatedRequest | any | Request, res: Response, next: NextFunction) :Promise<void | any> {
   try {
     const authHeader = req.headers.authorization;
     const token = extractBearerToken(authHeader);
@@ -57,7 +57,7 @@ export const validateUser = async (req: AuthenticatedRequest | any , res: Respon
     req.bearerAccessToken = token;
 
     next();
-
+    return;
   } catch (error) {
     console.error('Bearer access Token Validation error' , error);
 
