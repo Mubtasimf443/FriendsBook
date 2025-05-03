@@ -7,7 +7,7 @@ interface IAuthSessionValue {
     userId: ObjectId;
 }
 
-interface IAuthSession extends Document {
+export interface IAuthSession extends Document {
     name: "auth_session"; // Fixed name to only handle "auth_session"
     value: IAuthSessionValue; // Structured value containing user data
     key?: string;
@@ -27,6 +27,7 @@ const authSessionSchema = new Schema<IAuthSession>(
         key: {
             type: String,
             required: false,
+            unique : true ,
         },
         value: {
             type: {
@@ -49,13 +50,17 @@ const authSessionSchema = new Schema<IAuthSession>(
             }
         }
     },
-    {
+    {      
         timestamps: {
             createdAt: 'created_at',
             updatedAt: 'updated_at',
         }
     }
 );
+
+
+
+authSessionSchema.index({ key: 1 });
 
 const AuthSession = mongoose.model<IAuthSession>('AuthSession', authSessionSchema);
 export default AuthSession;

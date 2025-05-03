@@ -62,5 +62,15 @@ const AssetSchema = new Schema<IAsset>(
   }
 );
 
+// 1. Index asset_type for filtering by file type (image, video, etc.)
+AssetSchema.index({ asset_type: 1 });
+
+// 2. Index created_at for sorting by newest/oldest assets
+AssetSchema.index({ created_at: -1 });
+
+// 3. Optional: Index size if you query/filter based on file size
+// (e.g., all assets under 5MB)
+AssetSchema.index({ size: 1 });
+
 
 export const Asset = mongoose.model<IAsset>('Asset', AssetSchema);
