@@ -53,6 +53,11 @@ export function giveAuthSessionId() {
   return token;
 }
 
+export function giveAuthSession(): string {
+  return crypto.randomBytes(32).toString("hex").normalize();
+}
+
+
 export async function sendRegistrationOTP(email: string, otp: number): Promise<boolean> {
   try {
     // TODO: Implement email sending logic here

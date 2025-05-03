@@ -226,9 +226,9 @@ export const authSessionValidation = z.string({
     invalid_type_error: "Auth Token must be a string"
 })
     .trim()
-    .min(1024, "Invalid session key length")
-    .max(1024, "Invalid session key length")
-    .regex(/^[0-9a-fA-F]{1024}$/, "Session key must be a valid hex string")
+    .min(64, "Invalid session key length")
+    .max(64, "Invalid session key length")
+    .regex(/^[0-9a-fA-F]{64}$/, "Session key must be a valid hex string")
 
 
 export const VerifyOtpSchema = z.object({
