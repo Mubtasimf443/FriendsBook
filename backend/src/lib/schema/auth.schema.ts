@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { ProfileCreatedBy, Gender, Height, Religion, Language, EducationLevel, SettingsType } from "../types/user.types";
 import { countryCodes } from "../data/countryCodes";
-import { _idValidator, passwordValidator } from "./schemaComponents";
+import { _idValidator, emailValidatior, passwordValidator } from "./schemaComponents";
 
 const calculateAge = (dateOfBirth: Date): number => {
     const diff = new Date().getTime() - dateOfBirth.getTime();
@@ -47,10 +47,7 @@ export const registrationUserSchema = z.object({
             message: "You must be at least 18 years old"
         }),
 
-    email: z.string()
-        .email('Invalid email format')
-        .toLowerCase()
-        .trim(),
+    email: emailValidatior,
 
     height: z.nativeEnum(Height, {
         required_error: "Height is required",
@@ -111,9 +108,9 @@ export const registrationUserSchema = z.object({
         invalid_type_error: "Invalid religion selection"
     }),
 
-    password:passwordValidator ,
+    password: passwordValidator,
 
-  
+
     confirmPassword: z.string().trim(),
 })
     .refine(
@@ -159,14 +156,7 @@ export enum LoginEnum {
 // Base schema for common fields
 export const LoginSchema = z.object({
     password: passwordValidator,
-    email: z.string({
-        required_error: "Email is required",
-        invalid_type_error: "Email must be a string"
-    })
-        .email("Invalid email format")
-        .toLowerCase()
-        .trim()
-        .optional(),
+    email: emailValidatior,
     phoneInfo: z.object({
         number: z.string({
             required_error: "Phone number is required",
@@ -189,7 +179,7 @@ export const LoginSchema = z.object({
         (data) => {
             if (data.loginType === LoginEnum.withEmail) {
                 return !!data.email;
-            } 
+            }
             return true;
         },
         {
@@ -201,7 +191,7 @@ export const LoginSchema = z.object({
         (data) => {
             if (data.loginType === LoginEnum.withPhone) {
                 return !!data.phoneInfo?.number || !!data?.phoneInfo?.phone_code;
-            } 
+            }
             return true;
         },
         {
@@ -210,7 +200,7 @@ export const LoginSchema = z.object({
         }
     );
 
-export const zodOTPValidation =  z.string({
+export const zodOTPValidation = z.string({
     required_error: "OTP is required",
     invalid_type_error: "OTP must be a string"
 })
@@ -219,7 +209,7 @@ export const zodOTPValidation =  z.string({
     .regex(/^[0-9]{6}$/, "OTP must contain only numbers")
     .transform((val) => parseInt(val, 10)); // Convert to number after validation
 
- // Session key validation
+// Session key validation
 export const tempSessionValidation = z.string({
     required_error: "Session key is required",
     invalid_type_error: "Session key must be a string"
@@ -230,7 +220,7 @@ export const tempSessionValidation = z.string({
     .regex(/^[0-9a-fA-F]{64}$/, "Session key must be a valid hex string")
 
 
- // Session key validation
+// Session key validation
 export const authSessionValidation = z.string({
     required_error: "Auth Token is required",
     invalid_type_error: "Auth Token must be a string"
@@ -241,16 +231,16 @@ export const authSessionValidation = z.string({
     .regex(/^[0-9a-fA-F]{1024}$/, "Session key must be a valid hex string")
 
 
-export const VerifyOtpSchema = z.object({   
-        sessionKey: tempSessionValidation,
-        otp:zodOTPValidation
+export const VerifyOtpSchema = z.object({
+    sessionKey: tempSessionValidation,
+    otp: zodOTPValidation
 });
 
 
 
 
 export const ResetPasswordSchema = z.object({
-   
+
     // User ID validation using MongoDB ObjectId
     userId: z.optional(_idValidator),
 
@@ -269,5 +259,19 @@ export const ResetPasswordSchema = z.object({
         {
             message: "Passwords do not match",
             path: ["confirmPassword"] // Path helps client identify which field caused the error
+        }
+    );
+
+export const VerifyForgotPasswordOtpSchema = z.object({
+    sessionKey: tempSessionValidation,
+    otp: zodOTPValidation,
+    newPassword: passwordValidator,
+    confirmPassword: passwordValidator
+})
+    .refine(
+        (data) => data.newPassword === data.confirmPassword,
+        {
+            message: "Passwords don't match",
+            path: ["confirmPassword"]
         }
     );

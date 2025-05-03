@@ -21,4 +21,14 @@ export const passwordValidator = z.string()
              "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character")
          .transform((val) => val.trim());
 
+
+export const emailValidatior = z.string({
+    required_error: "Email is required",
+    invalid_type_error: "Email must be a string"
+})
+    .email("Invalid email format")
+    .trim()
+    .max(100 , "Email  must not exceed 100 characters")
+    .toLowerCase();
+    
     

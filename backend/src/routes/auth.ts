@@ -2,7 +2,7 @@
 
 import express, { Router, Request, Response } from "express";
 import TemporarySession, { TemporarySessionNames } from "../models/temporarySession";
-import { registrationUserSchema, LoginEnum, LoginSchema ,tempSessionValidation , zodOTPValidation , VerifyOtpSchema, ResetPasswordSchema } from "../lib/schema/auth.schema";
+import { registrationUserSchema, LoginEnum, LoginSchema ,tempSessionValidation , zodOTPValidation , VerifyOtpSchema, ResetPasswordSchema, VerifyForgotPasswordOtpSchema } from "../lib/schema/auth.schema";
 import { generateAuthToken, sendRegistrationOTP, comparePasswords, GenerateOtp, giveAuthSessionId, generateSalt, hashPassword } from "../controllers/auth.controller";
 import crypto from 'crypto';
 import { catchError } from "../lib/core/catchError";
@@ -13,6 +13,7 @@ import morgan from 'morgan'
 import AuthSession from "../models/AuthSession";
 import rateLimiter from "../config/rateRimiter";
 import { IUser } from "../lib/types/user.types";
+import { emailValidatior } from "../lib/schema/schemaComponents";
 
 const router: Router = express.Router();
 
@@ -306,7 +307,6 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
     }
 });
 
-
 router.post('/login', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // Validate the request body using Zod schema
@@ -448,7 +448,7 @@ router.post('/reset-password' , async function (req: Request, res: Response): Pr
 
 
     } catch (error) {
-        console.error("Login error:", error);
+        console.error("Reset Password error:", error);
         return res.status(500).json({
             success: false,
             message: "Internal server error. Please try again later.",
@@ -456,7 +456,236 @@ router.post('/reset-password' , async function (req: Request, res: Response): Pr
         });
     }
 });
+// Add these endpoints after existing routes
 
+// Create forget password session
+router.post("/create-forget-password-session", async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        // Validate email
+        const validationResult = await emailValidatior.safeParseAsync(req.body);
+
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: validationResult.error.errors[0].message,
+                data: null,
+                errors: validationResult.error
+            });
+        }
+
+        const  email  = validationResult.data;
+
+        // Check if user exists
+        const existingUser = await User.findOne({ email });
+        if (!existingUser) {
+            return res.status(404).json({
+                success: false,
+                message: "No account found with this email",
+                data: null
+            });
+        }
+
+        const sessionKey = crypto.randomBytes(32).toString('hex').normalize();
+
+        // Create a new session
+        const session = await TemporarySession.create({
+            name: TemporarySessionNames.FORGET_PASSWORD_SESSION,
+            key: sessionKey,
+            value: JSON.stringify({
+                hasOtpRequest: 10, // OTP request limit
+                email,
+                userId: existingUser._id
+            })
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Forget password session created successfully",
+            data: {
+                sessionKey: session.key
+            }
+        });
+
+    } catch (error) {
+        console.error("Create forget password session error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            data: null
+        });
+    }
+});
+
+// Request forget password OTP
+router.post("/request-forget-password-otp", async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        let validationResult = await tempSessionValidation.safeParseAsync(req.body.sessionKey);
+        
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: validationResult.error.errors[0].message,
+                data: null,
+                errors: validationResult.error
+            });
+        }
+
+        let sessionKey = validationResult.data;
+
+        // Find the session
+        const session = await TemporarySession.findOne({ })
+            .where('key').equals(sessionKey)
+            .where('name').equals(TemporarySessionNames.FORGET_PASSWORD_SESSION);
+
+        if (!session) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid or expired session",
+                data: null
+            });
+        }
+
+        // Parse session data
+        const sessionData = JSON.parse(session.value);
+
+        // Generate OTP
+        const otp = GenerateOtp();
+
+        // Update remaining OTP requests
+        sessionData.hasOtpRequest -= 1;
+
+        // Store OTP in session
+        session.value = JSON.stringify({
+            ...sessionData,
+            otp,
+            otpExpiry: Date.now() + 70 * 1000 // OTP valid for 1 minute 10 seconds
+        });
+
+        // Handle session based on remaining OTP requests
+        if (sessionData.hasOtpRequest < 1) {
+            await session.deleteOne();
+        } else {
+            await session.save();
+        }
+
+        // Send OTP via email
+        const emailSent = await authEmails.forgotPasswordOtpEmail(otp, sessionData.email);
+
+        if (!emailSent) {
+            return res.status(500).json({
+                success: false,
+                message: "Failed to send OTP",
+                data: null
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "OTP sent successfully",
+            data: null
+        });
+
+    } catch (error) {
+        console.error("Request forget password OTP error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            data: null
+        });
+    }
+});
+
+// Verify forget password OTP and reset password
+router.post("/verify-forget-password-otp", async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        let validationResult = await VerifyForgotPasswordOtpSchema.safeParseAsync(req.body);
+        
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: validationResult.error.errors[0].message,
+                data: null,
+                errors: validationResult.error
+            });
+        }
+
+        const { sessionKey, otp, newPassword } = validationResult.data;
+
+        // Find the session
+        const session = await TemporarySession.findOne({ })
+            .where('key').equals(sessionKey)
+            .where('name').equals(TemporarySessionNames.FORGET_PASSWORD_SESSION);
+
+        if (!session) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid or expired session",
+                data: null
+            });
+        }
+
+        // Parse session data
+        const sessionData = JSON.parse(session.value);
+
+        // Verify OTP
+        if (!sessionData.otp || sessionData.otp !== otp) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid OTP",
+                data: null
+            });
+        }
+
+        // Check OTP expiry
+        if (Date.now() > sessionData.otpExpiry) {
+            return res.status(400).json({
+                success: false,
+                message: "OTP has expired",
+                data: null
+            });
+        }
+
+        // Find user and update password
+        const user = await User.findById(sessionData.userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+                data: null
+            });
+        }
+
+        // Generate new password hash and salt
+        const passwordSalt = generateSalt();
+        const passwordHash = await hashPassword(newPassword, passwordSalt);
+
+        // Update user's password
+        user.password = {
+            hashed: passwordHash,
+            salt: passwordSalt
+        };
+        
+        await user.save();
+
+        // Delete the session
+        await session.deleteOne();
+
+       
+        return res.status(200).json({
+            success: true,
+            message: "Password reset successful",
+            data: null
+        });
+
+    } catch (error) {
+        console.error("Verify forget password OTP error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            data: null
+        });
+    }
+});
 
 
 
