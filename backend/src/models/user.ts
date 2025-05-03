@@ -13,26 +13,26 @@ const userSchema = new Schema<IUser>({
     name: {
         type: String,
         required: true,
-        trim: true ,
-        
+        trim: true,
+
     },
-    profileImage : {
-        url : {
-            type :String ,
-            required : function () { return !!this.profileImage?.id }  
+    profileImage: {
+        url: {
+            type: String,
+            required: function () { return !!this.profileImage?.id }
         },
-        id : {
-            type :String ,
-            required: function () { return !!this.profileImage?.url } 
+        id: {
+            type: String,
+            required: function () { return !!this.profileImage?.url }
         }
     },
-    userImages :[{
-        url : {
-            type :String ,
-            required : false
+    userImages: [{
+        url: {
+            type: String,
+            required: false
         },
-        id : {
-            type :String ,
+        id: {
+            type: String,
             required: false
         }
     }],
@@ -55,19 +55,20 @@ const userSchema = new Schema<IUser>({
     height: {
         type: String,
         enum: Object.values(Height),
-        required: true
+        required: true,
+
     },
     age: {
         type: Number,
         required: true,
-        min : 18, 
-        max : 70
+        min: 18,
+        max: 70
     },
     weight: {
         type: Number,
         required: true,
-        min : 30 ,
-        max : 200
+        min: 30,
+        max: 200
     },
     isEducated: {
         type: Boolean,
@@ -104,16 +105,17 @@ const userSchema = new Schema<IUser>({
     country: {
         type: String,
         required: true,
-        minlength : 2,
-        maxlength : 100
+        minlength: 2,
+        maxlength: 100
     },
 
-    address:{
-        type : String ,
-        required : true,
-        minlength : 30 ,
-        maxlength : 120 ,
+    address: {
+        type: String,
+        required: true,
+        minlength: 30,
+        maxlength: 120,
     },
+
     phoneInfo: {
         number: {
             type: String,
@@ -144,30 +146,70 @@ const userSchema = new Schema<IUser>({
         required: true
     },
     preferences: {
-        isEducated : {
-            type : Boolean ,
-            required : true,
-            default : true , 
+        isEducated: {
+            type: Boolean,
+            required: true,
+            default: true,
         },
         education: [{
             type: {
                 level: {
                     type: String,
-                    required: function () { return this.isEducated; },
+                    required: function () { return this.preferences.isEducated },
                     enum: Object.values(EducationLevel)
                 },
-                
             },
             required() {
-                return this.preferences.isEducated ;
+                return this.preferences.isEducated;
             }
         }],
         location: [{
             type: String
         }],
         weight: {
-            min: Number,
-            max: Number
+            minWeight: {
+                type: Number,
+                required: true,
+                min: 30,
+                max: 200,
+                default: 55
+            },
+            maxWeight: {
+                type: Number,
+                required: true,
+                min: 30,
+                max: 200,
+                default: 95
+            },
+        },
+        height: {
+            minHeight: {
+                type: Number, // Height in foots 
+                min: 3,
+                required: true,
+                max: 9,
+                default: 5,
+
+            },
+            maxHeight: {
+                type: Number, // Height in foots 
+                min: 3,
+                required: true,
+                max: 9,
+                default: 6
+            },
+        },
+        age: {
+            minAge: {
+                type: Number,
+                required: true,
+                default : 21 
+            },
+            maxAge: {
+                type: Number,
+                required: true,
+                default : 30 
+            }
         }
     },
     createdAt: {
@@ -175,57 +217,80 @@ const userSchema = new Schema<IUser>({
         required: true,
         default: Date.now
     },
-    settings :{
-        notifications :{
-            dailyRecommendations : {
-                type : String ,
-                required : true,
-                enum : Object.values(SettingsType),
-                default : Object.values(SettingsType)[0]
+    settings: {
+        notifications: {
+            dailyRecommendations: {
+                type: String,
+                required: true,
+                enum: Object.values(SettingsType),
+                default: Object.values(SettingsType)[0]
             },
-            todaysMatch : {
-                type : String ,
-                required : true,
-                enum : Object.values(SettingsType),
-                default : Object.values(SettingsType)[0]
+            todaysMatch: {
+                type: String,
+                required: true,
+                enum: Object.values(SettingsType),
+                default: Object.values(SettingsType)[0]
             },
-            viewedMyProfile : {
-                type : String ,
-                required : true,
-                enum : Object.values(SettingsType),
-                default : Object.values(SettingsType)[0]
+            viewedMyProfile: {
+                type: String,
+                required: true,
+                enum: Object.values(SettingsType),
+                default: Object.values(SettingsType)[0]
             },
         },
-        privacy :{
-            sendNotificationOnProfileView : {
-                type : String ,
-                required : true,
-                enum : Object.values(SettingsType),
-                default : Object.values(SettingsType)[0]
+        privacy: {
+            sendNotificationOnProfileView: {
+                type: String,
+                required: true,
+                enum: Object.values(SettingsType),
+                default: Object.values(SettingsType)[0]
             }
         }
     },
-    isSuspended : {
-        type : Boolean,
-        required : true ,
-        default : false
+    isSuspended: {
+        type: Boolean,
+        required: true,
+        default: false
     },
-    password : {
-        hashed :{
-            type : String ,
-            required : true
+    password: {
+        hashed: {
+            type: String,
+            required: true
         },
-        salt : {
-            type : String ,
-            required : true
+        salt: {
+            type: String,
+            required: true
         },
     }
 });
 
+userSchema.methods.createPreference = function () {
+    let preferredEducated = this.isEducated;
+    let userGender = this.gender , userAge = this.age;
+    function getPreferredAge(age:number) {
+        if (userGender === Gender.MALE) {
+            return {
+                min: Math.max(userAge - 7, 18),
+                max: userAge -1
+            };
+        } else if (userGender === Gender.FEMALE) {
+            return {
+                min: userAge,
+                max: Math.min(userAge + 7, 70)
+            };
+        }
+    }
+
+    return this;
+}
+
+
+
 userSchema.index({ gender: 1, country: 1 });
 userSchema.index({ age: 1 });
 userSchema.index({ 'education.level': 1 });
-userSchema.index({ dateOfBirth: 1 }); 
+userSchema.index({ dateOfBirth: 1 });
 
 
 export const User = mongoose.model<IUser>('User', userSchema);
+
