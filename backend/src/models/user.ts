@@ -59,7 +59,9 @@ const userSchema = new Schema<IUser>({
     },
     age: {
         type: Number,
-        required: true
+        required: true,
+        min : 18, 
+        max : 70
     },
     weight: {
         type: Number,

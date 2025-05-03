@@ -4,6 +4,10 @@ import { z } from "zod";
 import { ProfileCreatedBy, Gender, Height, Religion, Language, EducationLevel, SettingsType } from "../types/user.types";
 import { countryCodes } from "../data/countryCodes";
 
+const calculateAge = (dateOfBirth: Date): number => {
+    const diff = new Date().getTime() - dateOfBirth.getTime();
+    return Math.floor(diff / (365.25 * 24 * 60 * 60 * 1000)); // Convert milliseconds to years
+};
 
 const countryNames = countryCodes.map(c => c.country);
 const phoneCountryCodes = countryCodes.map(c => c.code);
@@ -15,6 +19,7 @@ export const registrationUserSchema = z.object({
         required_error: "Profile creator type is required",
         invalid_type_error: "Invalid profile creator type"
     }),
+    age: z.number(),
 
     gender: z.nativeEnum(Gender, {
         required_error: "Gender is required",
@@ -114,10 +119,37 @@ export const registrationUserSchema = z.object({
 
     // Optional: Add confirm password field if needed
     confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
-});
+})
+    .refine(
+        function (data) {
+            const age = data.age;
+            if (data.gender === Gender.MALE) {
+                return age >= 21 && age <= 70;
+            } else if (data.gender === Gender.FEMALE) {
+                return age >= 18 && age <= 70;
+            }
+        },
+        {
+            message: "Invalid age for the selected gender. Male must be 21-70 years old, and female must be 18-70 years old.",
+            path: ["age"],
+        }
+    )
+    .refine(
+        function (data) {
+            return data.age == calculateAge(data.dateOfBirth);
+        },
+        {
+            message: "Invalid age for the selected gender. Male must be 21-70 years old, and female must be 18-70 years old.",
+            path: ["dateOfBirth"],
+        }
+    )
+    .refine(
+        (data) => data.password === data.confirmPassword,
+        {
+            message: "Passwords don't match",
+            path: ["confirmPassword"],
+        }
+    );
 // You might want to create a type from the schema
 export type RegistrationUserInput = z.infer<typeof registrationUserSchema>;
 

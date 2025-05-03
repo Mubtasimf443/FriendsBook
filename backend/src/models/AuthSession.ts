@@ -1,10 +1,10 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, Mongoose, ObjectId, Schema } from 'mongoose';
 
 interface IAuthSessionValue {
     email: string;
-    userId: string;
+    userId: ObjectId;
 }
 
 interface IAuthSession extends Document {
@@ -35,7 +35,7 @@ const authSessionSchema = new Schema<IAuthSession>(
                     required: true,
                 },
                 userId: {
-                    type: String,
+                    type: mongoose.SchemaTypes.ObjectId,
                     required: true,
                 }
             },
