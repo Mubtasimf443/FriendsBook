@@ -42,5 +42,9 @@ let sessionSchema = new Schema<ISession>(
     }
 );
 
+
+sessionSchema.index({ created_at: 1 }, { expireAfterSeconds: 600 });
+// The session will automatically be deleted after 600 seconds of creation
+
 export const Session = mongoose.model<ISession>('Session', sessionSchema);
 export default Session;
