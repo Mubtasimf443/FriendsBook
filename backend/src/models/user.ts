@@ -147,20 +147,14 @@ const userSchema = new Schema<IUser>({
     },
     preferences: {
         isEducated: {
-            type: Boolean,
-            required: true,
-            default: true,
+            type: Boolean
         },
         education: [{
             type: {
                 level: {
                     type: String,
-                    required: function () { return this.preferences.isEducated },
                     enum: Object.values(EducationLevel)
-                },
-            },
-            required() {
-                return this.preferences.isEducated;
+                }
             }
         }],
         location: [{
@@ -169,46 +163,33 @@ const userSchema = new Schema<IUser>({
         weight: {
             minWeight: {
                 type: Number,
-                required: true,
                 min: 30,
-                max: 200,
-                default: 55
+                max: 200
             },
             maxWeight: {
                 type: Number,
-                required: true,
                 min: 30,
-                max: 200,
-                default: 95
-            },
+                max: 200
+            }
         },
         height: {
             minHeight: {
                 type: Number, // Height in foots 
                 min: 3,
-                required: true,
-                max: 9,
-                default: 5,
-
+                max: 9
             },
             maxHeight: {
                 type: Number, // Height in foots 
                 min: 3,
-                required: true,
-                max: 9,
-                default: 6
-            },
+                max: 9
+            }
         },
         age: {
             minAge: {
-                type: Number,
-                required: true,
-                default : 21 
+                type: Number
             },
             maxAge: {
-                type: Number,
-                required: true,
-                default : 30 
+                type: Number
             }
         }
     },
@@ -264,25 +245,119 @@ const userSchema = new Schema<IUser>({
     }
 });
 
-userSchema.methods.createPreference = function () {
-    let preferredEducated = this.isEducated;
-    let userGender = this.gender , userAge = this.age;
-    function getPreferredAge(age:number) {
-        if (userGender === Gender.MALE) {
+userSchema.methods.createPreference = function() {
+    // Age preferences based on gender and cultural norms
+    const agePreferences = (() => {
+        const minAllowedAge = 18;
+        const maxAllowedAge = 70;
+        
+        if (this.gender === Gender.MALE) {
             return {
-                min: Math.max(userAge - 7, 18),
-                max: userAge -1
+                minAge: Math.max(Math.floor(this.age - 10), minAllowedAge), // More flexible range
+                maxAge: Math.max(this.age - 1, minAllowedAge)
             };
-        } else if (userGender === Gender.FEMALE) {
+        } else if (this.gender === Gender.FEMALE) {
             return {
-                min: userAge,
-                max: Math.min(userAge + 7, 70)
+                minAge: Math.max(this.age, minAllowedAge),
+                maxAge: Math.min(this.age + 10, maxAllowedAge) // More flexible range
             };
         }
-    }
+        return { minAge: 21, maxAge: 30 }; // Default values
+    })();
+
+    // Height preferences based on cultural norms
+    const heightPreferences = (() => {
+        const userHeightInFeet = parseFloat(this.height);
+        const minAcceptableHeight = 4.5; // Minimum acceptable height
+        const maxAcceptableHeight = 7.0; // Maximum acceptable height
+
+        if (this.gender === Gender.MALE) {
+            return {
+                minHeight: Math.max(userHeightInFeet - 0.5, minAcceptableHeight),
+                maxHeight: userHeightInFeet - 0.1 // Slightly less than user's height
+            };
+        } else if (this.gender === Gender.FEMALE) {
+            return {
+                minHeight: userHeightInFeet + 0.1, // Slightly more than user's height
+                maxHeight: Math.min(userHeightInFeet + 0.7, maxAcceptableHeight)
+            };
+        }
+        return { minHeight: 5, maxHeight: 6 }; // Default values
+    })();
+
+    // Weight preferences with cultural considerations
+    const weightPreferences = (() => {
+        const userWeight = this.weight;
+        const minHealthyWeight = 40; // Minimum healthy weight
+        const maxHealthyWeight = 120; // Maximum considered weight
+
+        if (this.gender === Gender.MALE) {
+            return {
+                minWeight: Math.max(minHealthyWeight, userWeight - 25),
+                maxWeight: Math.min(userWeight - 2, maxHealthyWeight) // Ensuring partner is lighter
+            };
+        } else {
+            return {
+                minWeight: Math.max(minHealthyWeight, userWeight + 2), // Ensuring partner is heavier
+                maxWeight: Math.min(userWeight + 30, maxHealthyWeight)
+            };
+        }
+    })();
+
+    // Enhanced education preferences
+    const educationPreferences = (() => {
+        if (!this.isEducated) return [];
+        
+        const userHighestEducation = this.education.reduce((highest:any, current:any) => {
+            const currentLevel = Object.values(EducationLevel).indexOf(current.level);
+            const highestLevel = highest ? Object.values(EducationLevel).indexOf(highest.level) : -1;
+            return currentLevel > highestLevel ? current : highest;
+        }, null);
+
+        if (!userHighestEducation) return [];
+
+        // For females, accept same or higher education
+        // For males, accept same or lower education
+        const educationLevels = Object.values(EducationLevel);
+        const userLevelIndex = educationLevels.indexOf(userHighestEducation.level);
+
+        if (this.gender === Gender.FEMALE) {
+            return educationLevels
+                .slice(userLevelIndex)
+                .map(level => ({ level }));
+        } else {
+            return educationLevels
+                .slice(0, userLevelIndex + 1)
+                .map(level => ({ level }));
+        }
+    })();
+
+    // Location preferences with district/division consideration
+    const locationPreferences = (() => {
+        const baseLocations = [this.country];
+        if (this.district) {
+            baseLocations.push(this.district);
+        }
+        if (this.division) {
+            baseLocations.push(this.division);
+        }
+        return baseLocations;
+    })();
+
+    // Update preferences with all calculated values
+    this.preferences = {
+        ...this.preferences,
+        isEducated: this.isEducated,
+        education: educationPreferences,
+        location: locationPreferences,
+        age: agePreferences,
+        height: heightPreferences,
+        weight: weightPreferences,
+        lastUpdated: new Date() // Adding timestamp for preference updates
+    };
 
     return this;
-}
+};
 
 
 
