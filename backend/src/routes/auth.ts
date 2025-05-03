@@ -2,14 +2,11 @@
 
 import express, { Router, Request, Response } from "express";
 import TemporarySession, { TemporarySessionNames } from "../models/temporarySession";
-import { registrationUserSchema, LoginEnum, LoginSchema ,tempSessionValidation , zodOTPValidation , VerifyOtpSchema, ResetPasswordSchema, VerifyForgotPasswordOtpSchema } from "../lib/schema/auth.schema";
-import { generateAuthToken, sendRegistrationOTP, comparePasswords, GenerateOtp, giveAuthSessionId, generateSalt, hashPassword } from "../controllers/auth.controller";
+import { registrationUserSchema, LoginEnum, LoginSchema ,tempSessionValidation  , VerifyOtpSchema, ResetPasswordSchema, VerifyForgotPasswordOtpSchema } from "../lib/schema/auth.schema";
+import { comparePasswords, GenerateOtp, giveAuthSessionId, generateSalt, hashPassword } from "../controllers/auth.controller";
 import crypto from 'crypto';
-import { catchError } from "../lib/core/catchError";
 import { User } from "../models/user";
-import { format } from 'date-fns';
 import { authEmails } from "../lib/mails/auth.emails";
-import morgan from 'morgan'
 import AuthSession from "../models/AuthSession";
 import rateLimiter from "../config/rateRimiter";
 import { IUser } from "../lib/types/user.types";
@@ -390,8 +387,6 @@ router.post('/login', async function (req: Request, res: Response): Promise<Resp
     }
 });
 
-
-
 router.post('/reset-password' , async function (req: Request, res: Response): Promise<Response | any> {
     try {
         let validationResult =await ResetPasswordSchema.safeParseAsync(req.body);
@@ -456,7 +451,6 @@ router.post('/reset-password' , async function (req: Request, res: Response): Pr
         });
     }
 });
-// Add these endpoints after existing routes
 
 // Create forget password session
 router.post("/create-forget-password-session", async function (req: Request, res: Response): Promise<Response | any> {
