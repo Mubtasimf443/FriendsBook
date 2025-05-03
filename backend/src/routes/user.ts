@@ -1,8 +1,0 @@
-/* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
-
-import { Router, Response, Request } from "express";
-
-const router: Router = Router();
-
-
-export default router;

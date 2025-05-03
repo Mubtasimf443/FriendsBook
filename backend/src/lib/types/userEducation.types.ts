@@ -10,7 +10,9 @@ export enum EducationLevel {
     BACHELORS_DEGREE = `Bachelor's Degree`,
     MASTERS_DEGREE = `Master's Degree`,
     DOCTORATE = 'Doctorate (PhD)',
+    RELIGIOUS = 'Religious Education',
     CERTIFICATE_COURSE = 'Certificate Course',
+    TECHNICAL = 'Technical/Vocational',
     OTHER = 'Other'
 }
 
@@ -184,8 +186,9 @@ export interface Education {
     grade?: string;
     additionalInfo?: string;
 }
+
 export interface EducationPreference {
     level: EducationLevel;
-    
 }
+
 

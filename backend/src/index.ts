@@ -6,7 +6,7 @@ import { connectDB } from './config/connectDB';
 import authRouter from './routes/auth';
 import searchRouter from './routes/search';
 import assetsRouter from './routes/asset';
-import userRouter from './routes/user';
+import profileRouter from './routes/profile';
 import cookieParser from 'cookie-parser';
 
 import morgan from 'morgan';
@@ -29,7 +29,7 @@ async function main() {
     app.use('/api/auth' , authRouter);
     app.use('/api/search' , searchRouter);
     app.use('/api/assets' , assetsRouter);
-    app.use('/api/users' , userRouter);
+    app.use('/api/profile' , profileRouter);
 
     app.get('/', (req: Request, res: Response) => {
         res.send('Welcome to Express & TypeScript Server');
