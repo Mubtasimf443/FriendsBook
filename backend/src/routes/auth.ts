@@ -11,6 +11,7 @@ import AuthSession from "../models/AuthSession";
 import rateLimiter from "../config/rateRimiter";
 import { IUser } from "../lib/types/user.types";
 import { emailValidatior } from "../lib/schema/schemaComponents";
+import { AuthenticatedRequest, validateUser } from "../lib/middlewares/auth.middleware";
 
 const router: Router = express.Router();
 
@@ -681,6 +682,26 @@ router.post("/verify-forget-password-otp", async function (req: Request, res: Re
     }
 });
 
+
+// Verify forget password OTP and reset password
+router.post("/log-out", validateUser,async function (req: AuthenticatedRequest , res: Response): Promise<Response | any> {
+    try {
+        await req.authSession?.deleteOne();
+        res.status(200).json({
+            success : true ,
+            message : "Logout completed successfully",
+            data : null
+        })
+        return ;
+    } catch (error) {
+        console.error("Log out error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            data: null
+        });
+    }
+});
 
 
 
