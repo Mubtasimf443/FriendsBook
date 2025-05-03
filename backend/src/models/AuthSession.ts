@@ -60,7 +60,6 @@ const authSessionSchema = new Schema<IAuthSession>(
 
 
 
-authSessionSchema.index({ key: 1 });
 
 const AuthSession = mongoose.model<IAuthSession>('AuthSession', authSessionSchema);
 export default AuthSession;

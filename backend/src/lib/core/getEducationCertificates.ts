@@ -153,6 +153,12 @@ const getEducationCertificates = (level: EducationLevel): CertificateType[] => {
                 CertificateType.CCNA,
                 CertificateType.CCNP,
                 CertificateType.OCP,
+                CertificateType.PROFESSIONAL_COURSE,
+                CertificateType.VOCATIONAL_TRAINING
+            ];
+        
+        case EducationLevel.RELIGIOUS:
+            return [
                 CertificateType.HAFEZ,
                 CertificateType.QARI,
                 CertificateType.TAFSIR,
@@ -162,6 +168,10 @@ const getEducationCertificates = (level: EducationLevel): CertificateType[] => {
                 CertificateType.SANAWIA_AMMA,
                 CertificateType.SANAWIA_KHASSA,
                 CertificateType.TAKMIL,
+            ];
+        
+        case EducationLevel.TECHNICAL :
+            return [
                 CertificateType.NTVQF_1,
                 CertificateType.NTVQF_2,
                 CertificateType.NTVQF_3,
@@ -169,13 +179,10 @@ const getEducationCertificates = (level: EducationLevel): CertificateType[] => {
                 CertificateType.CERTIFICATE_COMPUTER,
                 CertificateType.CERTIFICATE_DRAFTING,
                 CertificateType.CERTIFICATE_REFRIGERATION,
-                CertificateType.PROFESSIONAL_COURSE,
-                CertificateType.VOCATIONAL_TRAINING
             ];
 
         case EducationLevel.OTHER:
             return [CertificateType.OTHER];
-
         default:
             return [];
     }
