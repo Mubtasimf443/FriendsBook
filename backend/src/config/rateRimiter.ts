@@ -2,10 +2,10 @@
 
 import expressRateLimit from 'express-rate-limit'
 
-function rateLimiter(time: number = 600, request: number = 200) {
+export default function rateLimiter(time: number = 600 * 1000, request: number = 200) {
     return expressRateLimit({
-        windowMs: 15 * 60 * 1000,
-        limit: 100,
+        windowMs: time,
+        limit: request,
         standardHeaders: 'draft-8',
         legacyHeaders: false,
         message: JSON.stringify({

@@ -35,8 +35,6 @@ export function generateSalt() {
   return crypto.randomBytes(16).toString("hex").normalize()
 }
 
-
-
 export function GenerateOtp() {
   function giveOtp() {
     return Math.floor(Math.random() * 999999)
@@ -50,12 +48,10 @@ export function GenerateOtp() {
   }
 }
 
-
 export function giveAuthSessionId() {
   let token: string = crypto.randomBytes(512).toString("hex").normalize();
   return token;
 }
-
 
 export async function sendRegistrationOTP(email: string, otp: number): Promise<boolean> {
   try {
