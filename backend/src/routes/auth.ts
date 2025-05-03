@@ -2,7 +2,7 @@
 
 import express, { Router, Request, Response } from "express";
 import TemporarySession, { TemporarySessionNames } from "../models/temporarySession";
-import { registrationUserSchema, LoginEnum, LoginSchema } from "../lib/schema/auth.schema";
+import { registrationUserSchema, LoginEnum, LoginSchema ,tempSessionValidation , zodOTPValidation , VerifyOtpSchema } from "../lib/schema/auth.schema";
 import { generateAuthToken, sendRegistrationOTP, comparePasswords, GenerateOtp, giveAuthSessionId, generateSalt, hashPassword } from "../controllers/auth.controller";
 import crypto from 'crypto';
 import { catchError } from "../lib/core/catchError";
@@ -68,7 +68,19 @@ router.post("/create-registration-session", async function (req: Request, res: R
 // Request registration OTP endpoint
 router.post("/request-registration-otp", async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        const { sessionKey } = req.body;
+
+        let validationResult = tempSessionValidation.safeParse(req.body.sessionKey)
+        
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: validationResult.error.errors[0].message,
+                data: null,
+                errors: validationResult.error
+            });
+        }
+
+        let sessionKey =validationResult.data;
 
         if (!sessionKey) {
             return res.status(400).json({
@@ -79,7 +91,8 @@ router.post("/request-registration-otp", async function (req: Request, res: Resp
         }
 
         // Find the session
-        const session = await TemporarySession.findOne().where('key').equals(sessionKey);
+        const session = await TemporarySession.findOne()
+            .where('key').equals(sessionKey);
 
         if (!session) {
             return res.status(400).json({
@@ -146,7 +159,21 @@ router.post("/request-registration-otp", async function (req: Request, res: Resp
 // Verify registration OTP endpoint
 router.post("/verify-registration-otp", async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        const { sessionKey, otp } = req.body;
+
+        let validationResult =await VerifyOtpSchema.safeParseAsync(req.body)
+        
+        
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: validationResult.error.errors[0].message,
+                data: null,
+                errors: validationResult.error
+            });
+        }
+
+
+        const { sessionKey, otp } = validationResult.data;
 
         if (!sessionKey || !otp) {
             return res.status(400).json({
@@ -173,7 +200,7 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
         const sessionData = JSON.parse(session.value);
 
         // Verify OTP
-        if (!sessionData.otp || sessionData.otp !== parseInt(otp)) {
+        if (!sessionData.otp || sessionData.otp !== otp) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid OTP",

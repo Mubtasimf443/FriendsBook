@@ -219,10 +219,43 @@ export const LoginSchema = z.object({
         }
     );
 
-export const zodOTP = z.string({
+export const zodOTPValidation =  z.string({
     required_error: "OTP is required",
     invalid_type_error: "OTP must be a string"
 })
+    .trim()
     .length(6, "OTP must be exactly 6 digits")
     .regex(/^[0-9]{6}$/, "OTP must contain only numbers")
-    .transform(val => val.trim())
+    .transform((val) => parseInt(val, 10)); // Convert to number after validation
+
+ // Session key validation
+export const tempSessionValidation = z.string({
+    required_error: "Session key is required",
+    invalid_type_error: "Session key must be a string"
+})
+    .trim()
+    .min(30, "Invalid session key length")
+    .max(35, "Invalid session key length")
+    .regex(/^[0-9a-fA-F]{40}$/, "Session key must be a valid hex string")
+
+
+ // Session key validation
+ export const authSessionValidation = z.string({
+    required_error: "Auth Token is required",
+    invalid_type_error: "Auth Token must be a string"
+})
+    .trim()
+    .min(500, "Invalid session key length")
+    .max(520, "Invalid session key length")
+    .regex(/^[0-9a-fA-F]{40}$/, "Session key must be a valid hex string")
+
+
+
+
+
+
+ // OTP validation
+    export const VerifyOtpSchema = z.object({   
+        sessionKey: tempSessionValidation,
+        otp:zodOTPValidation
+    });
