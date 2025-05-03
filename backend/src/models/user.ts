@@ -107,6 +107,7 @@ const userSchema = new Schema<IUser>({
         minlength : 2,
         maxlength : 100
     },
+
     address:{
         type : String ,
         required : true,
@@ -143,8 +144,23 @@ const userSchema = new Schema<IUser>({
         required: true
     },
     preferences: {
+        isEducated : {
+            type : Boolean ,
+            required : true,
+            default : true , 
+        },
         education: [{
-            type: String
+            type: {
+                level: {
+                    type: String,
+                    required: function () { return this.isEducated; },
+                    enum: Object.values(EducationLevel)
+                },
+                
+            },
+            required() {
+                return this.preferences.isEducated ;
+            }
         }],
         location: [{
             type: String

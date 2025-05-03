@@ -1,6 +1,7 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 import { Document } from 'mongoose';
+import { EducationLevel, Education ,EducationPreference , CertificateType } from './userEducation.types';
 
 export enum ProfileCreatedBy {
     SELF = 'self',
@@ -107,30 +108,9 @@ export enum Height {
     FOOT_9_11 = "9 foot 11 inch"
 }
 
-export enum EducationLevel {
-    PRIMARY_EDUCATION = 'Primary Education (Class 1-5)',
-    JUNIOR_SECONDARY = 'Junior Secondary (Class 6-8)',
-    SSC = 'Secondary School Certificate (SSC)',
-    HSC = 'Higher Secondary Certificate (HSC)',
-    DIPLOMA = 'Diploma (Technical/Vocational)',
-    BACHELORS_DEGREE = `Bachelor's Degree`,
-    MASTERS_DEGREE = `Master's Degree`,
-    DOCTORATE = 'Doctorate (PhD)',
-    CERTIFICATE_COURSE = 'Certificate Course',
-    OTHER = 'Other'
-}
-
-interface Education {
-    level: EducationLevel;
-    certificate: string;
-    institution: string;
-    yearOfCompletion: number;
-    grade?: string;
-    additionalInfo?: string;
-}
-
 export interface IUserPreferences {
-    education?: string[];
+    isEducated : boolean;
+    education?: EducationPreference[];
     location?: string[];
     weight?: {
         min: number;
@@ -300,3 +280,5 @@ export interface IUser extends Document {
     settings : UserSettings
     isSuspended : boolean,
 }
+
+export { Education , EducationPreference, EducationLevel}
