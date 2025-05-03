@@ -30,7 +30,8 @@
     "typescript": "^5.8.3"
   },
   "scripts": {
-    "dev": "nodemon src/index.ts"
+    "dev": "nodemon src/index.ts --ignore *",
+    "test": "nodemon src/index.test.ts"
   },
   "keywords": [],
   "author": "",

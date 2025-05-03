@@ -462,7 +462,7 @@ router.post('/reset-password' , async function (req: Request, res: Response): Pr
 router.post("/create-forget-password-session", async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // Validate email
-        const validationResult = await emailValidatior.safeParseAsync(req.body);
+        const validationResult = await emailValidatior.safeParseAsync(req.body.email || "" );
 
         if (!validationResult.success) {
             return res.status(400).json({
@@ -664,7 +664,7 @@ router.post("/verify-forget-password-otp", async function (req: Request, res: Re
             hashed: passwordHash,
             salt: passwordSalt
         };
-        
+
         await user.save();
 
         // Delete the session

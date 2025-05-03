@@ -10,7 +10,7 @@ export interface CountryCode {
 
 
 export const countryCodes: CountryCode[] = [
-    { country: 'Bangladesh', code: '+880', flag: '🇧🇩' },
+    { country: 'Bangladesh', code: '+88', flag: '🇧🇩' },
     { country: 'United States', code: '+1', flag: '🇺🇸' },
     { country: 'United Kingdom', code: '+44', flag: '🇬🇧' },
     { country: 'India', code: '+91', flag: '🇮🇳' },
