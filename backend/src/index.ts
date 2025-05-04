@@ -7,10 +7,13 @@ import authRouter from './routes/auth';
 import searchRouter from './routes/search';
 import assetsRouter from './routes/asset';
 import profileRouter from './routes/profile';
+import dataRouter from './routes/data';
+
 import cookieParser from 'cookie-parser';
 
 import morgan from 'morgan';
 import { cors } from './config/cors';
+import { giveLocationData } from './controllers/data.controller';
 
 const port : number = Number(PORT ?? 4000) 
 async function main() {
@@ -25,12 +28,12 @@ async function main() {
     app.use(cors)
     
     NODE_ENV === 'developement' && app.use(morgan('dev'))
-
     // routes
     app.use('/api/auth' , authRouter);
     app.use('/api/search' , searchRouter);
     app.use('/api/assets' , assetsRouter);
     app.use('/api/profile' , profileRouter);
+    app.use('/api/data' , dataRouter);
 
     app.get('/', (req: Request, res: Response) => {
         res.send('Welcome to Express & TypeScript Server');

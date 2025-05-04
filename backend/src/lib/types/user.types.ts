@@ -138,6 +138,8 @@ export enum Religion {
     PAGANISM = "Paganism"
 }
 
+
+
 export enum Language {
     MANDARIN_CHINESE = "Mandarin Chinese",
     SPANISH = "Spanish",
@@ -280,5 +282,14 @@ export interface IUser extends Document {
     settings : UserSettings
     isSuspended : boolean,
 }
+
+
+export interface PresentAdress {
+    division: string;
+    district: string;
+    upazila: string;
+    city: string;
+}
+
 
 export { Education , EducationPreference, EducationLevel}

@@ -20,6 +20,7 @@ export const registrationUserSchema = z.object({
         required_error: "Profile creator type is required",
         invalid_type_error: "Invalid profile creator type"
     }),
+
     age: z.number(),
 
     gender: z.nativeEnum(Gender, {
@@ -71,12 +72,15 @@ export const registrationUserSchema = z.object({
             grade: z.string().optional(),
             additionalInfo: z.string().optional()
         })
-    ).optional()
+    )
+        .optional()
         .default([]),
 
     country: z.string()
         .min(2, "Country name is too short")
-        .max(100, "Country name is too long"),
+        .max(100, "Country name is too long")
+        .optional()
+        .default("Bangladesh"),
 
     address: z.string()
         .min(30, "Address must be at least 40 characters")

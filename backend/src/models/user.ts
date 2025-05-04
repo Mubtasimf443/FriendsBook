@@ -75,6 +75,7 @@ const userSchema = new Schema<IUser>({
         default: true,
         required: true
     },
+
     education: [{
         level: {
             type: String,
@@ -102,12 +103,15 @@ const userSchema = new Schema<IUser>({
             required: false
         }
     }],
+
     country: {
         type: String,
         required: true,
         minlength: 2,
-        maxlength: 100
+        maxlength: 100,
+        default : "Bangladesh"
     },
+
 
     address: {
         type: String,
@@ -135,16 +139,19 @@ const userSchema = new Schema<IUser>({
             }
         }
     },
+
     languages: [{
         type: String,
         enum: Object.values(Language),
         required: true
     }],
+
     religion: {
         type: String,
         enum: Object.values(Religion),
         required: true
     },
+
     preferences: {
         isEducated: {
             type: Boolean
@@ -191,13 +198,16 @@ const userSchema = new Schema<IUser>({
             maxAge: {
                 type: Number
             }
-        }
+        },
+        lastUpdated : Date,
     },
+
     createdAt: {
         type: Date,
         required: true,
         default: Date.now
     },
+
     settings: {
         notifications: {
             dailyRecommendations: {
@@ -228,11 +238,13 @@ const userSchema = new Schema<IUser>({
             }
         }
     },
+
     isSuspended: {
         type: Boolean,
         required: true,
         default: false
     },
+
     password: {
         hashed: {
             type: String,
@@ -243,46 +255,53 @@ const userSchema = new Schema<IUser>({
             required: true
         },
     }
-});
+}
+
+
+);
 
 userSchema.methods.createPreference = function() {
     // Age preferences based on gender and cultural norms
     const agePreferences = (() => {
-        const minAllowedAge = 18;
-        const maxAllowedAge = 70;
-        
+        // Age constraints for men
+        const MIN_ALLOWED_AGE_MEN: number = 21;
+        const MAX_ALLOWED_AGE_MEN: number = 70;
+
+        // Age constraints for women
+        const MIN_ALLOWED_AGE_WOMEN: number = 18;
+        const MAX_ALLOWED_AGE_WOMEN: number = 70;
         if (this.gender === Gender.MALE) {
             return {
-                minAge: Math.max(Math.floor(this.age - 10), minAllowedAge), // More flexible range
-                maxAge: Math.max(this.age - 1, minAllowedAge)
+                minAge: Math.max(Math.floor(this.age - 10), MIN_ALLOWED_AGE_WOMEN), // More flexible range
+                maxAge: Math.max(this.age - 1, MIN_ALLOWED_AGE_WOMEN)
             };
         } else if (this.gender === Gender.FEMALE) {
             return {
-                minAge: Math.max(this.age, minAllowedAge),
-                maxAge: Math.min(this.age + 10, maxAllowedAge) // More flexible range
+                minAge: Math.max(this.age, MIN_ALLOWED_AGE_MEN ),
+                maxAge: Math.min(this.age + 10, MAX_ALLOWED_AGE_MEN - this.age) // More flexible range
             };
         }
-        return { minAge: 21, maxAge: 30 }; // Default values
+        else return { minAge: 21, maxAge: 30 }; // Default values
     })();
 
     // Height preferences based on cultural norms
     const heightPreferences = (() => {
-        const userHeightInFeet = parseFloat(this.height);
-        const minAcceptableHeight = 4.5; // Minimum acceptable height
-        const maxAcceptableHeight = 7.0; // Maximum acceptable height
+        const userHeightInFeet = parseFloat(this.height.at(0));
+        const minAcceptableHeight = 4; // Minimum acceptable height
+        const maxAcceptableHeight = 7; // Maximum acceptable height
 
         if (this.gender === Gender.MALE) {
             return {
-                minHeight: Math.max(userHeightInFeet - 0.5, minAcceptableHeight),
-                maxHeight: userHeightInFeet - 0.1 // Slightly less than user's height
+                minHeight: Math.max(userHeightInFeet - 1, minAcceptableHeight),
+                maxHeight: userHeightInFeet 
             };
         } else if (this.gender === Gender.FEMALE) {
             return {
-                minHeight: userHeightInFeet + 0.1, // Slightly more than user's height
-                maxHeight: Math.min(userHeightInFeet + 0.7, maxAcceptableHeight)
+                minHeight:userHeightInFeet, // Slightly more than user's height
+                maxHeight: Math.min(userHeightInFeet + 1, maxAcceptableHeight)
             };
         }
-        return { minHeight: 5, maxHeight: 6 }; // Default values
+     
     })();
 
     // Weight preferences with cultural considerations
@@ -332,24 +351,12 @@ userSchema.methods.createPreference = function() {
         }
     })();
 
-    // Location preferences with district/division consideration
-    const locationPreferences = (() => {
-        const baseLocations = [this.country];
-        if (this.district) {
-            baseLocations.push(this.district);
-        }
-        if (this.division) {
-            baseLocations.push(this.division);
-        }
-        return baseLocations;
-    })();
-
+  
     // Update preferences with all calculated values
     this.preferences = {
         ...this.preferences,
         isEducated: this.isEducated,
         education: educationPreferences,
-        location: locationPreferences,
         age: agePreferences,
         height: heightPreferences,
         weight: weightPreferences,
