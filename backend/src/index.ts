@@ -10,6 +10,7 @@ import profileRouter from './routes/profile';
 import cookieParser from 'cookie-parser';
 
 import morgan from 'morgan';
+import { cors } from './config/cors';
 
 const port : number = Number(PORT ?? 4000) 
 async function main() {
@@ -21,7 +22,7 @@ async function main() {
     await connectDB();
     app.use(cookieParser());
     app.use(ExpressJsonMidleware());
-    
+    app.use(cors)
     
     NODE_ENV === 'developement' && app.use(morgan('dev'))
 
