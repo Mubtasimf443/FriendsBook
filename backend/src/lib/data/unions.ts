@@ -1,6 +1,6 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-    import { ICity } from "../types/LocationTypes";
+    import { ICity } from "../types/location.types";
     
     
     export const Unions: ICity[] = [

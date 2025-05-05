@@ -1,6 +1,6 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-const countryNames: string[] = [
+export const countryNames: string[] = [
     "Bangladesh",
     "Afghanistan",
     "Albania",

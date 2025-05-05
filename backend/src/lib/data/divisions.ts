@@ -1,6 +1,6 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-import { IDivision } from "../types/LocationTypes";
+import { IDivision } from "../types/location.types";
 
 export const Divisions: IDivision[] = [
     {

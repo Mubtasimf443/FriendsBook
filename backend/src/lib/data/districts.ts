@@ -1,7 +1,7 @@
 
     /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-import { IDistrict } from "../types/LocationTypes";
+import { IDistrict } from "../types/location.types";
 
 
 export const Districts: IDistrict[] = [

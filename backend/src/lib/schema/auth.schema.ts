@@ -4,7 +4,15 @@ import { z } from "zod";
 import { ProfileCreatedBy, Gender, Height, Religion, Language, EducationLevel, SettingsType } from "../types/user.types";
 import { countryCodes } from "../data/countryCodes";
 import { _idValidator, emailValidatior, passwordValidator } from "./schemaComponents";
-import { CountryNamesEnum } from "../types/country_names.enum";
+import { CountryNamesEnum as CountryNamesEnumForAdressField} from "../types/country_names.enum";
+import { Divisions } from "../data/divisions";
+import { Districts } from "../data/districts";
+import { Upazilas } from "../data/upazilas";
+import { Unions } from "../data/unions";
+import { setHeapSnapshotNearHeapLimit } from "v8";
+import { countryNames as CountryNamesForCountryField} from '../data/countries'
+import { log } from "console";
+
 
 const calculateAge = (dateOfBirth: Date): number => {
     const diff = new Date().getTime() - dateOfBirth.getTime();
@@ -15,6 +23,98 @@ const countryNames = countryCodes.map(c => c.country);
 const phoneCountryCodes = countryCodes.map(c => c.code);
 const CountryNameEnum = z.enum([countryNames[0], ...countryNames]);
 const CountryPhoneCodeEnum = z.enum([phoneCountryCodes[0], ...phoneCountryCodes]);
+
+const divisionNames = Divisions.map(({ name }: { name: string }) => name) as readonly string[];
+const districtNames = Districts.map(({ name }: { name: string }) => name) as readonly string[];
+const upazilaNames = Upazilas.map(({ name }: { name: string }) => name) as readonly string[];
+const unionNames = Unions.map(({ name }: { name: string }) => name) as readonly string[];
+
+
+// const bangladeshAddressSchema = z.object({
+//     division: z.enum([divisionNames[0], ...divisionNames.map((el, i) => i !== 0 && el) as readonly string[]], {
+//         required_error: "Division is required",
+//         invalid_type_error: "Invalid division selection"
+//     })
+//         .transform((name) => {
+//             const division = Divisions.find(element => element.name === name);
+//             if (!division) {
+//                 throw new Error("Selected division not found in the system");
+//             }
+//             return division;
+//         }),
+
+//     district: z.enum([districtNames[0], ...districtNames.map((el, i) => i !== 0 && el) as readonly string[]], {
+//         required_error: "District is required",
+//         invalid_type_error: "Invalid district selection"
+//     })
+//         .transform((name) => {
+//             const district = Districts.find(element => element.name === name);
+//             if (!district) {
+//                 throw new Error("Selected district not found in the system");
+//             }
+//             return district;
+//         }),
+
+//     upazila: z.enum([upazilaNames[0], ...upazilaNames.map((el, i) => i !== 0 && el) as readonly string[]], {
+//         required_error: "Upazila is required",
+//         invalid_type_error: "Invalid upazila selection"
+//     })
+//         .transform((name) => {
+//             const upazila = Upazilas.find(element => element.name === name);
+//             if (!upazila) {
+//                 throw new Error("Selected upazila not found in the system");
+//             }
+//             return upazila;
+//         }),
+
+//     union: z.enum([unionNames[0], ...unionNames.map((el, i) => i !== 0 && el) as readonly string[]], {
+//         required_error: "Union is required",
+//         invalid_type_error: "Invalid union selection"
+//     })
+//         .transform((name) => {
+//             const union = Unions.find(element => element.name === name);
+//             if (!union) {
+//                 throw new Error("Selected union not found in the system");
+//             }
+//             return union;
+//         }),
+// }
+// )
+//     .refine(
+//         (data) => {
+//             // Verify district belongs to selected division
+//             return data.district.division_id === data.division.id;
+//         },
+//         {
+//             message: "Selected district does not belong to the selected division",
+//             path: ["district"]
+//         }
+//     )
+//     .refine(
+//         (data) => {
+//             // Verify upazila belongs to selected district
+//             return data.upazila.district_id === data.district.id;
+//         },
+//         {
+//             message: "Selected upazila does not belong to the selected district",
+//             path: ["upazila"]
+//         }
+//     )
+//     .refine(
+//         (data) => {
+//             // Verify union belongs to selected upazila
+//             return data.union.upazilla_id === data.upazila.id;
+//         },
+//         {
+//             message: "Selected union does not belong to the selected upazila",
+//             path: ["union"]
+//         }
+//     );
+// // Address schema for other countries
+// const otherCountryAddressSchema = z.object({
+//     state: z.string().transform(name => ({ name })).optional()
+// });
+
 
 export const registrationUserSchema = z.object({
     profileCreatedBy: z.nativeEnum(ProfileCreatedBy, {
@@ -77,11 +177,47 @@ export const registrationUserSchema = z.object({
         .optional()
         .default([]),
 
-    country: z.nativeEnum(CountryNamesEnum, { message: 'country Value Is not in the allowed Country List , Please check The api "/location/country-names" to get the allowed country names list' }),
+    
 
-    address: z.string()
-        .min(30, "Address must be at least 40 characters")
-        .max(120, "Address must not exceed 120 characters"),
+    address: z.object({
+        country: z.enum([
+            CountryNamesForCountryField[0],
+            ...CountryNamesForCountryField.map((el, i) => i !== 0 && el) as readonly string[]
+        ], {
+            invalid_type_error: 'country value is not in the allowed Country List , Please check The api "/location/country-names" to get the allowed country names list',
+            required_error: "address.country field is required",
+
+        }),
+        division_id: z.optional(z.number().gte(1).lte(8).transform(num => num.toString())),
+        district_id: z.optional(z.number().gte(1).lte(64).transform(num => num.toString())),
+        upazila_id: z.optional(z.number().gte(1).lte(494).transform(num => num.toString())),
+        union_id: z.optional(z.number().gte(1).lte(4540).transform(num => num.toString())),
+        state: z.optional(z.string().transform(name => ({ name }))),
+        
+    })
+        .refine(
+            function ({ country, district_id, division_id, union_id, upazila_id }) {
+                if (country === CountryNamesEnumForAdressField.BANGLADESH) {
+                    return (!!division_id && !!district_id && !upazila_id && !union_id)
+                }
+                return true;
+            },
+            {
+                message: " district_id, division_id, union_id, upazila_id  is required if country is Bangladesh",
+                path: ["data.address.division_id"],
+            }
+        )
+        .transform(function (data) {
+            if (data.country === CountryNamesEnumForAdressField.BANGLADESH) {
+                data.division= Divisions.find((element) => element.id == data.division_id);
+                data.district=Districts.find((element) => element.id == data.district_id);
+                data.upazila= Upazilas.find((element) => element.id === data.upazila_id);
+                data.union=Unions.find(element => element.name == data.union_id);
+            }
+            return data;
+        }
+        )
+    ,
 
     phoneInfo: z.object({
         number: z.string()
@@ -114,6 +250,7 @@ export const registrationUserSchema = z.object({
 
     confirmPassword: z.string().trim(),
 })
+    // Age Checking By Gender
     .refine(
         function (data) {
             const age = data.age;
@@ -128,6 +265,7 @@ export const registrationUserSchema = z.object({
             path: ["age"],
         }
     )
+    // Age Checking By dateOfBirth
     .refine(
         function (data) {
             return data.age == calculateAge(data.dateOfBirth);
@@ -137,13 +275,61 @@ export const registrationUserSchema = z.object({
             path: ["dateOfBirth"],
         }
     )
+    // password Checking By confirmPassword
     .refine(
         (data) => data.password === data.confirmPassword,
         {
             message: "Passwords don't match",
             path: ["confirmPassword"],
         }
-    );
+    )
+    
+    .refine(
+        function (data) {
+            if (data.address.country === CountryNamesEnumForAdressField.BANGLADESH) {
+                return data.address.district.division_id === data.address.division.id;
+            }
+            return true;
+        },
+        {
+            message: "Selected district does not belong to the selected division",
+            path: ["district"]
+        }
+    )
+    .refine(
+        function (data) {
+            if (data.address.country === CountryNamesEnumForAdressField.BANGLADESH) {
+                return data.address.upazila.district_id === data.address.district.id;
+            }
+            return true;
+        },
+        {
+            message: "Selected upazila does not belong to the selected district",
+            path: ["upazila"]
+        }
+    )
+    .refine(
+        function (data) {
+            if (data.address.country === CountryNamesEnumForAdressField.BANGLADESH) {
+                return data.address.union.upazilla_id === data.address.upazila.id
+            }
+            return true;
+        },
+        {
+            message: "Selected union does not belong to the selected upazila",
+            path: ["union"]
+        }
+    )
+    .transform(function (data:any) {
+        if (data.country === CountryNamesEnumForAdressField.BANGLADESH) {
+            delete data.address.state;
+        }
+        else {
+            data.address = { state :data.address.state }
+        }
+        return data;
+    });
+
 // You might want to create a type from the schema
 export type RegistrationUserInput = z.infer<typeof registrationUserSchema>;
 

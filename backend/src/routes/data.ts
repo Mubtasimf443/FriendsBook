@@ -4,7 +4,7 @@
 
 import { Router, Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { ICity, IDistrict, IUpazila } from "../lib/types/LocationTypes";
+import { ICity, IDistrict, IUpazila } from "../lib/types/location.types";
 import { Unions } from "../lib/data/unions";
 import { Upazilas } from "../lib/data/upazilas";
 import { Districts } from "../lib/data/districts";

@@ -119,9 +119,6 @@ const userSchema = new Schema<IUser>({
             state: {
                 name: {
                     type: String,
-                    required: function (this: any) {
-                        return this.country !== "Bangladesh";
-                    },
                     trim: true
                 },
                 id : {

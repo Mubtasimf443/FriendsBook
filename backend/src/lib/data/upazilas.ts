@@ -1,7 +1,7 @@
 
     /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-import { IUpazila } from "../types/LocationTypes";
+import { IUpazila } from "../types/location.types";
 
 
 export const Upazilas: IUpazila[] = [
@@ -1297,7 +1297,7 @@ export const Upazilas: IUpazila[] = [
     {
        id: "185",
        district_id: "21",
-       name: "Kaliganj",
+       name: "Kaliganj (Satkhira)",
        bn_name: "কালিগঞ্জ",
    },
    
@@ -1591,7 +1591,7 @@ export const Upazilas: IUpazila[] = [
     {
        id: "227",
        district_id: "29",
-       name: "Kaliganj",
+       name: "Kaliganj (Jhenaidah)",
        bn_name: "কালীগঞ্জ",
    },
    
@@ -2221,7 +2221,7 @@ export const Upazilas: IUpazila[] = [
     {
        id: "317",
        district_id: "41",
-       name: "Kaliganj",
+       name: "Kaliganj (Gazipur)",
        bn_name: "কালীগঞ্জ",
    },
    
@@ -2928,7 +2928,7 @@ export const Upazilas: IUpazila[] = [
     {
        id: "418",
        district_id: "55",
-       name: "Kaliganj",
+       name: "Kaliganj (Lalmonirhat)",
        bn_name: "কালীগঞ্জ",
    },
    
