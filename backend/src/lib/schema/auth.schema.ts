@@ -1,7 +1,7 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 import { z } from "zod";
-import { ProfileCreatedBy, Gender, Height, Religion, Language, EducationLevel, SettingsType } from "../types/user.types";
+import { ProfileCreatedBy, Gender, Height, Religion, Language, EducationLevel, SettingsType, IAddress } from "../types/user.types";
 import { countryCodes } from "../data/countryCodes";
 import { _idValidator, emailValidatior, passwordValidator } from "./schemaComponents";
 import { CountryNamesEnum as CountryNamesEnumForAdressField} from "../types/country_names.enum";
@@ -24,96 +24,126 @@ const phoneCountryCodes = countryCodes.map(c => c.code);
 const CountryNameEnum = z.enum([countryNames[0], ...countryNames]);
 const CountryPhoneCodeEnum = z.enum([phoneCountryCodes[0], ...phoneCountryCodes]);
 
-const divisionNames = Divisions.map(({ name }: { name: string }) => name) as readonly string[];
-const districtNames = Districts.map(({ name }: { name: string }) => name) as readonly string[];
-const upazilaNames = Upazilas.map(({ name }: { name: string }) => name) as readonly string[];
-const unionNames = Unions.map(({ name }: { name: string }) => name) as readonly string[];
 
+const AddressSchema = z.object({
+    country: z.enum(
+        [
+            CountryNamesForCountryField[0],
+            ...CountryNamesForCountryField.map((el, i) => i !== 0 && el) as readonly string[]
+        ],
+        {
+            invalid_type_error: 'country value is not in the allowed Country List',
+            required_error: "address.country field is required",
+        }
+    ),
 
-// const bangladeshAddressSchema = z.object({
-//     division: z.enum([divisionNames[0], ...divisionNames.map((el, i) => i !== 0 && el) as readonly string[]], {
-//         required_error: "Division is required",
-//         invalid_type_error: "Invalid division selection"
-//     })
-//         .transform((name) => {
-//             const division = Divisions.find(element => element.name === name);
-//             if (!division) {
-//                 throw new Error("Selected division not found in the system");
-//             }
-//             return division;
-//         }),
+    // Optional state field for non-Bangladesh addresses
+    state: z.object({
+        name: z.string().optional(),
+        // Add any other IState properties here
+    }).optional(),
 
-//     district: z.enum([districtNames[0], ...districtNames.map((el, i) => i !== 0 && el) as readonly string[]], {
-//         required_error: "District is required",
-//         invalid_type_error: "Invalid district selection"
-//     })
-//         .transform((name) => {
-//             const district = Districts.find(element => element.name === name);
-//             if (!district) {
-//                 throw new Error("Selected district not found in the system");
-//             }
-//             return district;
-//         }),
+    // Optional division field for Bangladesh addresses
+    division: z.optional(
+        z.object({
+            id: z.number({
+                required_error: "Division ID is required",
+                invalid_type_error: "Division ID must be a number"
+            })
+            .gte(1, "Division ID must be between 1 and 8")
+            .lte(8, "Division ID must be between 1 and 8")
+            .transform(data => data.toString()),
+            name: z.string().optional(),
+            bd_name: z.string().optional(),
+        })),
 
-//     upazila: z.enum([upazilaNames[0], ...upazilaNames.map((el, i) => i !== 0 && el) as readonly string[]], {
-//         required_error: "Upazila is required",
-//         invalid_type_error: "Invalid upazila selection"
-//     })
-//         .transform((name) => {
-//             const upazila = Upazilas.find(element => element.name === name);
-//             if (!upazila) {
-//                 throw new Error("Selected upazila not found in the system");
-//             }
-//             return upazila;
-//         }),
+    // Optional district field for Bangladesh addresses
+    district: z.optional(
+        z.object({
+            id: z.number({
+                required_error: "District ID is required",
+                invalid_type_error: "District ID must be a number"
+            })
+            .gte(1, "District ID must be between 1 and 64")
+            .lte(64, "District ID must be between 1 and 64")
+            .transform(data => data.toString()),
+            division_id: z.string().optional(),
+            name: z.string().optional(),
+            bn_name: z.string().optional(),
+        })),
 
-//     union: z.enum([unionNames[0], ...unionNames.map((el, i) => i !== 0 && el) as readonly string[]], {
-//         required_error: "Union is required",
-//         invalid_type_error: "Invalid union selection"
-//     })
-//         .transform((name) => {
-//             const union = Unions.find(element => element.name === name);
-//             if (!union) {
-//                 throw new Error("Selected union not found in the system");
-//             }
-//             return union;
-//         }),
-// }
-// )
-//     .refine(
-//         (data) => {
-//             // Verify district belongs to selected division
-//             return data.district.division_id === data.division.id;
-//         },
-//         {
-//             message: "Selected district does not belong to the selected division",
-//             path: ["district"]
-//         }
-//     )
-//     .refine(
-//         (data) => {
-//             // Verify upazila belongs to selected district
-//             return data.upazila.district_id === data.district.id;
-//         },
-//         {
-//             message: "Selected upazila does not belong to the selected district",
-//             path: ["upazila"]
-//         }
-//     )
-//     .refine(
-//         (data) => {
-//             // Verify union belongs to selected upazila
-//             return data.union.upazilla_id === data.upazila.id;
-//         },
-//         {
-//             message: "Selected union does not belong to the selected upazila",
-//             path: ["union"]
-//         }
-//     );
-// // Address schema for other countries
-// const otherCountryAddressSchema = z.object({
-//     state: z.string().transform(name => ({ name })).optional()
-// });
+    // Optional upazila field for Bangladesh addresses
+    upazila: z.optional(
+        z.object({
+            id: z.number({
+                required_error: "Upazila ID is required",
+                invalid_type_error: "Upazila ID must be a number"
+            })
+            .gte(1, "Upazila ID must be between 1 and 494")
+            .lte(494, "Upazila ID must be between 1 and 494")
+            .transform(data => data.toString()),
+            district_id: z.string().optional(),
+            name: z.string().optional(),
+            bn_name: z.string().optional(),
+        })
+    ),
+
+    // Optional union/city field for Bangladesh addresses
+    union: z.optional(
+        z.object({
+            id: z.number({
+                required_error: "Union ID is required",
+                invalid_type_error: "Union ID must be a number"
+            })
+            .gte(1, "Union ID must be between 1 and 4540")
+            .lte(4540, "Union ID must be between 1 and 4540")
+            .transform(data => data.toString()),
+            upazilla_id: z.string().optional(),
+            name: z.string().optional(),
+            bn_name: z.string().optional(),
+        })
+    )
+})
+    .refine(
+        (data) => {
+            if (data.country === CountryNamesEnumForAdressField.BANGLADESH) {
+                return !!data.division?.id && !!data.district?.id && !!data.upazila?.id && !!data.union?.id;
+            }
+            return true;
+        },
+        {
+            message: "address.division.id, address.district.id, address.upazila.id, address.union.id are required for Bangladesh addresses"
+        }
+    )
+    .refine(
+        function (data) {
+            if (data.country !== CountryNamesEnumForAdressField.BANGLADESH) {
+                // For Bangladesh, require division and district
+                return !!data.state;
+            }
+            return true;
+        },
+        {
+            message: "State is required for non-Bangladesh addresses",
+        }
+    )
+    .transform(
+        function (data) {
+            if (data.country === CountryNamesEnumForAdressField.BANGLADESH) {
+                data.division = Divisions.find(element => element.id == data.division?.id);
+                data.district = Districts.find(element => element.id == data.district?.id);
+                data.upazila = Upazilas.find(element => element.id == data.upazila?.id);
+                data.union = Unions.find(element => element.id == data.union?.id);
+            } else {
+                (data.division) && (delete data.division);
+                (data.district) && (delete data.district);
+                (data.upazila) && (delete data.upazila);
+                (data.union) && (delete data.union);
+            }
+            return data;
+        },
+       
+    );
 
 
 export const registrationUserSchema = z.object({
@@ -179,45 +209,7 @@ export const registrationUserSchema = z.object({
 
     
 
-    address: z.object({
-        country: z.enum([
-            CountryNamesForCountryField[0],
-            ...CountryNamesForCountryField.map((el, i) => i !== 0 && el) as readonly string[]
-        ], {
-            invalid_type_error: 'country value is not in the allowed Country List , Please check The api "/location/country-names" to get the allowed country names list',
-            required_error: "address.country field is required",
-
-        }),
-        division_id: z.optional(z.number().gte(1).lte(8).transform(num => num.toString())),
-        district_id: z.optional(z.number().gte(1).lte(64).transform(num => num.toString())),
-        upazila_id: z.optional(z.number().gte(1).lte(494).transform(num => num.toString())),
-        union_id: z.optional(z.number().gte(1).lte(4540).transform(num => num.toString())),
-        state: z.optional(z.string().transform(name => ({ name }))),
-        
-    })
-        .refine(
-            function ({ country, district_id, division_id, union_id, upazila_id }) {
-                if (country === CountryNamesEnumForAdressField.BANGLADESH) {
-                    return (!!division_id && !!district_id && !upazila_id && !union_id)
-                }
-                return true;
-            },
-            {
-                message: " district_id, division_id, union_id, upazila_id  is required if country is Bangladesh",
-                path: ["data.address.division_id"],
-            }
-        )
-        .transform(function (data) {
-            if (data.country === CountryNamesEnumForAdressField.BANGLADESH) {
-                data.division= Divisions.find((element) => element.id == data.division_id);
-                data.district=Districts.find((element) => element.id == data.district_id);
-                data.upazila= Upazilas.find((element) => element.id === data.upazila_id);
-                data.union=Unions.find(element => element.name == data.union_id);
-            }
-            return data;
-        }
-        )
-    ,
+    address: AddressSchema ,
 
     phoneInfo: z.object({
         number: z.string()
@@ -283,53 +275,46 @@ export const registrationUserSchema = z.object({
             path: ["confirmPassword"],
         }
     )
-    
+    // Division Id Check Districts
     .refine(
         function (data) {
             if (data.address.country === CountryNamesEnumForAdressField.BANGLADESH) {
-                return data.address.district.division_id === data.address.division.id;
+                return data.address.district?.division_id === data.address.division?.id;
             }
             return true;
         },
         {
             message: "Selected district does not belong to the selected division",
-            path: ["district"]
+            path: ["address.district.division_id"]
         }
     )
+    // Districts Id Check Upazillas
     .refine(
         function (data) {
             if (data.address.country === CountryNamesEnumForAdressField.BANGLADESH) {
-                return data.address.upazila.district_id === data.address.district.id;
+                return data.address.upazila?.district_id === data.address.district?.id;
             }
             return true;
         },
         {
             message: "Selected upazila does not belong to the selected district",
-            path: ["upazila"]
+            path: ["address.upazila.district_id"]
         }
     )
+    // Upazilla Id Check Unions
     .refine(
         function (data) {
             if (data.address.country === CountryNamesEnumForAdressField.BANGLADESH) {
-                return data.address.union.upazilla_id === data.address.upazila.id
+                return data.address.union?.upazilla_id === data.address.upazila?.id
             }
             return true;
         },
         {
             message: "Selected union does not belong to the selected upazila",
-            path: ["union"]
+            path: ["address.union.upazilla_id"]
         }
-    )
-    .transform(function (data:any) {
-        if (data.country === CountryNamesEnumForAdressField.BANGLADESH) {
-            delete data.address.state;
-        }
-        else {
-            data.address = { state :data.address.state }
-        }
-        return data;
-    });
-
+    );
+    
 // You might want to create a type from the schema
 export type RegistrationUserInput = z.infer<typeof registrationUserSchema>;
 

@@ -12,6 +12,7 @@ import rateLimiter from "../config/rateRimiter";
 import { IUser } from "../lib/types/user.types";
 import { emailValidatior } from "../lib/schema/schemaComponents";
 import { AuthenticatedRequest, validateUser } from "../lib/middlewares/auth.middleware";
+import { NODE_ENV } from "../config/env";
 
 const router: Router = express.Router();
 
@@ -115,7 +116,8 @@ router.post("/request-registration-otp", async function (req: Request, res: Resp
         const userData = JSON.parse(session.value);
 
         // Generate OTP
-        const otp = GenerateOtp(); // 6-digit OTP
+        const otp = GenerateOtp(); // 6-digit OTPc
+        NODE_ENV === 'developement' && console.log(`otp is ${otp}`);
 
         // Now User Has less request left
         userData.hasOtpRequest -= 1;
@@ -168,9 +170,7 @@ router.post("/request-registration-otp", async function (req: Request, res: Resp
 // Verify registration OTP endpoint
 router.post("/verify-registration-otp", async function (req: Request, res: Response): Promise<Response | any> {
     try {
-
-        let validationResult =await VerifyOtpSchema.safeParseAsync(req.body)
-        
+        let validationResult =await VerifyOtpSchema.safeParseAsync(req.body);
         
         if (!validationResult.success) {
             return res.status(400).json({
@@ -209,7 +209,7 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
         const sessionData = JSON.parse(session.value);
 
         // Verify OTP
-        if (!sessionData.otp || sessionData.otp !== otp) {
+        if (!sessionData.otp || sessionData.otp != otp) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid OTP",
@@ -228,6 +228,7 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
 
         // Check if email is already registered
         const existingUser = await User.findOne({ email: sessionData.email });
+
         if (existingUser) {
             return res.status(400).json({
                 success: false,
@@ -240,7 +241,7 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
         let passwordHash = await hashPassword(sessionData.password, passwordSalt)
 
         // Save user data to the database
-        const newUser = await User.create({
+        const newUser = new User({
             profileCreatedBy: sessionData.profileCreatedBy,
             name: sessionData.name,
             gender: sessionData.gender,
@@ -250,7 +251,6 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
             weight: sessionData.weight,
             isEducated: sessionData.isEducated,
             education: sessionData.education,
-            country: sessionData.country,
             address: sessionData.address,
             phoneInfo: sessionData.phoneInfo,
             languages: sessionData.languages,
@@ -262,8 +262,9 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
             createdAt: new Date(),
             age: sessionData.age
         });
-
-
+        newUser.createPreference();
+        await newUser.save();
+       
         // Send registration success email
         authEmails.registrationSuccessEmail(newUser.email)
             .catch(error => console.error('registration Success Email sending Error'));

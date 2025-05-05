@@ -5,6 +5,9 @@ import { IUser, ProfileCreatedBy, Gender, Height, Religion, Language, EducationL
 import { countryCodes } from '../lib/data/countryCodes';
 import countryNames from '../lib/data/countries';
 
+
+
+
 const userSchema = new Schema<IUser>({
     profileCreatedBy: {
         type: String,
@@ -105,17 +108,18 @@ const userSchema = new Schema<IUser>({
         }
     }],
 
-    country: {
-        type: String,
-        required: true,
-        minlength: 2,
-        maxlength: 100,
-        default : "Bangladesh",
-        enum : countryNames
-    },
+    
     
     address: {
         type: {
+            country: {
+                type: String,
+                required: true,
+                minlength: 2,
+                maxlength: 100,
+                default : "Bangladesh",
+                enum : countryNames
+            },
             state: {
                 name: {
                     type: String,
@@ -141,7 +145,7 @@ const userSchema = new Schema<IUser>({
                         return this.country === "Bangladesh";
                     }
                 },
-                bn_name: {
+                bd_name: {
                     type: String,
                     required: function (this: any) {
                         return this.country === "Bangladesh";

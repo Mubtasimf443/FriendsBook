@@ -299,9 +299,12 @@ export interface IUser extends Document {
     createdAt: Date;
     settings : UserSettings
     isSuspended : boolean,
+    createPreference(): void
 }
 
-
+// export interface IUserWithMethods {
+//     createPreference() : void
+// }
 export interface PresentAdress {
     division: string;
     district: string;
