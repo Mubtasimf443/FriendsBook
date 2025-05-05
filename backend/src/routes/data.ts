@@ -107,7 +107,7 @@ router.get("/location/upazilas", async function (req: Request, res: Response): P
 
 router.get("/location/unions", async function (req: Request, res: Response): Promise<any> {
     try {
-        let upazilaSchema = z.number().positive().gte(1).lte(491)
+        let upazilaSchema = z.number().positive().gte(1).lte(494)
         let { success, error, data } = await upazilaSchema.safeParseAsync(Number(req.query.upazila_id))
         if (error) {
             res.status(400).json({
@@ -119,7 +119,7 @@ router.get("/location/unions", async function (req: Request, res: Response): Pro
 
         if (success && data) {
           
-            let cities = Unions.filter(function (element: ICity): object | undefined {
+            let cities = Unions.filter(function (element: ICity){
                 if (element.upazilla_id === String(data)) {
                     return element;
                 }
