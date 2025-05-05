@@ -9,6 +9,7 @@ import { Unions } from "../lib/data/unions";
 import { Upazilas } from "../lib/data/upazilas";
 import { Districts } from "../lib/data/districts";
 import { Divisions } from "../lib/data/divisions";
+import countryNames from "../lib/data/countries";
 
 
 
@@ -19,25 +20,12 @@ router.use(function(req: Request, res: Response, next : NextFunction){
     return;
 });
 
+router.get("/location/country-names", async function (req: Request, res: Response): Promise<any> {
+    return res.status(200).json({ success: true, message: "ok", data: {names : countryNames } })
+});
 
 router.get("/location/divisions", async function (req: Request, res: Response): Promise<any> {
-    try {
-        
-        res.status(200).json({
-            success: true,
-            message: "ok",
-            data: Divisions
-        })
-        return;
-    } catch (error) {
-        console.error("division location data error:", error);
-        res.status(500).json({
-            success: false,
-            message: "Internal server error",
-            data: null
-        });
-        return;
-    }
+    return res.status(200).json({ success: true, message: "ok", data: Divisions })
 });
 
 router.get("/location/districts", async function (req: Request, res: Response): Promise<any> {
