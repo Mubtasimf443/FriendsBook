@@ -4,7 +4,11 @@
 
 import { Router, Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { giveLocationData } from "../controllers/data.controller";
+import { ICity, IDistrict, IUpazila } from "../lib/types/LocationTypes";
+import { Unions } from "../lib/data/unions";
+import { Upazilas } from "../lib/data/upazilas";
+import { Districts } from "../lib/data/districts";
+import { Divisions } from "../lib/data/divisions";
 
 
 
@@ -16,14 +20,13 @@ router.use(function(req: Request, res: Response, next : NextFunction){
 });
 
 
-
 router.get("/location/divisions", async function (req: Request, res: Response): Promise<any> {
     try {
-        let divisions =await giveLocationData('division');
+        
         res.status(200).json({
             success: true,
             message: "ok",
-            data: divisions
+            data: Divisions
         })
         return;
     } catch (error) {
@@ -51,18 +54,10 @@ router.get("/location/districts", async function (req: Request, res: Response): 
         }
 
         if (success && data) {
-            interface IDistrict {
-                id: string;
-                division_id: string;
-                name: string;
-                bn_name: string;
-                lat: string;
-                long: string;
-            }
+          
 
-            let districts: any[] = await giveLocationData('district');;
 
-            districts = districts.filter(function (element: IDistrict): object | undefined {
+            let districts = Districts.filter(function (element: IDistrict): object | undefined {
                 if (element.division_id === String(data)) {
                     return element;
                 }
@@ -98,15 +93,8 @@ router.get("/location/upazilas", async function (req: Request, res: Response): P
         }
 
         if (success && data) {
-            interface IUpazila {
-                id: string;
-                district_id: string;
-                name: string;
-                bn_name: string;
-            }
-            let upazilas: any[] = await giveLocationData('upazilas');
-
-            upazilas = upazilas.filter(function (element: IUpazila): object | undefined {
+           
+            let upazilas = Upazilas.filter(function (element: IUpazila): object | undefined {
                 if (element.district_id === String(data)) {
                     return element;
                 }
@@ -142,15 +130,8 @@ router.get("/location/unions", async function (req: Request, res: Response): Pro
         }
 
         if (success && data) {
-            interface ICity {
-                id: string;
-                upazilla_id: string;
-                name: string;
-                bn_name: string;
-            }
-            let cities: ICity[] = await giveLocationData('unions')
-
-            cities = cities.filter(function (element: ICity): object | undefined {
+          
+            let cities = Unions.filter(function (element: ICity): object | undefined {
                 if (element.upazilla_id === String(data)) {
                     return element;
                 }

@@ -2,3 +2,4 @@
 /.env
 /dist
 /src/index.test.ts
+index.js
