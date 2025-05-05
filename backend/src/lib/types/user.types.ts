@@ -2,6 +2,8 @@
 
 import { Document } from 'mongoose';
 import { EducationLevel, Education ,EducationPreference , CertificateType } from './userEducation.types';
+import { ICity, IDistrict, IDivision, IState, IUpazila } from './location.types';
+import { CountryNamesEnum } from './country_names.enum';
 
 export enum ProfileCreatedBy {
     SELF = 'self',
@@ -17,10 +19,22 @@ interface IUserImage {
 }
 
 
+
+export interface IAddress {
+    state ?: IState;
+    division ?: IDivision ;
+    district ?: IDistrict;
+    upazila ?: IUpazila ;
+    union ?: ICity
+}
+
+
+/*-------------- Gender -------------*/
 export enum Gender {
     MALE = 'male',
     FEMALE = 'female'
 }
+/*-------------- Height -------------*/
 
 export enum Height {
     // 4 feet range
@@ -118,6 +132,9 @@ export interface IUserPreferences {
     };
 }
 
+
+/*-------------- Religion -------------*/
+
 export enum Religion {
     CHRISTIANITY = "Christianity",
     ISLAM = "Islam",
@@ -139,6 +156,7 @@ export enum Religion {
 }
 
 
+/*-------------- Language -------------*/
 
 export enum Language {
     MANDARIN_CHINESE = "Mandarin Chinese",
@@ -263,7 +281,7 @@ export interface IUser extends Document {
     profileImage : IUserImage,
     userImages : IUserImage[],
     gender: Gender;
-    name: string;
+    name: CountryNamesEnum;
     dateOfBirth: Date;
     email: string;
     height: Height;
@@ -272,7 +290,7 @@ export interface IUser extends Document {
     isEducated: boolean;
     education: Education[];
     country: string;
-    address: string;
+    address? : IAddress;
     phoneInfo: IPhone;
     password : IPassword,
     languages: Language[];

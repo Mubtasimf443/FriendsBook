@@ -4,6 +4,7 @@ import { z } from "zod";
 import { ProfileCreatedBy, Gender, Height, Religion, Language, EducationLevel, SettingsType } from "../types/user.types";
 import { countryCodes } from "../data/countryCodes";
 import { _idValidator, emailValidatior, passwordValidator } from "./schemaComponents";
+import { CountryNamesEnum } from "../types/country_names.enum";
 
 const calculateAge = (dateOfBirth: Date): number => {
     const diff = new Date().getTime() - dateOfBirth.getTime();
@@ -76,11 +77,7 @@ export const registrationUserSchema = z.object({
         .optional()
         .default([]),
 
-    country: z.string()
-        .min(2, "Country name is too short")
-        .max(100, "Country name is too long")
-        .optional()
-        .default("Bangladesh"),
+    country: z.nativeEnum(CountryNamesEnum, { message: 'country Value Is not in the allowed Country List , Please check The api "/location/country-names" to get the allowed country names list' }),
 
     address: z.string()
         .min(30, "Address must be at least 40 characters")

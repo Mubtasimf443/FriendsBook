@@ -3,6 +3,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { IUser, ProfileCreatedBy, Gender, Height, Religion, Language, EducationLevel, SettingsType } from '../lib/types/user.types';
 import { countryCodes } from '../lib/data/countryCodes';
+import countryNames from '../lib/data/countries';
 
 const userSchema = new Schema<IUser>({
     profileCreatedBy: {
@@ -109,15 +110,132 @@ const userSchema = new Schema<IUser>({
         required: true,
         minlength: 2,
         maxlength: 100,
-        default : "Bangladesh"
+        default : "Bangladesh",
+        enum : countryNames
     },
-
-
+    
     address: {
-        type: String,
-        required: true,
-        minlength: 30,
-        maxlength: 120,
+        type: {
+            state: {
+                name: {
+                    type: String,
+                    required: function (this: any) {
+                        return this.country !== "Bangladesh";
+                    },
+                    trim: true
+                },
+                id : {
+                    type : String
+                },
+                country_name : {
+                    type : String
+                }
+            },
+            division: {
+                id: {
+                    type: String,
+                    required: function (this: any) {
+                        return this.country === "Bangladesh";
+                    }
+                },
+                name: {
+                    type: String,
+                    required: function (this: any) {
+                        return this.country === "Bangladesh";
+                    }
+                },
+                bn_name: {
+                    type: String,
+                    required: function (this: any) {
+                        return this.country === "Bangladesh";
+                    }
+                }
+            },
+            district: {
+                id: {
+                    type: String,
+                    required: function (this: any) {
+                        return this.country === "Bangladesh";
+                    }
+                },
+                division_id: {
+                    type: String,
+                    required: function (this: any) {
+                        return this.country === "Bangladesh";
+                    },
+                    
+                },
+                name: {
+                    type: String,
+                    required: function (this: any) {
+                        return this.country === "Bangladesh";
+                    }
+                },
+                bn_name: {
+                    type: String,
+                    required: function (this: any) {
+                        return this.country === "Bangladesh";
+                    }
+                },
+                lat: String,
+                long: String
+            },
+            upazila: {
+                id: {
+                    type: String,
+                    required: function (this: any) {
+                        return this.country === "Bangladesh";
+                    }
+                },
+                district_id: {
+                    type: String,
+                    required: function (this: any) {
+                        return this.country === "Bangladesh";
+                    },
+                
+                },
+                name: {
+                    type: String,
+                    required: function (this: any) {
+                        return this.country === "Bangladesh";
+                    }
+                },
+                bn_name: {
+                    type: String,
+                 
+                }
+            },
+            union: {
+                id: {
+                    type: String,
+                    required: function (this: any) {
+                        return this.country === "Bangladesh";
+                    }
+                },
+                upazilla_id: {
+                    type: String,
+                    required: function (this: any) {
+                        return this.country === "Bangladesh";
+                    },
+               
+                },
+                name: {
+                    type: String,
+                    required: function (this: any) {
+                        return this.country === "Bangladesh";
+                    }
+                },
+                bn_name: {
+                    type: String,
+                    required: function (this: any) {
+                        return this.country === "Bangladesh";
+                    }
+                }
+            }
+        },
+        required: function (this: any) {
+            return this.country === "Bangladesh";
+        }
     },
 
     phoneInfo: {
@@ -255,10 +373,7 @@ const userSchema = new Schema<IUser>({
             required: true
         },
     }
-}
-
-
-);
+});
 
 userSchema.methods.createPreference = function() {
     // Age preferences based on gender and cultural norms
