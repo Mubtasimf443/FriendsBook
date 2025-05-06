@@ -286,6 +286,145 @@ interface UserSettings {
     notifications : NotificationSettings
 }
 
+
+// Add these new enums after the existing ones
+
+export enum MaritalStatus {
+    NEVER_MARRIED = "never_married",
+    DIVORCED = "divorced",
+    WIDOWED = "widowed",
+    SEPARATED = "separated",
+    ANNULLED = "annulled"
+}
+
+export enum Occupation {
+    // Professional
+    DOCTOR = "doctor",
+    ENGINEER = "engineer",
+    LAWYER = "lawyer",
+    TEACHER = "teacher",
+    PROFESSOR = "professor",
+    ACCOUNTANT = "accountant",
+    ARCHITECT = "architect",
+    AGRICULTURIST = "agriculturist",
+    JOURNALIST = "journalist",
+    SCIENTIST = "scientist",
+    PSYCHOLOGIST = "psychologist",
+    SOCIAL_WORKER = "social_worker",
+    ECONOMIST = "economist",
+    STATISTICIAN = "statistician",
+    LIBRARIAN = "librarian",
+
+    // Business
+    BUSINESS_OWNER = "business_owner",
+    ENTREPRENEUR = "entrepreneur",
+    SALES_MANAGER = "sales_manager",
+    MARKETING_MANAGER = "marketing_manager",
+    SUPPLY_CHAIN_MANAGER = "supply_chain_manager",
+    RETAILER = "retailer",
+    WHOLESALER = "wholesaler",
+    IMPORTER = "importer",
+    EXPORTER = "exporter",
+
+    // Technology
+    SOFTWARE_ENGINEER = "software_engineer",
+    DATA_SCIENTIST = "data_scientist",
+    IT_PROFESSIONAL = "it_professional",
+    WEB_DEVELOPER = "web_developer",
+    MOBILE_APP_DEVELOPER = "mobile_app_developer",
+    NETWORK_ENGINEER = "network_engineer",
+    SYSTEMS_ADMINISTRATOR = "systems_administrator",
+    CYBERSECURITY_ANALYST = "cybersecurity_analyst",
+    DATABASE_ADMINISTRATOR = "database_administrator",
+
+    // Healthcare
+    NURSE = "nurse",
+    PHARMACIST = "pharmacist",
+    DENTIST = "dentist",
+    MEDICAL_TECHNOLOGIST = "medical_technologist",
+    PHYSIOTHERAPIST = "physiotherapist",
+    OCCUPATIONAL_THERAPIST = "occupational_therapist",
+    PARAMEDIC = "paramedic",
+    HOMEOPATH = "homeopath",
+    AYURVEDIC_PRACTITIONER = "ayurvedic_practitioner",
+    UNANI_PRACTITIONER = "unani_practitioner",
+
+    // Government
+    GOVERNMENT_EMPLOYEE = "government_employee",
+    POLICE_OFFICER = "police_officer",
+    MILITARY_PERSONNEL = "military_personnel",
+    ADMINISTRATIVE_OFFICER = "administrative_officer",
+    DIPLOMAT = "diplomat",
+    CIVIL_SERVANT = "civil_servant",
+    FOREST_OFFICER = "forest_officer",
+    FISHERIES_OFFICER = "fisheries_officer",
+
+    // Finance
+    BANKER = "banker",
+    FINANCIAL_ANALYST = "financial_analyst",
+    INSURANCE_AGENT = "insurance_agent",
+    BROKER = "broker",
+    INVESTMENT_BANKER = "investment_banker",
+
+    // Agriculture
+    FARMER = "farmer",
+    FISHERMAN = "fisherman",
+    POULTRY_FARMER = "poultry_farmer",
+    DAIRY_FARMER = "dairy_farmer",
+
+    // Manufacturing
+    FACTORY_WORKER = "factory_worker",
+    PRODUCTION_MANAGER = "production_manager",
+    GARMENT_WORKER = "garment_worker",
+
+    // Service
+    DRIVER = "driver",
+    WAITER = "waiter",
+    COOK = "cook",
+    CLEANER = "cleaner",
+    SECURITY_GUARD = "security_guard",
+    TOUR_GUIDE = "tour_guide",
+    HAIRDRESSER = "hairdresser",
+    BEAUTICIAN = "beautician",
+
+    // Education
+    LECTURER = "lecturer",
+    SCHOOL_PRINCIPAL = "school_principal",
+    EDUCATION_ADMINISTRATOR = "education_administrator",
+    TUTOR = "tutor",
+
+    // Arts and Culture
+    ARTIST = "artist",
+    MUSICIAN = "musician",
+    WRITER = "writer",
+    ACTOR = "actor",
+    FILMMAKER = "filmmaker",
+    DESIGNER = "designer",
+    PHOTOGRAPHER = "photographer",
+    DANCER = "dancer",
+
+    // Non-Profit
+    NGO_WORKER = "ngo_worker",
+    CHARITY_WORKER = "charity_worker",
+    DEVELOPMENT_WORKER = "development_worker",
+
+    // Others
+    STUDENT = "student",
+    SELF_EMPLOYED = "self_employed",
+    RETIRED = "retired",
+    HOMEMAKER = "homemaker",
+    UNEMPLOYED = "unemployed",
+    OTHER = "other",
+    DAILY_LABORER = "daily_laborer",
+    CONSTRUCTION_WORKER = "construction_worker",
+}
+
+interface IAnualIncome {
+    amount: number;
+    currency: string;
+}
+
+
 export interface IUser extends Document {
     mid :string;
     profileCreatedBy: ProfileCreatedBy;
@@ -310,9 +449,16 @@ export interface IUser extends Document {
     settings : UserSettings
     isSuspended : boolean,
     onlineStatus: IOnlineStatus;
+    maritalStatus ?: MaritalStatus;
+    occupation ?: Occupation;
+    annualIncome?: IAnualIncome;
     createPreference(): void;
     createMID(): string;
+
 }
+
+
+
 
 
 

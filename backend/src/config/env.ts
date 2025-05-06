@@ -12,6 +12,7 @@ export const NODE_ENV : ENV_VALUE =process.env.NODE_ENV ;
 
 // Database
 export const MONGO_DB_URL:ENV_VALUE=process.env.MONGO_DB_URL ;
+export const MONGO_DB_URL2:ENV_VALUE=process.env.MONGO_DB_URL2 ;
 
 // FILE STORAGE
 export const ClOUDINARY_CLOUD_NAME:ENV_VALUE=process.env.ClOUDINARY_CLOUD_NAME ;

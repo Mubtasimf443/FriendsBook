@@ -5,7 +5,7 @@ import rateLimiter from "../config/rateRimiter";
 import { validateUser } from "../lib/middlewares/auth.middleware";
 import { IAuthSession } from "../models/AuthSession";
 import { CountryNamesEnum } from "../lib/types/country_names.enum";
-import { findNearestDistricts } from "../controllers/search.controller";
+import { findNearestDistricts, searchHeightGenerator } from "../controllers/search.controller";
 import { User } from "../models/user";
 import { FilterUsersQueryParams, filterUsersSchema, getUserByMIDSchema, justJoinedSchema, limitValidation, notViewedSchema, onlineUsersSchema, searchQuertSchema, todaysMatchSchema } from "../lib/schema/search.schema";
 import { ProfileView } from "../models/ProfileView";
@@ -24,7 +24,7 @@ declare global {
     }
 }
 
-let userField = 'name _id address email age isEducated education address religion languages';
+let userField = 'name _id address email age isEducated education address religion languages maritalStatus occupation annualIncome';
 
 router.get('/users/matching/location', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -63,7 +63,8 @@ router.get('/users/matching/location', async function (req: Request, res: Respon
             'address.district.id': { $in: nearestDistricts.map(district => district.id) },
             'isSuspended': false,
             '_id': { $ne: userData.userId }, // Exclude current user
-            'gender': { $ne: userData.gender }, // Basic preference matching
+            'gender': { $ne: userData.gender },
+            religion: userData.religion
         };
 
 
@@ -140,6 +141,7 @@ router.get('/users/matching/daily', async function (req: Request, res: Response)
             'address.district.id': { $in: nearestDistricts.map(district => district.id) },
             'isSuspended': false,
             '_id': { $ne: userData.userId }, // Exclude current user
+            religion: userData.religion,
             'gender': { $ne: userData.gender }, // Basic preference matching
         };
 
@@ -199,6 +201,7 @@ router.get('/users/just-joined', async function (req: Request, res: Response): P
             'isSuspended': false,
             '_id': { $ne: userData.userId }, // Exclude current user
             'gender': { $ne: userData.gender }, // Basic preference matching
+            religion: userData.religion
         };
 
         // Find users
@@ -278,7 +281,7 @@ router.get('/users/not-viewed', async function (req: Request, res: Response): Pr
             },
             isSuspended: false,
             gender: { $ne: userData.gender }, // Match opposite gender
-          
+            religion: userData.religion
         };
 
         // Calculate pagination
@@ -358,7 +361,8 @@ router.get('/users/online' ,async function (req: Request, res: Response): Promis
             isSuspended: false,
             '_id': { $ne: userData.userId },
             'gender': { $ne: userData.gender },
-            'onlineStatus.isOnline': true
+            'onlineStatus.isOnline': true,
+            religion: userData.religion
         };
 
         // Calculate pagination
@@ -413,6 +417,14 @@ router.get('/users/online' ,async function (req: Request, res: Response): Promis
     }
 });
 
+router.get('/users/mutual', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        
+    } catch (error) {
+        
+    }
+})
+
 router.get('/users/premium', async function (req: Request, res: Response): Promise<Response | any> {
     try {
 
@@ -425,6 +437,98 @@ router.get('/users/premium', async function (req: Request, res: Response): Promi
         });
     }
 });
+
+router.get('/users/viewed-not-contact', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+
+    } catch (error) {
+        console.error(`premium profile listing api error:`, error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+router.get('/users/preferred-education', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+
+    } catch (error) {
+        console.error(`premium profile listing api error:`, error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+router.get('/users/preferred-location', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+
+    } catch (error) {
+        console.error(`premium profile listing api error:`, error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+router.get('/users/others-viewed-my-profile', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+      
+        const userData = req.authSession.value;
+
+        // Get IDs of profiles already viewed by the user
+        const viewedMyProfileIds = (
+            await ProfileView.find({}, 'viewerId')
+                .where('viewedId').equals(userData.userId)
+                .where('viewerId').ne(userData.userId)
+                .lean()
+        )
+            .map(el => el.viewerId);
+
+
+        const baseQuery :any= {
+            'address.country':userData.address.country,
+            _id: { 
+                $ne: userData.userId,  // Exclude current user
+                $in: viewedMyProfileIds // Exclude viewed profiles
+            },
+            isSuspended: false,
+            gender: { $ne: userData.gender }, // Match opposite gender
+            religion: userData.religion
+        };
+
+        
+
+        // Find users with pagination
+        let users = await User.find(baseQuery, userField)
+            .lean()
+            .maxTimeMS(20000);
+
+      
+        res.set("cache-control", "max-age=60, public");
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                
+            }
+        });
+    } catch (error) {
+        console.error(`others viewed Your Profile api error:`, error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+})
+
 
 /* Add these new routes to your existing search.ts */
 
@@ -498,20 +602,21 @@ router.get('/users', async function(req: Request, res: Response): Promise<Respon
             religion,
             languages,
             country,
-          
             division,
             isEducated,
             minWeight,
             maxWeight,
-            height,
+            minHeight , 
+            maxHeight,
             minAge,
-            maxAge
+            maxAge,
+
         } = validatedQuery;
 
+
+
         // Build query object
-        const query: any = {
-            isSuspended: false
-        };
+        const query: any = { isSuspended: false };
 
         // Add filters if they exist
         if (religion) query.religion = religion;
@@ -524,13 +629,14 @@ router.get('/users', async function(req: Request, res: Response): Promise<Respon
             if (minWeight) query.weight.$gte = minWeight;
             if (maxWeight) query.weight.$lte = maxWeight;
         }
-        if (height) query.height = height;
         if (minAge || maxAge) {
             query.age = {};
             if (minAge) query.age.$gte = minAge;
             if (maxAge) query.age.$lte = maxAge;
         }
-
+        if (minHeight && maxHeight) {
+            query.height.$in = searchHeightGenerator(minHeight , maxHeight);
+        }
         const skip = (page - 1) * limit;
 
         // Execute query with pagination
@@ -580,5 +686,9 @@ router.get('/users', async function(req: Request, res: Response): Promise<Respon
         });
     }
 });
+
+
+
+
 
 export default router;

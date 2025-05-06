@@ -3,6 +3,7 @@
 import { z } from 'zod';
 import { Height, Language, Religion } from '../types/user.types';
 import { CountryNamesEnum } from '../types/country_names.enum';
+import countryNames from '../data/countryNames';
 
 // Define Zod schema for query parameters
 export const limitValidation = z.optional(z.enum(['10', '25', '50', '100']))
@@ -82,17 +83,6 @@ export const filterUsersSchema = z.object({
     country: z.nativeEnum(CountryNamesEnum)
         .optional(),
 
-    // Updated Location validations with proper numeric constraints
-    // district: z.string()
-    //     .regex(/^\d+$/, "District ID must be a number")
-    //     .transform(Number)
-    //     .pipe(
-    //         z.number()
-    //             .int("District ID must be an integer")
-    //             .min(1, "District ID must be at least 1")
-    //             .max(64, "District ID cannot exceed 64")
-    //     )
-    //     .optional(),
     division: z.string()
         .regex(/^\d+$/, "Division ID must be a number")
         .transform(Number)
@@ -129,8 +119,23 @@ export const filterUsersSchema = z.object({
                 .max(200, "Maximum weight cannot exceed 200")
         )
         .optional(),
-
-    height: z.nativeEnum(Height)
+    minHeight: z.string()
+        .regex(/^\d+$/, "Must be a positive number")
+        .transform(Number)
+        .pipe(
+            z.number()
+                .min(4, "Minimum Height must be at least 4")
+                .max(8, "Maximum Height cannot exceed 8")
+        )
+        .optional(),
+    maxHeight: z.string()
+        .regex(/^\d+$/, "Must be a positive number")
+        .transform(Number)
+        .pipe(
+            z.number()
+                .min(5, "Minimum Height must be at least 5 foots")
+                .max(9, "Maximum Height cannot exceed 9 foots")
+        )
         .optional(),
 
     minAge: z.string()
@@ -175,7 +180,19 @@ export const filterUsersSchema = z.object({
         message: "Minimum age must be less than or equal to maximum age",
         path: ["minAge", "maxAge"]
     }
-);
+)
+.refine(
+    (data) => {
+        if (data.minHeight && data.maxHeight) {
+            return data.minHeight < data.maxHeight;
+        }
+        return true;
+    },
+    {
+        message: "Minimum Height must be less than maxHeight",
+        path: ["maxHeight", "minHeight"]
+    }
+)
 
 // Type for TypeScript type checking
 export type FilterUsersQueryParams = z.infer<typeof filterUsersSchema>;

@@ -31,3 +31,15 @@ export function findNearestDistricts(lat: number, lon: number, count = 5): IDist
     .sort((a, b) => a.distance - b.distance)
     .slice(0, count);
 }
+
+export function searchHeightGenerator(min: number, max: number): string[] {
+  let heights:string[] = [];
+  let d = max -min;
+  for (let i = 0; i <= d; i++) {
+    let foot = min +i;
+    for (let inc = 0; inc <= 11; inc++) {
+      heights.push(`${foot} foot ${inc} inch`);
+    }
+  }
+  return heights;
+}

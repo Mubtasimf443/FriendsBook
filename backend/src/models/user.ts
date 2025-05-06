@@ -1,10 +1,11 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 import mongoose, { Schema } from 'mongoose';
-import { IUser, ProfileCreatedBy, Gender, Height, Religion, Language, EducationLevel, SettingsType } from '../lib/types/user.types';
+import { IUser, ProfileCreatedBy, Gender, Height, Religion, Language, EducationLevel, SettingsType, MaritalStatus, Occupation } from '../lib/types/user.types';
 import { countryCodes } from '../lib/data/countryCodes';
 import countryNames from '../lib/data/countryNames';
 import generateMatrimonyId from '../lib/core/mid-geneator';
+import { CurrencyCode } from '../lib/types/currencyCodes.enum';
 
 
 
@@ -277,6 +278,43 @@ const userSchema = new Schema<IUser>({
         required: true
     },
 
+    maritalStatus: {
+        type: String,
+        enum: Object.values(MaritalStatus),
+        required: false
+    },
+
+    occupation: {
+        type: String,
+        enum: Object.values(Occupation),
+        required: false
+    },
+
+    annualIncome: {
+        
+        amount: {
+            type: Number,
+            required: false,
+            min: 0,
+            max: 1000000000, // 1 billion - adjust as needed
+            validate: {
+                validator: Number.isInteger,
+                message: 'Annual income must be a whole number'
+            }
+        },
+        currency: {
+            type: String,
+            required(this) {
+                return !!this.annualIncome?.currency
+            },
+            uppercase: true,
+            enum: Object.values(CurrencyCode),
+            minlength: 3,
+            maxlength: 3,
+            default: 'BDT'
+        }
+    },
+
     preferences: {
         isEducated: {
             type: Boolean
@@ -326,13 +364,11 @@ const userSchema = new Schema<IUser>({
         },
         lastUpdated : Date,
     },
-
     createdAt: {
         type: Date,
         required: true,
         default: Date.now
     },
-
     settings: {
         notifications: {
             dailyRecommendations: {
@@ -363,13 +399,11 @@ const userSchema = new Schema<IUser>({
             }
         }
     },
-
     isSuspended: {
         type: Boolean,
         required: true,
         default: false
     },
-
     password: {
         hashed: {
             type: String,

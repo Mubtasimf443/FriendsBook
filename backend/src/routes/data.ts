@@ -10,6 +10,9 @@ import { Upazilas } from "../lib/data/upazilas";
 import { Districts } from "../lib/data/districts";
 import { Divisions } from "../lib/data/divisions";
 import countryNames from "../lib/data/countryNames";
+import { countryAndCurrency } from "../lib/types/currencyCodes.enum";
+import { EducationLevel } from "../lib/types/userEducation.types";
+import { MaritalStatus } from "../lib/types/user.types";
 
 
 
@@ -104,7 +107,6 @@ router.get("/location/upazilas", async function (req: Request, res: Response): P
     }
 });
 
-
 router.get("/location/unions", async function (req: Request, res: Response): Promise<any> {
     try {
         let upazilaSchema = z.number().positive().gte(1).lte(494)
@@ -140,6 +142,46 @@ router.get("/location/unions", async function (req: Request, res: Response): Pro
         return;
     }
 })
+
+
+router.get('/currency', async function (req: Request, res: Response): Promise<any> {
+    return res.status(200).json({
+        success: true,
+        data: { countryAndCurrency }
+    })
+});
+
+router.get('/education', async function (req: Request, res: Response): Promise<any> {
+    return res.status(200).json({
+        success: true,
+        data: { 
+            levels : Object.values(EducationLevel)
+        }
+    })
+});
+
+
+router.get('/education', async function (req: Request, res: Response): Promise<any> {
+    return res.status(200).json({
+        success: true,
+        data: { 
+            levels : Object.values(EducationLevel)
+        }
+    })
+});
+
+
+router.get('/marital-status', async function (req: Request, res: Response): Promise<any> {
+    return res.status(200).json({
+        success: true,
+        data: { 
+            marital_statuses :Object.values(MaritalStatus)
+        }
+    })
+});
+
+
+
 
 
 export default router;
