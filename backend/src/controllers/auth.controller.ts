@@ -98,6 +98,12 @@ export function giveAuthSessionValue(user: IUser): IAuthSessionValue {
     gender: user.gender,
     preference: {
       gender: user.gender === Gender.MALE ? Gender.FEMALE : Gender.MALE
-    }
+    },
+    isEducated : user.isEducated,
+    education : user.education || undefined,
+    languages: user.languages || [], // Added languages field
+    religion: user.religion     ,
+    height : user.height,
+    weight : user.weight
   })
 }

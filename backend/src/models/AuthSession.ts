@@ -1,7 +1,7 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 import mongoose, { Document, Mongoose, ObjectId, Schema , } from 'mongoose';
-import { Gender } from '../lib/types/user.types';
+import {  EducationLevel, Gender, Height } from '../lib/types/user.types';
 
 
 
@@ -24,19 +24,24 @@ interface IPreference {
     gender : Gender
 }
 
-
 export interface IAuthSessionValue {
     email: string;
     userId: ObjectId |any;
     address : IAddress;
-    phone : IPhone
-    gender : Gender ,
-    preference : IPreference,
-    languages : string[],
+    phone : IPhone;
+    gender : Gender ;
+    preference : IPreference;
+    languages : string[];
     religion : string;
+    isEducated : boolean;
+    education? : Education[];
+    height : string;
+    weight : number;
 }
 
-
+interface Education {
+    level: EducationLevel
+}
 
 export interface IAuthSession extends Document {
     name: "auth_session"; 
@@ -47,7 +52,7 @@ export interface IAuthSession extends Document {
     updated_at?: Date;
 }
 
-const AuthSessionValue  = {
+const AuthSessionValue = {
     email: {
         type: String,
         required: true,
@@ -87,7 +92,6 @@ const AuthSessionValue  = {
                 required: false
             }
         },
-
         _id: false // Prevents MongoDB from creating an _id for this subdocument
     },
     phone: {
@@ -101,25 +105,56 @@ const AuthSessionValue  = {
                 required: false
             }
         },
-      
         _id: false // Prevents MongoDB from creating an _id for this subdocument
     },
-    gender : {
-        type : String ,
-        enum : Object.values(Gender),
+    gender: {
+        type: String,
+        enum: Object.values(Gender),
+        required: true
     },
-
-
-    preference : {
-        type :{
-            gender : {
-                type : String ,
-                enum : Object.values(Gender),
+    preference: {
+        type: {
+            gender: {
+                type: String,
+                enum: Object.values(Gender),
+                required: true
             }
-        }
+        },
+        required: true,
+        _id: false
+    },
+    // New fields added
+    languages: [{
+        type: String,
+        required: true
+    }],
+    religion: {
+        type: String,
+        required: true
+    },
+    isEducated: {
+        type: Boolean,
+        required: true
+    },
+    education: [{
+        level: {
+            type: String,
+            required: true,
+            enum: Object.values(EducationLevel)
+        },
+    }],
+    height: {
+        type: String,
+        required: true,
+        enum: Object.values(Height)
+    },
+    weight: {
+        type: Number,
+        required: true,
+        min: 30,
+        max: 200
     }
 }
-
 
 const authSessionSchema = new Schema<IAuthSession>(
     {
