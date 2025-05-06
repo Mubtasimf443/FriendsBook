@@ -3,6 +3,9 @@
 import { z } from 'zod';
 
 // Define Zod schema for query parameters
+export const limitValidation = z.optional(z.enum(['10', '25', '50', '100']))
+    .default('25')
+    .transform(str => parseInt(str));
 
 export const searchQuertSchema = z.object({
     page: z.optional(
@@ -12,12 +15,11 @@ export const searchQuertSchema = z.object({
             })
             .max(4)
     ).default('1').transform(val => val ? parseInt(val, 10) : 1),
-    limit: z.optional(z.enum(['10', '25', '50', '100']))
-        .default('25')
-        .transform(str => parseInt(str)),
+    limit: limitValidation,
     count: z.enum(['yes', 'no'])
         .optional()
         .default('no')
 });
 
 
+export const todaysMatchSchema = z.object({ limit: limitValidation })

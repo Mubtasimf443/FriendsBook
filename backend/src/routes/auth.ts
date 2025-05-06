@@ -3,7 +3,7 @@
 import express, { Router, Request, Response } from "express";
 import TemporarySession, { TemporarySessionNames } from "../models/temporarySession";
 import { registrationUserSchema, LoginEnum, LoginSchema ,tempSessionValidation  , VerifyOtpSchema, ResetPasswordSchema, VerifyForgotPasswordOtpSchema } from "../lib/schema/auth.schema";
-import { comparePasswords, GenerateOtp, giveAuthSessionId, generateSalt, hashPassword, giveAuthSession } from "../controllers/auth.controller";
+import { comparePasswords, GenerateOtp, giveAuthSessionId, generateSalt, hashPassword, giveAuthSession, giveAuthSessionValue } from "../controllers/auth.controller";
 import crypto from 'crypto';
 import { User } from "../models/user";
 import { authEmails } from "../lib/mails/auth.emails";
@@ -284,23 +284,7 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
         // Create auth session
         await AuthSession.create({
             key: authToken,
-            value: {
-                email: newUser.email,
-                userId: newUser._id,
-                address : {
-                   country : newUser.address.country,
-                   lat :  newUser.address.country === CountryNamesEnum.BANGLADESH ? newUser.address.district?.lat : undefined,
-                   long :  newUser.address.country === CountryNamesEnum.BANGLADESH ? newUser.address.district?.long : undefined,
-                   division :  newUser.address.country === CountryNamesEnum.BANGLADESH ? newUser.address.division?.name : undefined,
-                   district :  newUser.address.country === CountryNamesEnum.BANGLADESH ? newUser.address.district?.name : undefined,
-                   upazilla :  newUser.address.country === CountryNamesEnum.BANGLADESH ? newUser.address.upazila?.name : undefined,
-                   union :  newUser.address.country === CountryNamesEnum.BANGLADESH ? newUser.address.union?.name : undefined,
-                },
-                phone : {
-                    number : newUser.phoneInfo.number ,
-                    code : newUser.phoneInfo.country.phone_code ,
-                }
-            }
+            value: giveAuthSessionValue(newUser)
         })
 
         // Return success response
@@ -381,23 +365,7 @@ router.post('/login', async function (req: Request, res: Response): Promise<Resp
         // Create a new auth session for the user
         await AuthSession.create({
             key: authToken,
-            value: {
-                email: existingUser.email,
-                userId: existingUser._id,
-                address : {
-                   country : existingUser.address.country,
-                   lat :  existingUser.address.country === CountryNamesEnum.BANGLADESH ? existingUser.address.district?.lat : undefined,
-                   long :  existingUser.address.country === CountryNamesEnum.BANGLADESH ? existingUser.address.district?.long : undefined,
-                   division :  existingUser.address.country === CountryNamesEnum.BANGLADESH ? existingUser.address.division?.name : undefined,
-                   district :  existingUser.address.country === CountryNamesEnum.BANGLADESH ? existingUser.address.district?.name : undefined,
-                   upazilla :  existingUser.address.country === CountryNamesEnum.BANGLADESH ? existingUser.address.upazila?.name : undefined,
-                   union :  existingUser.address.country === CountryNamesEnum.BANGLADESH ? existingUser.address.union?.name : undefined,
-                },
-                phone : {
-                    number : existingUser.phoneInfo.number ,
-                    code : existingUser.phoneInfo.country.phone_code ,
-                }
-            }
+            value: giveAuthSessionValue(existingUser)
         });
 
         // Return the response with the new auth token

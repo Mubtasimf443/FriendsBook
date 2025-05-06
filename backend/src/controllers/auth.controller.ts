@@ -3,6 +3,9 @@
 */
 
 import crypto from "crypto"
+import { Gender, IUser } from "../lib/types/user.types"
+import { CountryNamesEnum } from "../lib/types/country_names.enum"
+import { IAuthSessionValue } from "../models/AuthSession"
 
 export function hashPassword(password: string, salt: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -72,4 +75,29 @@ export async function sendRegistrationOTP(email: string, otp: number): Promise<b
 
 export function generateAuthToken(): string {
   return crypto.randomBytes(32).toString('hex');
+}
+
+
+export function giveAuthSessionValue(user: IUser): IAuthSessionValue {
+  return ({
+    email: user.email,
+    userId: user._id,
+    address: {
+      country: user.address.country,
+      lat: user.address.country === CountryNamesEnum.BANGLADESH ? user.address.district?.lat : undefined,
+      long: user.address.country === CountryNamesEnum.BANGLADESH ? user.address.district?.long : undefined,
+      division: user.address.country === CountryNamesEnum.BANGLADESH ? user.address.division?.name : undefined,
+      district: user.address.country === CountryNamesEnum.BANGLADESH ? user.address.district?.name : undefined,
+      upazilla: user.address.country === CountryNamesEnum.BANGLADESH ? user.address.upazila?.name : undefined,
+      union: user.address.country === CountryNamesEnum.BANGLADESH ? user.address.union?.name : undefined,
+    },
+    phone: {
+      number: user.phoneInfo.number,
+      code: user.phoneInfo.country.phone_code,
+    },
+    gender: user.gender,
+    preference: {
+      gender: user.gender === Gender.MALE ? Gender.FEMALE : Gender.MALE
+    }
+  })
 }

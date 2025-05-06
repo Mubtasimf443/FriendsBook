@@ -486,7 +486,7 @@ userSchema.index({ gender: 1, country: 1 });
 userSchema.index({ age: 1 });
 userSchema.index({ 'education.level': 1 });
 userSchema.index({ dateOfBirth: 1 });
-
+userSchema.index({ 'address.country': 1, 'address.district.id': 1, 'isSuspended': 1 });
 
 export const User = mongoose.model<IUser>('User', userSchema);
 

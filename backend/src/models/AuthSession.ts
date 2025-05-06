@@ -1,6 +1,7 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 import mongoose, { Document, Mongoose, ObjectId, Schema } from 'mongoose';
+import { Gender } from '../lib/types/user.types';
 
 interface IAddress {
     lat ?: number;
@@ -17,11 +18,18 @@ interface IPhone {
     code ?: string;
 }
 
+interface IPreference {
+    gender : Gender
+}
+
+
 export interface IAuthSessionValue {
     email: string;
-    userId: ObjectId;
+    userId: ObjectId |any;
     address : IAddress;
     phone : IPhone
+    gender : Gender ,
+    preference : IPreference
 }
 
 
@@ -106,6 +114,18 @@ const authSessionSchema = new Schema<IAuthSession>(
                     },
                   
                     _id: false // Prevents MongoDB from creating an _id for this subdocument
+                },
+                gender : {
+                    type : String ,
+                    enum : Object.values(Gender),
+                },
+                preference : {
+                    type :{
+                        gender : {
+                            type : String ,
+                            enum : Object.values(Gender),
+                        }
+                    }
                 }
             },
             required: true,
