@@ -7,7 +7,8 @@ import { IAuthSession } from "../models/AuthSession";
 import { CountryNamesEnum } from "../lib/types/country_names.enum";
 import { findNearestDistricts } from "../controllers/search.controller";
 import { User } from "../models/user";
-import { justJoinedSchema, limitValidation, searchQuertSchema, todaysMatchSchema } from "../lib/schema/search.schema";
+import { justJoinedSchema, limitValidation, notViewedSchema, searchQuertSchema, todaysMatchSchema } from "../lib/schema/search.schema";
+import { ProfileView } from "../models/ProfileView";
 
 const router: Router = Router();
 
@@ -111,7 +112,6 @@ router.get('/users/matching/location', async function (req: Request, res: Respon
     }
 });
 
-
 router.get('/users/matching/daily', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         const validationResult = todaysMatchSchema.safeParse(req.query);
@@ -170,7 +170,6 @@ router.get('/users/matching/daily', async function (req: Request, res: Response)
         });
     }
 });
-
 
 router.get('/users/just-joined', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -254,6 +253,101 @@ router.get('/users/just-joined', async function (req: Request, res: Response): P
 });
 
 
+router.get('/users/not-viewed', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        const validationResult = notViewedSchema.safeParse(req.query);
+
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount, } = validationResult.data;
+        const userData = req.authSession.value;
+
+        // Get IDs of profiles already viewed by the user
+        const viewedProfileIds = await ProfileView.distinct('viewedId', {
+            viewerId: userData.userId
+        });
+        const baseQuery :any= {
+            'address.country':userData.address.country,
+            _id: { 
+                $ne: userData.userId,  // Exclude current user
+                $nin: viewedProfileIds // Exclude viewed profiles
+            },
+            isSuspended: false,
+            gender: { $ne: userData.gender }, // Match opposite gender
+          
+        };
+
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+
+        // Find users with pagination
+        let users = await User.find(baseQuery, userField)
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        // Get total count if requested
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+        res.set("cache-control", "max-age=3600, public");
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+              
+            }
+        });
+
+
+
+    } catch (error) {
+        console.error(`unviewed profile listing api error:`, error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+router.get('/user/online' ,async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+       
+    } catch (error) {
+        console.error(`unviewed profile listing api error:`, error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+} )
+
 router.get('/users/premioum', async function (req: Request, res: Response): Promise<Response | any> {
     try {
 
@@ -267,19 +361,6 @@ router.get('/users/premioum', async function (req: Request, res: Response): Prom
     }
 });
 
-
-router.get('/users/not-viewed', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-
-    } catch (error) {
-        console.error(`unviewed profile listing api error:`, error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
 
 
 

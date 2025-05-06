@@ -36,3 +36,11 @@ export const justJoinedSchema = z.object({
         .optional()
         .default('no')
 });
+
+export const notViewedSchema = z.object({
+    page:pageValidation,
+    limit: limitValidation,
+    count: z.enum(['yes', 'no'])
+        .optional()
+        .default('no'),
+});

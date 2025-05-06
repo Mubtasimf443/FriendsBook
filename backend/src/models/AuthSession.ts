@@ -36,8 +36,8 @@ export interface IAuthSessionValue {
 
 
 export interface IAuthSession extends Document {
-    name: "auth_session"; // Fixed name to only handle "auth_session"
-    value: IAuthSessionValue; // Structured value containing user data
+    name: "auth_session"; 
+    value: IAuthSessionValue;
     key?: string;
     expiration_date: Date;
     created_at: Date;
