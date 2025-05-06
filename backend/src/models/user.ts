@@ -371,6 +371,21 @@ const userSchema = new Schema<IUser>({
             type: String,
             required: true
         },
+    },
+    onlineStatus: {
+        isOnline: {
+            type: Boolean,
+            default: false,
+            required: false
+        },
+        lastSeen: {
+            type: Date,
+            default: Date.now
+        },
+        lastActive: {
+            type: Date,
+            default: Date.now
+        }
     }
 });
 

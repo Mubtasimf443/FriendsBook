@@ -159,6 +159,15 @@ export enum Religion {
 
 /*-------------- Language -------------*/
 
+// Add these interfaces
+interface IOnlineStatus {
+    isOnline: boolean;
+    lastSeen: Date;
+    lastActive: Date;
+}
+
+
+
 export enum Language {
     MANDARIN_CHINESE = "Mandarin Chinese",
     SPANISH = "Spanish",
@@ -290,7 +299,6 @@ export interface IUser extends Document {
     weight: number;
     isEducated: boolean;
     education: Education[];
-   
     address : IAddress;
     phoneInfo: IPhone;
     password : IPassword,
@@ -300,10 +308,8 @@ export interface IUser extends Document {
     createdAt: Date;
     settings : UserSettings
     isSuspended : boolean,
+    onlineStatus: IOnlineStatus;
     createPreference(): void
-
-
-    
 }
 
 

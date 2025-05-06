@@ -44,3 +44,11 @@ export const notViewedSchema = z.object({
         .optional()
         .default('no'),
 });
+
+export const onlineUsersSchema = z.object({
+    page: pageValidation,
+    limit: limitValidation,
+    count: z.enum(['yes', 'no'])
+        .optional()
+        .default('no'),
+});
