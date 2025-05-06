@@ -21,6 +21,7 @@ interface IUserImage {
 
 
 export interface IAddress {
+    country: string;
     state ?: IState;
     division ?: IDivision ;
     district ?: IDistrict;
@@ -289,8 +290,8 @@ export interface IUser extends Document {
     weight: number;
     isEducated: boolean;
     education: Education[];
-    country: string;
-    address? : IAddress;
+   
+    address : IAddress;
     phoneInfo: IPhone;
     password : IPassword,
     languages: Language[];

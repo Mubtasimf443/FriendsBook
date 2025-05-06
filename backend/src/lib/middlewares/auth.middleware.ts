@@ -4,11 +4,9 @@ import { Request, Response, NextFunction, } from 'express';
 import { authSessionValidation } from '../schema/auth.schema';
 import AuthSession, { IAuthSession } from '../../models/AuthSession';
 
-
-
 export interface AuthenticatedRequest extends Request {
-  authSession?: IAuthSession;
-  bearerAccessToken?: string
+  authSession: IAuthSession;
+  bearerAccessToken: string
 }
 
 // Utility function to extract token
@@ -55,6 +53,7 @@ export async function validateUser(req: AuthenticatedRequest | any | Request, re
 
     req.authSession = session;
     req.bearerAccessToken = token;
+  
 
     next();
     return;

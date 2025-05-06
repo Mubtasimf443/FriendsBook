@@ -1,17 +1,102 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-import { Router ,  Request, Response, } from "express";
+import { Router, Request, Response, } from "express";
 import rateLimiter from "../config/rateRimiter";
 import { validateUser } from "../lib/middlewares/auth.middleware";
+import { IAuthSession } from "../models/AuthSession";
+import { CountryNamesEnum } from "../lib/types/country_names.enum";
+import { findNearestDistricts } from "../controllers/search.controller";
+import { User } from "../models/user";
+import { searchQuertSchema } from "../lib/schema/search.schema";
 
-const router :Router = Router() ;
+const router: Router = Router();
 
-router.use(rateLimiter(120*1000 , 200));
+router.use(rateLimiter(120 * 1000, 200));
 router.use(validateUser);
 
-router.get('/users/matching', async function (req: Request, res: Response): Promise<Response | any> {
+declare global {
+    namespace Express {
+        interface Request {
+            authSession: IAuthSession;
+            bearerAccessToken?: string;
+        }
+    }
+}
+
+
+
+router.get('/users/matching/location', async function (req: Request, res: Response): Promise<Response | any> {
     try {
+      
+        let userData = req.authSession.value;
+
+
+        const validationResult = searchQuertSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+  
+        const { page, limit, count :shouldCount } = validationResult.data;
         
+
+        if (userData.address.country !== CountryNamesEnum.BANGLADESH || !userData.address.lat || !userData.address.long) {
+            return res.status(400).json({
+                success: false,
+                message: "Matching Users are only available for Bangladeshi Users",
+                data: null,
+            });
+        }
+
+        let lat = userData.address.lat, long = userData.address.long;
+        let nearestDistricts = findNearestDistricts(lat, long, 7);
+
+        let userField = 'name _id address email age isEducated education address religion languages ';
+       
+        const skip = (page - 1) * limit;
+        let users = await User.find({},)
+            .where('address.country').equals(CountryNamesEnum.BANGLADESH)
+            .where('address.district.id').in(nearestDistricts.map(element => element.id))
+            .where('isSuspended').equals(false)
+            .skip(skip)
+            .limit(limit)
+            .lean() ;
+
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.find({} , userField)
+                .where('address.country').equals(CountryNamesEnum.BANGLADESH)
+                .where('address.district.id').in(nearestDistricts.map(element => element.id))
+                .countDocuments();
+        }
+
+
+        let pagination:object = {
+            currentPage : page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalItems: totalCount
+            }
+        } 
+
+        return res.status(400).json({
+            success : false ,
+            data : {
+                districts: nearestDistricts.map(({ name, bn_name }) => ({ name, bn_name })),
+                pagination,
+                users,
+            }
+        });
+
     } catch (error) {
         console.error(`match suggestion api error:`, error);
         return res.status(500).json({
@@ -25,13 +110,13 @@ router.get('/users/matching', async function (req: Request, res: Response): Prom
 
 router.get('/users/todays-match', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        
+
     } catch (error) {
         console.error(`daily match recommendation api error:`, error);
         return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
+            success: false,
+            message: 'Internal server error',
+            data: null
         });
     }
 });
@@ -39,13 +124,13 @@ router.get('/users/todays-match', async function (req: Request, res: Response): 
 
 router.get('/users/just-joined', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        
+
     } catch (error) {
         console.error(`recent profile listing api error:`, error);
         return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
+            success: false,
+            message: 'Internal server error',
+            data: null
         });
     }
 });
@@ -53,13 +138,13 @@ router.get('/users/just-joined', async function (req: Request, res: Response): P
 
 router.get('/users/premium', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        
+
     } catch (error) {
         console.error(`premium profile listing api error:`, error);
         return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
+            success: false,
+            message: 'Internal server error',
+            data: null
         });
     }
 });
@@ -67,13 +152,13 @@ router.get('/users/premium', async function (req: Request, res: Response): Promi
 
 router.get('/users/not-viewed', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        
+
     } catch (error) {
         console.error(`unviewed profile listing api error:`, error);
         return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
+            success: false,
+            message: 'Internal server error',
+            data: null
         });
     }
 });

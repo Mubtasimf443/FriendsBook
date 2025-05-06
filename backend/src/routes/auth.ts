@@ -3,20 +3,21 @@
 import express, { Router, Request, Response } from "express";
 import TemporarySession, { TemporarySessionNames } from "../models/temporarySession";
 import { registrationUserSchema, LoginEnum, LoginSchema ,tempSessionValidation  , VerifyOtpSchema, ResetPasswordSchema, VerifyForgotPasswordOtpSchema } from "../lib/schema/auth.schema";
-import { comparePasswords, GenerateOtp, giveAuthSessionId, generateSalt, hashPassword } from "../controllers/auth.controller";
+import { comparePasswords, GenerateOtp, giveAuthSessionId, generateSalt, hashPassword, giveAuthSession } from "../controllers/auth.controller";
 import crypto from 'crypto';
 import { User } from "../models/user";
 import { authEmails } from "../lib/mails/auth.emails";
-import AuthSession from "../models/AuthSession";
+import AuthSession, { IAuthSession } from "../models/AuthSession";
 import rateLimiter from "../config/rateRimiter";
 import { IUser } from "../lib/types/user.types";
 import { emailValidatior } from "../lib/schema/schemaComponents";
 import { AuthenticatedRequest, validateUser } from "../lib/middlewares/auth.middleware";
 import { NODE_ENV } from "../config/env";
+import { CountryNamesEnum } from "../lib/types/country_names.enum";
 
 const router: Router = express.Router();
 
-router.use(rateLimiter(600 * 100, 100));
+// router.use(rateLimiter(600 * 100, 100));
 // Create registration session endpoint
 
 router.post("/create-registration-session", async function (req: Request, res: Response): Promise<Response | any> {
@@ -116,8 +117,8 @@ router.post("/request-registration-otp", async function (req: Request, res: Resp
         const userData = JSON.parse(session.value);
 
         // Generate OTP
-        const otp = GenerateOtp(); // 6-digit OTPc
-        NODE_ENV === 'developement' && console.log(`otp is ${otp}`);
+        const otp = NODE_ENV === 'developement' ? 123456 : GenerateOtp() // 6-digit OTPc
+        // NODE_ENV === 'developement' && console.log(`otp is ${otp}`);
 
         // Now User Has less request left
         userData.hasOtpRequest -= 1;
@@ -141,6 +142,7 @@ router.post("/request-registration-otp", async function (req: Request, res: Resp
        
 
         // Send OTP via email
+
         const emailSent = await authEmails.signUpOtpEmail(otp, userData.email)
 
         if (!emailSent) {
@@ -150,6 +152,8 @@ router.post("/request-registration-otp", async function (req: Request, res: Resp
                 data: null
             });
         }
+        
+      
 
         return res.status(200).json({
             success: true,
@@ -275,14 +279,27 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
 
 
         // Create auth token for successful verification
-        const authToken = giveAuthSessionId();
+        const authToken = giveAuthSession();
 
         // Create auth session
         await AuthSession.create({
             key: authToken,
             value: {
                 email: newUser.email,
-                userId: newUser._id
+                userId: newUser._id,
+                address : {
+                   country : newUser.address.country,
+                   lat :  newUser.address.country === CountryNamesEnum.BANGLADESH ? newUser.address.district?.lat : undefined,
+                   long :  newUser.address.country === CountryNamesEnum.BANGLADESH ? newUser.address.district?.long : undefined,
+                   division :  newUser.address.country === CountryNamesEnum.BANGLADESH ? newUser.address.division?.name : undefined,
+                   district :  newUser.address.country === CountryNamesEnum.BANGLADESH ? newUser.address.district?.name : undefined,
+                   upazilla :  newUser.address.country === CountryNamesEnum.BANGLADESH ? newUser.address.upazila?.name : undefined,
+                   union :  newUser.address.country === CountryNamesEnum.BANGLADESH ? newUser.address.union?.name : undefined,
+                },
+                phone : {
+                    number : newUser.phoneInfo.number ,
+                    code : newUser.phoneInfo.country.phone_code ,
+                }
             }
         })
 
@@ -356,7 +373,7 @@ router.post('/login', async function (req: Request, res: Response): Promise<Resp
         }
 
         // Generate an authentication token
-        const authToken = giveAuthSessionId();
+        const authToken = giveAuthSession();
 
         // Remove any previous auth session for the user
         await AuthSession.deleteOne({ 'value.email': existingUser.email });
@@ -366,7 +383,20 @@ router.post('/login', async function (req: Request, res: Response): Promise<Resp
             key: authToken,
             value: {
                 email: existingUser.email,
-                userId: existingUser._id
+                userId: existingUser._id,
+                address : {
+                   country : existingUser.address.country,
+                   lat :  existingUser.address.country === CountryNamesEnum.BANGLADESH ? existingUser.address.district?.lat : undefined,
+                   long :  existingUser.address.country === CountryNamesEnum.BANGLADESH ? existingUser.address.district?.long : undefined,
+                   division :  existingUser.address.country === CountryNamesEnum.BANGLADESH ? existingUser.address.division?.name : undefined,
+                   district :  existingUser.address.country === CountryNamesEnum.BANGLADESH ? existingUser.address.district?.name : undefined,
+                   upazilla :  existingUser.address.country === CountryNamesEnum.BANGLADESH ? existingUser.address.upazila?.name : undefined,
+                   union :  existingUser.address.country === CountryNamesEnum.BANGLADESH ? existingUser.address.union?.name : undefined,
+                },
+                phone : {
+                    number : existingUser.phoneInfo.number ,
+                    code : existingUser.phoneInfo.country.phone_code ,
+                }
             }
         });
 
@@ -374,8 +404,10 @@ router.post('/login', async function (req: Request, res: Response): Promise<Resp
         return res.status(200).json({
             success: true,
             message: "Login successful.",
-            data: {
-                authToken: authToken
+            value: {
+                email: existingUser.email,
+                userId: existingUser._id,
+                authToken : authToken
             }
         });
 
@@ -683,9 +715,16 @@ router.post("/verify-forget-password-otp", async function (req: Request, res: Re
     }
 });
 
-
+declare global {
+    namespace Express {
+        interface Request {
+            authSession: IAuthSession;
+            bearerAccessToken?: string;
+        }
+    }
+}
 // Verify forget password OTP and reset password
-router.post("/log-out", validateUser,async function (req: AuthenticatedRequest , res: Response): Promise<Response | any> {
+router.post("/log-out", validateUser,async function (req: Request , res: Response): Promise<Response | any> {
     try {
         await req.authSession?.deleteOne();
         res.status(200).json({

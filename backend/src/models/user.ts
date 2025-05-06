@@ -178,8 +178,8 @@ const userSchema = new Schema<IUser>({
                         return this.country === "Bangladesh";
                     }
                 },
-                lat: String,
-                long: String
+                lat: Number,
+                long: Number
             },
             upazila: {
                 id: {
@@ -234,9 +234,7 @@ const userSchema = new Schema<IUser>({
                 }
             }
         },
-        required: function (this: any) {
-            return this.country === "Bangladesh";
-        }
+        required: true
     },
 
     phoneInfo: {

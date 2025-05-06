@@ -18,8 +18,8 @@ export interface IDistrict {
     division_id: string;
     name: string;
     bn_name: string;
-    lat: string;
-    long: string;
+    lat: number;
+    long: number;
 }
 
 export interface IUpazila {

@@ -1,0 +1,125 @@
+{
+    "phoneInfo": {
+        "country": {
+            "name": "Bangladesh",
+            "phone_code": "+88"
+        },
+        "number": "01750147694"
+    },
+    "preferences": {
+        "weight": {
+            "minWeight": 45,
+            "maxWeight": 68
+        },
+        "height": {
+            "minHeight": 4,
+            "maxHeight": 5
+        },
+        "age": {
+            "minAge": 18,
+            "maxAge": 20
+        },
+        "isEducated": true,
+        "education": [
+            {
+                "level": "Primary Education (PSC)",
+                "_id": "6818b323316b5798f6bf2a32"
+            },
+            {
+                "level": "Junior Secondary (JSC)",
+                "_id": "6818b323316b5798f6bf2a33"
+            },
+            {
+                "level": "Secondary School Certificate (SSC)",
+                "_id": "6818b323316b5798f6bf2a34"
+            },
+            {
+                "level": "Higher Secondary Certificate (HSC)",
+                "_id": "6818b323316b5798f6bf2a35"
+            },
+            {
+                "level": "Diploma (Technical/Vocational)",
+                "_id": "6818b323316b5798f6bf2a36"
+            },
+            {
+                "level": "Bachelor's Degree",
+                "_id": "6818b323316b5798f6bf2a37"
+            }
+        ],
+        "location": [],
+        "lastUpdated": "2025-05-05T12:46:27.844Z"
+    },
+    "settings": {
+        "notifications": {
+            "dailyRecommendations": "allowed",
+            "todaysMatch": "allowed",
+            "viewedMyProfile": "allowed"
+        },
+        "privacy": {
+            "sendNotificationOnProfileView": "allowed"
+        }
+    },
+    "password": {
+        "hashed": "4add309188072267423f2ac7b6fee34792545d6d73c67d47608680ed7dc00c158912aa95e829d08fb41c0310026f2e1e61c564c55a0f2713122551abece58b9c",
+        "salt": "689da80c40a7216ee07d0393dc8223b3"
+    },
+    "_id": "6818b323316b5798f6bf2a2f",
+    "profileCreatedBy": "self",
+    "name": "John Doe",
+    "gender": "male",
+    "dateOfBirth": "2004-01-01T00:00:00.000Z",
+    "email": "mubtasimf443@gmail.com",
+    "height": "5 foot 10 inch",
+    "age": 21,
+    "weight": 70,
+    "isEducated": true,
+    "education": [
+        {
+            "level": "Bachelor's Degree",
+            "certificate": "BSc in Computer Science",
+            "institution": "XYZ University",
+            "yearOfCompletion": 2020,
+            "grade": "A",
+            "additionalInfo": "Graduated with honors",
+            "_id": "6818b323316b5798f6bf2a30"
+        }
+    ],
+    "address": {
+        "division": {
+            "id": "1",
+            "name": "Chattagram",
+            "bd_name": "চট্টগ্রাম"
+        },
+        "district": {
+            "id": "1",
+            "division_id": "1",
+            "name": "Comilla",
+            "bn_name": "কুমিল্লা",
+            "lat": "23.4682747",
+            "long": "91.1788135"
+        },
+        "upazila": {
+            "id": "1",
+            "district_id": "1",
+            "name": "Debidwar",
+            "bn_name": "দেবিদ্বার"
+        },
+        "union": {
+            "id": "1",
+            "upazilla_id": "1",
+            "name": "Subil",
+            "bn_name": "সুবিল"
+        },
+        "country": "Bangladesh",
+        "_id": "6818b323316b5798f6bf2a31"
+    },
+    "languages": [
+        "English",
+        "Spanish"
+    ],
+    "religion": "Christianity",
+    "createdAt": "2025-05-05T12:46:27.821Z",
+    "isSuspended": false,
+    "userImages": [],
+    "__v": 0
+}

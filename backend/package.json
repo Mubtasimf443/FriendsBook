@@ -31,7 +31,7 @@
   },
   "scripts": {
     "dev": "nodemon src/index.ts --ignore *",
-    "test": "nodemon src/index.test.ts"
+    "test": "nodemon src/index.test.ts --ignore *"
   },
   "keywords": [],
   "author": "",
