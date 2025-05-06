@@ -24,9 +24,7 @@ declare global {
     }
 }
 
-let userField = 'name _id address email age isEducated education address religion languages ';
-
-
+let userField = 'name _id address email age isEducated education address religion languages';
 
 router.get('/users/matching/location', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -252,7 +250,6 @@ router.get('/users/just-joined', async function (req: Request, res: Response): P
     }
 });
 
-
 router.get('/users/not-viewed', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         const validationResult = notViewedSchema.safeParse(req.query);
@@ -414,9 +411,9 @@ router.get('/users/online' ,async function (req: Request, res: Response): Promis
             data: null
         });
     }
-} )
+});
 
-router.get('/users/premioum', async function (req: Request, res: Response): Promise<Response | any> {
+router.get('/users/premium', async function (req: Request, res: Response): Promise<Response | any> {
     try {
 
     } catch (error) {

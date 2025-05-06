@@ -3,12 +3,21 @@
 import mongoose, { Schema } from 'mongoose';
 import { IUser, ProfileCreatedBy, Gender, Height, Religion, Language, EducationLevel, SettingsType } from '../lib/types/user.types';
 import { countryCodes } from '../lib/data/countryCodes';
-import countryNames from '../lib/data/countries';
+import countryNames from '../lib/data/countryNames';
+import generateMatrimonyId from '../lib/core/mid-geneator';
 
 
 
 
 const userSchema = new Schema<IUser>({
+    mid : {
+        type: String,
+        required: true,
+        unique: true,
+        immutable: true, // Cannot be changed once set
+        index: true,
+        
+    },
     profileCreatedBy: {
         type: String,
         enum: Object.values(ProfileCreatedBy),
@@ -376,15 +385,15 @@ const userSchema = new Schema<IUser>({
         isOnline: {
             type: Boolean,
             default: false,
-            required: false
+            required: true
         },
         lastSeen: {
             type: Date,
-            default: Date.now
+            default: Date.now,
         },
         lastActive: {
             type: Date,
-            default: Date.now
+            default: Date.now,
         }
     }
 });
@@ -494,9 +503,10 @@ userSchema.methods.createPreference = function() {
 
     return this;
 };
-
-
-
+userSchema.methods.createMID = function() {
+    this.mid = generateMatrimonyId(this.address.country);
+    return this;
+};
 
 
 userSchema.index({ gender: 1, country: 1 });
@@ -505,6 +515,7 @@ userSchema.index({ createdAt: -1 });
 userSchema.index({ 'education.level': 1 });
 userSchema.index({ dateOfBirth: 1 });
 userSchema.index({ 'address.country': 1, 'address.district.id': 1, 'isSuspended': 1 });
+userSchema.index({ 'onlineStatus.lastActive': -1});
 
 export const User = mongoose.model<IUser>('User', userSchema);
 

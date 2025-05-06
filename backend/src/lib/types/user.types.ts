@@ -287,6 +287,7 @@ interface UserSettings {
 }
 
 export interface IUser extends Document {
+    mid :string;
     profileCreatedBy: ProfileCreatedBy;
     profileImage : IUserImage,
     userImages : IUserImage[],
@@ -309,7 +310,8 @@ export interface IUser extends Document {
     settings : UserSettings
     isSuspended : boolean,
     onlineStatus: IOnlineStatus;
-    createPreference(): void
+    createPreference(): void;
+    createMID(): void;
 }
 
 

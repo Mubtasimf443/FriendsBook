@@ -266,7 +266,10 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
             createdAt: new Date(),
             age: sessionData.age
         });
+        
         newUser.createPreference();
+        newUser.createMID();
+
         await newUser.save();
        
         // Send registration success email
