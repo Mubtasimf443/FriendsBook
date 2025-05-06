@@ -16,7 +16,6 @@ const userSchema = new Schema<IUser>({
         unique: true,
         immutable: true, // Cannot be changed once set
         index: true,
-        
     },
     profileCreatedBy: {
         type: String,
@@ -504,8 +503,7 @@ userSchema.methods.createPreference = function() {
     return this;
 };
 userSchema.methods.createMID = function() {
-    this.mid = generateMatrimonyId(this.address.country);
-    return this;
+    return generateMatrimonyId(this.address.country);
 };
 
 

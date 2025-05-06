@@ -311,7 +311,7 @@ export interface IUser extends Document {
     isSuspended : boolean,
     onlineStatus: IOnlineStatus;
     createPreference(): void;
-    createMID(): void;
+    createMID(): string;
 }
 
 

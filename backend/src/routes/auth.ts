@@ -14,6 +14,7 @@ import { emailValidatior } from "../lib/schema/schemaComponents";
 import { AuthenticatedRequest, validateUser } from "../lib/middlewares/auth.middleware";
 import { NODE_ENV } from "../config/env";
 import { CountryNamesEnum } from "../lib/types/country_names.enum";
+import generateMatrimonyId from "../lib/core/mid-geneator";
 
 const router: Router = express.Router();
 
@@ -246,6 +247,7 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
 
         // Save user data to the database
         const newUser = new User({
+            mid : generateMatrimonyId(sessionData.address.country),
             profileCreatedBy: sessionData.profileCreatedBy,
             name: sessionData.name,
             gender: sessionData.gender,
@@ -268,7 +270,7 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
         });
         
         newUser.createPreference();
-        newUser.createMID();
+       
 
         await newUser.save();
        

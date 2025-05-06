@@ -10,14 +10,12 @@ import generateMatrimonyId from "./lib/core/mid-geneator";
 
 async function main() {
     await connectDB()
-    let users =await User.find({} );
-    for (let i = 0; i < users.length; i++) {
-        const element = users[i];
-        element.mid = generateMatrimonyId(element.address.country);
-        await element.save();
-        if (i % 100 === 0) {
-            log('User updated ' + i)
-        }
+    let array = await User.find({}, 'address _id');
+    for (let index = 0; index < array.length; index++) {
+        const element = array[index];
+        let id = generateMatrimonyId(element.address.country);
+        User.findByIdAndUpdate(element._id, { $set: { 'mid': id } })
+        if (index % 100 === 0) log(index);
     }
 }
 main()
