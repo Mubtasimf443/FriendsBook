@@ -1,6 +1,6 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-import express, { Request, Response,  json as ExpressJsonMidleware} from 'express';
+import express, { Request, Response,  json as ExpressJsonMidleware , urlencoded} from 'express';
 import { NODE_ENV, PORT } from './config/env';
 import { connectDB } from './config/connectDB';
 import authRouter from './routes/auth';
@@ -13,6 +13,7 @@ import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import { cors } from './config/cors';
 import AuthSession from './models/AuthSession';
+import { User } from './models/user';
 
 
 const port : number = Number(PORT ?? 4000) 
@@ -26,8 +27,8 @@ async function main() {
     app.use(cookieParser());
     app.use(ExpressJsonMidleware());
     app.use(cors)
-    
-    // NODE_ENV === 'developement' && app.use(morgan('dev'));
+  
+    NODE_ENV === 'developement' && app.use(morgan('dev'));
 
 
     // routes

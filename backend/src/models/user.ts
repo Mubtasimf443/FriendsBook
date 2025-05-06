@@ -116,8 +116,6 @@ const userSchema = new Schema<IUser>({
             required: false
         }
     }],
-
-    
     
     address: {
         type: {
@@ -548,6 +546,10 @@ userSchema.index({ 'education.level': 1 });
 userSchema.index({ dateOfBirth: 1 });
 userSchema.index({ 'address.country': 1, 'address.district.id': 1, 'isSuspended': 1 });
 userSchema.index({ 'onlineStatus.lastActive': -1});
+userSchema.index({ maritalStatus: 1 });
+userSchema.index({ occupation: 1 });
+userSchema.index({ 'annualIncome.amount': 1, 'annualIncome.currency': 1 });
+
 
 export const User = mongoose.model<IUser>('User', userSchema);
 

@@ -9,11 +9,13 @@ import { findNearestDistricts, searchHeightGenerator } from "../controllers/sear
 import { User } from "../models/user";
 import { FilterUsersQueryParams, filterUsersSchema, getUserByMIDSchema, justJoinedSchema, limitValidation, notViewedSchema, onlineUsersSchema, searchQuertSchema, todaysMatchSchema } from "../lib/schema/search.schema";
 import { ProfileView } from "../models/ProfileView";
+import queryMiddleware from "../lib/middlewares/query.middleware";
 
 const router: Router = Router();
 
 router.use(rateLimiter(120 * 1000, 200));
 router.use(validateUser);
+router.use(queryMiddleware)
 
 declare global {
     namespace Express {
@@ -425,6 +427,15 @@ router.get('/users/mutual', async function (req: Request, res: Response): Promis
     }
 })
 
+router.get('/users/shortlist', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        
+    } catch (error) {
+        
+    }
+});
+
+
 router.get('/users/premium', async function (req: Request, res: Response): Promise<Response | any> {
     try {
 
@@ -438,7 +449,23 @@ router.get('/users/premium', async function (req: Request, res: Response): Promi
     }
 });
 
+
+
 router.get('/users/viewed-not-contact', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+
+    } catch (error) {
+        console.error(`premium profile listing api error:`, error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+
+router.get('/users/preferred-occupation', async function (req: Request, res: Response): Promise<Response | any> {
     try {
 
     } catch (error) {
@@ -583,6 +610,8 @@ router.get('/user', async function(req: Request, res: Response): Promise<Respons
 router.get('/users/filter', async function(req: Request, res: Response): Promise<Response | any> {
     try {
         // Example usage in route handler
+        console.log(req.query);
+        
         const queryResult = filterUsersSchema.safeParse(req.query);
         if (!queryResult.success) {
             return res.status(400).json({
@@ -610,7 +639,11 @@ router.get('/users/filter', async function(req: Request, res: Response): Promise
             maxHeight,
             minAge,
             maxAge,
-
+            maritalStatus,
+            occupation,
+            minAnnualIncome,
+            maxAnnualIncome,
+            incomeCurrency,
         } = validatedQuery;
 
 
@@ -637,10 +670,34 @@ router.get('/users/filter', async function(req: Request, res: Response): Promise
         if (minHeight && maxHeight) {
             query.height.$in = searchHeightGenerator(minHeight , maxHeight);
         }
+
+        if (maritalStatus?.length && maritalStatus?.length > 0) {
+            query.maritalStatus = { $in: maritalStatus };
+        }
+
+        // Add occupation filter
+        if (occupation?.length  && occupation?.length > 0) {
+            query.occupation = { $in: occupation };
+        }
+
+        // Add annual income filter
+        if (minAnnualIncome || maxAnnualIncome) {
+            query['annualIncome.currency'] = incomeCurrency;
+            query['annualIncome.amount'] = {};
+            
+            if (minAnnualIncome) {
+                query['annualIncome.amount'].$gte = minAnnualIncome;
+            }
+            if (maxAnnualIncome) {
+                query['annualIncome.amount'].$lte = maxAnnualIncome;
+            }
+        }
+
         const skip = (page - 1) * limit;
 
         // Execute query with pagination
         const users = await User.find(query, userField)
+            .sort({ 'createdAt': -1 })
             .skip(skip)
             .limit(limit)
             .lean()

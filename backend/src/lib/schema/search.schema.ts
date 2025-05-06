@@ -1,14 +1,16 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 import { z } from 'zod';
-import { Height, Language, Religion } from '../types/user.types';
+import { Height, Language, MaritalStatus, Occupation, Religion } from '../types/user.types';
 import { CountryNamesEnum } from '../types/country_names.enum';
 import countryNames from '../data/countryNames';
+import { CurrencyCode } from '../types/currencyCodes.enum';
 
 // Define Zod schema for query parameters
 export const limitValidation = z.optional(z.enum(['10', '25', '50', '100']))
     .default('25')
     .transform(str => parseInt(str));
+    
 export const pageValidation = z.optional(
     z.string()
         .regex(/^\d+$/, {
@@ -41,7 +43,7 @@ export const justJoinedSchema = z.object({
 });
 
 export const notViewedSchema = z.object({
-    page:pageValidation,
+    page: pageValidation,
     limit: limitValidation,
     count: z.enum(['yes', 'no'])
         .optional()
@@ -156,43 +158,107 @@ export const filterUsersSchema = z.object({
                 .max(70, "Maximum age cannot exceed 70")
         )
         .optional(),
+
+    maritalStatus: z.union([
+        z.nativeEnum(MaritalStatus),
+        z.array(z.nativeEnum(MaritalStatus))
+    ])
+        .optional()
+        .transform(val => Array.isArray(val) ? val : [val]),
+
+    // Add occupation filter
+    occupation: z.union([
+        z.nativeEnum(Occupation),
+        z.array(z.nativeEnum(Occupation))
+    ])
+        .optional()
+        .transform(val => Array.isArray(val) ? val : [val]),
+
+    // Add annualIncome range filter
+    minAnnualIncome: z.string()
+        .regex(/^\d+$/, "Must be a positive number")
+        .transform(Number)
+        .pipe(
+            z.number()
+                .min(0, "Minimum annual income cannot be negative")
+                .max(1000000000, "Maximum annual income cannot exceed 1 billion")
+        )
+        .optional(),
+
+    maxAnnualIncome: z.string()
+        .regex(/^\d+$/, "Must be a positive number")
+        .transform(Number)
+        .pipe(
+            z.number()
+                .min(0, "Minimum annual income cannot be negative")
+                .max(1000000000, "Maximum annual income cannot exceed 1 billion")
+        )
+        .optional(),
+    incomeCurrency: z.nativeEnum(CurrencyCode).optional()
+
+
 })
-.refine(
-    (data) => {
-        if (data.minWeight && data.maxWeight) {
-            return data.minWeight <= data.maxWeight;
+    .refine(
+        (data) => {
+            if (data.minWeight && data.maxWeight) {
+                return data.minWeight <= data.maxWeight;
+            }
+            return true;
+        },
+        {
+            message: "Minimum weight must be less than or equal to maximum weight",
+            path: ["minWeight", "maxWeight"]
         }
-        return true;
-    },
-    {
-        message: "Minimum weight must be less than or equal to maximum weight",
-        path: ["minWeight", "maxWeight"]
-    }
-)
-.refine(
-    (data) => {
-        if (data.minAge && data.maxAge) {
-            return data.minAge <= data.maxAge;
+    )
+    .refine(
+        (data) => {
+            if (data.minAge && data.maxAge) {
+                return data.minAge <= data.maxAge;
+            }
+            return true;
+        },
+        {
+            message: "Minimum age must be less than or equal to maximum age",
+            path: ["minAge", "maxAge"]
         }
-        return true;
-    },
-    {
-        message: "Minimum age must be less than or equal to maximum age",
-        path: ["minAge", "maxAge"]
-    }
-)
-.refine(
-    (data) => {
-        if (data.minHeight && data.maxHeight) {
-            return data.minHeight < data.maxHeight;
+    )
+    .refine(
+        (data) => {
+            if (data.minHeight && data.maxHeight) {
+                return data.minHeight < data.maxHeight;
+            }
+            return true;
+        },
+        {
+            message: "Minimum Height must be less than maxHeight",
+            path: ["maxHeight", "minHeight"]
         }
-        return true;
-    },
-    {
-        message: "Minimum Height must be less than maxHeight",
-        path: ["maxHeight", "minHeight"]
-    }
-)
+    )
+    .refine(
+        (data) => {
+            if (data.minAnnualIncome && data.maxAnnualIncome) {
+                return data.minAnnualIncome <= data.maxAnnualIncome;
+            }
+            return true;
+        },
+        {
+            message: "Minimum annual income must be less than or equal to maximum annual income",
+            path: ["minAnnualIncome", "maxAnnualIncome"]
+        }
+    )
+    .refine(
+        (data) => {
+            if (data.minAnnualIncome && data.maxAnnualIncome) {
+                return !!data.incomeCurrency;
+            }
+            return true;
+        },
+        {
+            message: "incomeCurrency is required if You have given minAnnualIncome, maxAnnualIncome",
+            path: ["minAnnualIncome", "maxAnnualIncome"]
+        }
+    );
+   
 
 // Type for TypeScript type checking
 export type FilterUsersQueryParams = z.infer<typeof filterUsersSchema>;
