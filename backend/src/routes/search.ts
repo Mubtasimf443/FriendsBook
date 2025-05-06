@@ -7,7 +7,7 @@ import { IAuthSession } from "../models/AuthSession";
 import { CountryNamesEnum } from "../lib/types/country_names.enum";
 import { findNearestDistricts } from "../controllers/search.controller";
 import { User } from "../models/user";
-import { limitValidation, searchQuertSchema, todaysMatchSchema } from "../lib/schema/search.schema";
+import { justJoinedSchema, limitValidation, searchQuertSchema, todaysMatchSchema } from "../lib/schema/search.schema";
 
 const router: Router = Router();
 
@@ -72,8 +72,7 @@ router.get('/users/matching/location', async function (req: Request, res: Respon
             .skip(skip)
             .limit(limit)
             .lean()
-            .maxTimeMS(20000)
-            ;
+            .maxTimeMS(20000);
 
         let totalCount: number | undefined = undefined;
         if (shouldCount === 'yes') {
@@ -93,7 +92,7 @@ router.get('/users/matching/location', async function (req: Request, res: Respon
             }
         } 
 
-        return res.status(400).json({
+        return res.status(200).json({
             success : false ,
             data : {
                 districts: nearestDistricts.map(({ name, bn_name }) => ({ name, bn_name })),
@@ -175,8 +174,76 @@ router.get('/users/matching/daily', async function (req: Request, res: Response)
 
 router.get('/users/just-joined', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        
-    } catch (error) {
+        const validationResult = justJoinedSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { timeRange, limit, page, count: shouldCount } = validationResult.data;
+        const userData = req.authSession.value;
+
+        // Calculate the date range
+     
+        const daysAgo = parseInt(timeRange);
+        const startDate = new Date(Date.now() - (daysAgo * 24 * 60 * 60 * 1000));
+
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+
+        // Base query for finding users
+        const baseQuery = {
+            'address.country':userData.address.country,
+            createdAt: { $gte: startDate },
+            'isSuspended': false,
+            '_id': { $ne: userData.userId }, // Exclude current user
+            'gender': { $ne: userData.gender }, // Basic preference matching
+        };
+
+        // Find users
+        let users = await User.find(baseQuery, userField)
+            .sort({ createdAt: -1 }) // Sort by newest first
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        // Get total count if requested
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.find(baseQuery)
+                .countDocuments()
+                .maxTimeMS(10000);
+        }
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+                timeRange: `${timeRange} days`,
+            }
+        });
+
+    }catch (error) {
         console.error(`recent profile listing api error:`, error);
         return res.status(500).json({
             success: false,
@@ -213,6 +280,9 @@ router.get('/users/not-viewed', async function (req: Request, res: Response): Pr
         });
     }
 });
+
+
+
 
 
 

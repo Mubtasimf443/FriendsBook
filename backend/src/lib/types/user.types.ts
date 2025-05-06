@@ -301,17 +301,11 @@ export interface IUser extends Document {
     settings : UserSettings
     isSuspended : boolean,
     createPreference(): void
+
+
+    
 }
 
-// export interface IUserWithMethods {
-//     createPreference() : void
-// }
-export interface PresentAdress {
-    division: string;
-    district: string;
-    upazila: string;
-    city: string;
-}
 
 
 export { Education , EducationPreference, EducationLevel}
