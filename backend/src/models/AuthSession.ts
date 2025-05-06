@@ -1,7 +1,9 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-import mongoose, { Document, Mongoose, ObjectId, Schema } from 'mongoose';
+import mongoose, { Document, Mongoose, ObjectId, Schema , } from 'mongoose';
 import { Gender } from '../lib/types/user.types';
+
+
 
 interface IAddress {
     lat ?: number;
@@ -29,9 +31,10 @@ export interface IAuthSessionValue {
     address : IAddress;
     phone : IPhone
     gender : Gender ,
-    preference : IPreference
+    preference : IPreference,
+    languages : string[],
+    religion : string;
 }
-
 
 
 
@@ -43,6 +46,80 @@ export interface IAuthSession extends Document {
     created_at: Date;
     updated_at?: Date;
 }
+
+const AuthSessionValue  = {
+    email: {
+        type: String,
+        required: true,
+    },
+    userId: {
+        type: mongoose.SchemaTypes.ObjectId,
+        required: true,
+    },
+    address: {
+        type: {
+            lat: {
+                type: Number,
+                required: false
+            },
+            long: {
+                type: Number,
+                required: false
+            },
+            division: {
+                type: String,
+                required: false
+            },
+            district: {
+                type: String,
+                required: false
+            },
+            upazilla: {
+                type: String,
+                required: false
+            },
+            union: {
+                type: String,
+                required: false
+            },
+            country: {
+                type: String,
+                required: false
+            }
+        },
+
+        _id: false // Prevents MongoDB from creating an _id for this subdocument
+    },
+    phone: {
+        type: {
+            number: {
+                type: String,
+                required: false
+            },
+            code: {
+                type: String,
+                required: false
+            }
+        },
+      
+        _id: false // Prevents MongoDB from creating an _id for this subdocument
+    },
+    gender : {
+        type : String ,
+        enum : Object.values(Gender),
+    },
+
+
+    preference : {
+        type :{
+            gender : {
+                type : String ,
+                enum : Object.values(Gender),
+            }
+        }
+    }
+}
+
 
 const authSessionSchema = new Schema<IAuthSession>(
     {
@@ -58,76 +135,7 @@ const authSessionSchema = new Schema<IAuthSession>(
             unique : true ,
         },
         value: {
-            type: {
-                email: {
-                    type: String,
-                    required: true,
-                },
-                userId: {
-                    type: mongoose.SchemaTypes.ObjectId,
-                    required: true,
-                },
-                address: {
-                    type: {
-                        lat: {
-                            type: Number,
-                            required: false
-                        },
-                        long: {
-                            type: Number,
-                            required: false
-                        },
-                        division: {
-                            type: String,
-                            required: false
-                        },
-                        district: {
-                            type: String,
-                            required: false
-                        },
-                        upazilla: {
-                            type: String,
-                            required: false
-                        },
-                        union: {
-                            type: String,
-                            required: false
-                        },
-                        country: {
-                            type: String,
-                            required: false
-                        }
-                    },
-         
-                    _id: false // Prevents MongoDB from creating an _id for this subdocument
-                },
-                phone: {
-                    type: {
-                        number: {
-                            type: String,
-                            required: false
-                        },
-                        code: {
-                            type: String,
-                            required: false
-                        }
-                    },
-                  
-                    _id: false // Prevents MongoDB from creating an _id for this subdocument
-                },
-                gender : {
-                    type : String ,
-                    enum : Object.values(Gender),
-                },
-                preference : {
-                    type :{
-                        gender : {
-                            type : String ,
-                            enum : Object.values(Gender),
-                        }
-                    }
-                }
-            },
+            type: AuthSessionValue,
             required: true,
             _id: false 
         },
