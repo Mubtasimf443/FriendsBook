@@ -1,6 +1,8 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 import { z } from 'zod';
+import { Height, Language, Religion } from '../types/user.types';
+import { CountryNamesEnum } from '../types/country_names.enum';
 
 // Define Zod schema for query parameters
 export const limitValidation = z.optional(z.enum(['10', '25', '50', '100']))
@@ -52,3 +54,128 @@ export const onlineUsersSchema = z.object({
         .optional()
         .default('no'),
 });
+
+
+/* Add these new schemas to your existing search.schema.ts */
+
+export const getUserByMIDSchema = z.object({
+    mid: z.string()
+        .min(1, "MID is required")
+        .max(50, "MID is too long")
+});
+export const filterUsersSchema = z.object({
+    // Pagination params (keeping existing validation)
+    page: pageValidation,
+    limit: limitValidation,
+    count: z.enum(['yes', 'no'])
+        .optional()
+        .default('no'),
+
+    // Enums (keeping existing validation)
+    religion: z.nativeEnum(Religion)
+        .optional(),
+    languages: z.optional(
+        z.string()
+            .transform(val => val.split(','))
+            .pipe(z.array(z.nativeEnum(Language)))
+    ),
+    country: z.nativeEnum(CountryNamesEnum)
+        .optional(),
+
+    // Updated Location validations with proper numeric constraints
+    // district: z.string()
+    //     .regex(/^\d+$/, "District ID must be a number")
+    //     .transform(Number)
+    //     .pipe(
+    //         z.number()
+    //             .int("District ID must be an integer")
+    //             .min(1, "District ID must be at least 1")
+    //             .max(64, "District ID cannot exceed 64")
+    //     )
+    //     .optional(),
+    division: z.string()
+        .regex(/^\d+$/, "Division ID must be a number")
+        .transform(Number)
+        .pipe(
+            z.number()
+                .int("Division ID must be an integer")
+                .min(1, "Division ID must be at least 1")
+                .max(8, "Division ID cannot exceed 8")
+        )
+        .optional(),
+
+    // Boolean field (keeping existing validation)
+    isEducated: z.enum(['yes', 'no'])
+        .optional()
+        .default('yes')
+        .transform(val => val === 'yes'),
+
+    // Numeric fields (keeping existing validation)
+    minWeight: z.string()
+        .regex(/^\d+$/, "Must be a positive number")
+        .transform(Number)
+        .pipe(
+            z.number()
+                .min(30, "Minimum weight must be at least 30")
+                .max(200, "Maximum weight cannot exceed 200")
+        )
+        .optional(),
+    maxWeight: z.string()
+        .regex(/^\d+$/, "Must be a positive number")
+        .transform(Number)
+        .pipe(
+            z.number()
+                .min(30, "Minimum weight must be at least 30")
+                .max(200, "Maximum weight cannot exceed 200")
+        )
+        .optional(),
+
+    height: z.nativeEnum(Height)
+        .optional(),
+
+    minAge: z.string()
+        .regex(/^\d+$/, "Must be a positive number")
+        .transform(Number)
+        .pipe(
+            z.number()
+                .min(18, "Minimum age must be at least 18")
+                .max(70, "Maximum age cannot exceed 70")
+        )
+        .optional(),
+    maxAge: z.string()
+        .regex(/^\d+$/, "Must be a positive number")
+        .transform(Number)
+        .pipe(
+            z.number()
+                .min(18, "Minimum age must be at least 18")
+                .max(70, "Maximum age cannot exceed 70")
+        )
+        .optional(),
+})
+.refine(
+    (data) => {
+        if (data.minWeight && data.maxWeight) {
+            return data.minWeight <= data.maxWeight;
+        }
+        return true;
+    },
+    {
+        message: "Minimum weight must be less than or equal to maximum weight",
+        path: ["minWeight", "maxWeight"]
+    }
+)
+.refine(
+    (data) => {
+        if (data.minAge && data.maxAge) {
+            return data.minAge <= data.maxAge;
+        }
+        return true;
+    },
+    {
+        message: "Minimum age must be less than or equal to maximum age",
+        path: ["minAge", "maxAge"]
+    }
+);
+
+// Type for TypeScript type checking
+export type FilterUsersQueryParams = z.infer<typeof filterUsersSchema>;

@@ -7,7 +7,7 @@ import { IAuthSession } from "../models/AuthSession";
 import { CountryNamesEnum } from "../lib/types/country_names.enum";
 import { findNearestDistricts } from "../controllers/search.controller";
 import { User } from "../models/user";
-import { justJoinedSchema, limitValidation, notViewedSchema, onlineUsersSchema, searchQuertSchema, todaysMatchSchema } from "../lib/schema/search.schema";
+import { FilterUsersQueryParams, filterUsersSchema, getUserByMIDSchema, justJoinedSchema, limitValidation, notViewedSchema, onlineUsersSchema, searchQuertSchema, todaysMatchSchema } from "../lib/schema/search.schema";
 import { ProfileView } from "../models/ProfileView";
 
 const router: Router = Router();
@@ -426,12 +426,159 @@ router.get('/users/premium', async function (req: Request, res: Response): Promi
     }
 });
 
+/* Add these new routes to your existing search.ts */
 
 
+router.get('/user', async function(req: Request, res: Response): Promise<Response | any> {
+    try {
+        const validationResult = getUserByMIDSchema.safeParse(req.query);
+        
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { mid } = validationResult.data;
+
+        const user = await User.findOne(
+            { mid, isSuspended: false },
+            userField
+        ).lean();
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+                data: null
+            });
+        }
+
+        // Cache response for 5 minutes
+        res.set('Cache-Control', 'public, max-age=300');
+
+        return res.status(200).json({
+            success: true,
+            data: { user }
+        });
+
+    } catch (error) {
+        console.error('Get user by MID error:', error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            data: null
+        });
+    }
+});
 
 
+router.get('/users', async function(req: Request, res: Response): Promise<Response | any> {
+    try {
+        // Example usage in route handler
+        const queryResult = filterUsersSchema.safeParse(req.query);
+        if (!queryResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                errors: queryResult.error.format()
+            });
+        }
 
+        const validatedQuery: FilterUsersQueryParams = queryResult.data;
+        // Use validatedQuery safely with proper types
 
+        const {
+            page,
+            limit,
+            count: shouldCount,
+            religion,
+            languages,
+            country,
+          
+            division,
+            isEducated,
+            minWeight,
+            maxWeight,
+            height,
+            minAge,
+            maxAge
+        } = validatedQuery;
 
+        // Build query object
+        const query: any = {
+            isSuspended: false
+        };
+
+        // Add filters if they exist
+        if (religion) query.religion = religion;
+        if (languages?.length !== 0) query.languages = { $all: languages };
+        if (country) query['address.country'] = country;
+        if (division) query['address.division.id'] = division;
+        if (isEducated ) query.isEducated = true;
+        if (minWeight || maxWeight) {
+            query.weight = {};
+            if (minWeight) query.weight.$gte = minWeight;
+            if (maxWeight) query.weight.$lte = maxWeight;
+        }
+        if (height) query.height = height;
+        if (minAge || maxAge) {
+            query.age = {};
+            if (minAge) query.age.$gte = minAge;
+            if (maxAge) query.age.$lte = maxAge;
+        }
+
+        const skip = (page - 1) * limit;
+
+        // Execute query with pagination
+        const users = await User.find(query, userField)
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        // Get total count if requested
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(query).maxTimeMS(10000);
+        }
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        // Cache response for 1 minute
+        res.set('Cache-Control', 'public, max-age=60');
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+            }
+        });
+
+    } catch (error) {
+        console.error('Filter users API error:', error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            data: null
+        });
+    }
+});
 
 export default router;
