@@ -7,6 +7,7 @@ import authRouter from './routes/auth';
 import searchRouter from './routes/search';
 import assetsRouter from './routes/asset';
 import profileRouter from './routes/profile';
+import cronJobsRouter from './routes/cron-jobs';
 import dataRouter from './routes/data';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
@@ -35,6 +36,9 @@ async function main() {
     app.use('/api/assets' , assetsRouter);
     app.use('/api/profile' , profileRouter);
     app.use('/api/data' , dataRouter);
+    app.use('/api/cron-jobs' , cronJobsRouter);
+
+
 
     app.listen(port, () => {
         console.log(`Server is Fire at http://localhost:${port}`);
