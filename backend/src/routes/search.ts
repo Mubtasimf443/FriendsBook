@@ -580,7 +580,7 @@ router.get('/user', async function(req: Request, res: Response): Promise<Respons
 });
 
 
-router.get('/users', async function(req: Request, res: Response): Promise<Response | any> {
+router.get('/users/filter', async function(req: Request, res: Response): Promise<Response | any> {
     try {
         // Example usage in route handler
         const queryResult = filterUsersSchema.safeParse(req.query);
