@@ -38,3 +38,6 @@ export const SMTP_API_KEY: ENV_VALUE = process.env.SMTP_API_KEY;
 // Email Accent Colors
 export const EMAIL_PRIMARY_COLOR: ENV_VALUE = process.env.EMAIL_PRIMARY_COLOR || '#4CAF50'; // Green
 export const EMAIL_SECONDARY_COLOR: ENV_VALUE = process.env.EMAIL_SECONDARY_COLOR || '#FFC0CB'; // Pink
+
+// Cron-Jobs 
+export const JOB_SECRET: ENV_VALUE = process.env.JOB_SECRET;
