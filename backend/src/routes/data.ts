@@ -13,10 +13,12 @@ import countryNames from "../lib/data/countryNames";
 import { countryAndCurrency } from "../lib/types/currencyCodes.enum";
 import { EducationLevel } from "../lib/types/userEducation.types";
 import { MaritalStatus } from "../lib/types/user.types";
+import rateLimiter from "../config/rateRimiter";
 
 
 
 const router: Router = Router();
+router.use(rateLimiter(30 * 1000 , 100))
 router.use(function(req: Request, res: Response, next : NextFunction){
     res.set("cache-control", "max-age=3600, public");
     next();

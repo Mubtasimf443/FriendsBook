@@ -2,115 +2,127 @@
 
 import { Router, Request, Response } from "express";
 import { upload } from "../config/multer";
-import { Asset, AssetType } from "../models/asset";
+import { Asset, AssetType, IAsset } from "../models/asset";
 import { UploadImageAsset, detroyAsset } from "../lib/core/Asset";
-import { createAssetSchema } from "../lib/schema/Assets";
+import { createImageAssetSchema } from "../lib/schema/asset.schema";
 import fs from 'fs/promises';
 import path from 'path';
+import { ZodError } from "zod";
+import rateLimiter from "../config/rateRimiter";
+import { validateUser } from "../lib/middlewares/auth.middleware";
+import { ApiResponse } from "../lib/types/api.response";
 
 const router: Router = Router();
+router.use(rateLimiter(120 * 1000, 120));
+router.use(validateUser)
 
-// Type for handling multer files in request
-interface MulterRequest extends Request {
-    files: Express.Multer.File[];
-}
 
-router.post('/upload/image', upload.array('images', 1), async function (req: Request, res: Response): Promise<any> {
+router.post('/upload/image', upload.single('image'), async function (req: Request, res: Response): Promise<any> {
+    const file = req.file;
+
+    // Early return if no file
+    if (!file) {
+        return res.status(400).json({
+            success: false,
+            message: "No image file was provided",
+            error: "Missing required file upload"
+        });
+    }
+
+    const cleanup = async (): Promise<void> => {
         try {
-            let files = (req as MulterRequest).files;
-            
-            if (!files || files.length === 0) {
-                return res.status(400).json({
-                    success: false,
-                    message: "No files were uploaded"
-                });
+            if (file.path) {
+                await fs.unlink(file.path);
             }
-
-            const uploadedAssets = [];
-            const errors = [];
-
-            // Process each file
-            for (const file of files) {
-                try {
-                    const validationResult = createAssetSchema.safeParse({
-                        name: file.originalname,
-                        asset_type: AssetType.IMAGE,
-                        file: file
-                    });
-
-                    if (!validationResult.success) {
-                        errors.push({
-                            filename: file.originalname,
-                            error: validationResult.error.errors
-                        });
-                        continue;
-                    }
-
-                    // Upload to Cloudinary
-                    const cloudinaryResponse = await UploadImageAsset(file.path);
-
-                    // Create asset record
-                    const asset = await Asset.create({
-                        name: file.originalname,
-                        path: cloudinaryResponse.path,
-                        url: cloudinaryResponse.url,
-                        asset_type: AssetType.IMAGE,
-                        id: cloudinaryResponse.public_id,
-                        size: file.size
-                    });
-
-                    uploadedAssets.push({
-                        id: asset.id,
-                        url: asset.url,
-                        name: asset.name
-                    });
-
-                    // Clean up local file
-                    await fs.unlink(file.path);
-
-                } catch (error) {
-                    console.error(`Error processing file ${file.originalname}:`, error);
-                    errors.push({
-                        filename: file.originalname,
-                        error: 'Failed to process file'
-                    });
-
-                    // Clean up local file in case of error
-                    try {
-                        await fs.unlink(file.path);
-                    } catch (unlinkError) {
-                        console.error('Error deleting local file:', unlinkError);
-                    }
-                }
-            }
-
-            // Return response based on upload results
-            if (uploadedAssets.length === 0) {
-                return res.status(400).json({
-                    success: false,
-                    message: "All uploads failed",
-                    errors
-                });
-            }
-
-            return res.status(200).json({
-                success: true,
-                message: errors.length > 0 ? "Some files were uploaded successfully" : "All files uploaded successfully",
-                data: {
-                    assets: uploadedAssets,
-                    errors: errors.length > 0 ? errors : undefined
-                }
-            });
-
         } catch (error) {
-            console.error('Image upload error:', error);
-            return res.status(500).json({
+            console.error(`Failed to cleanup file ${file.originalname}:`, error);
+        }
+    };
+    try {
+        const validationResult = createImageAssetSchema.safeParse({
+            name: file.originalname,
+            asset_type: AssetType.IMAGE,
+            file: {
+                size: file.size,
+                mimetype: file.mimetype,
+                originalname: file.originalname
+            }
+        });
+
+        if (!validationResult.success) {
+            await cleanup();
+            return res.status(400).json({
                 success: false,
-                message: "Internal server error"
+                message: "Image validation failed",
+                error: validationResult.error.errors.map(err => err.message).join(', ')
             });
         }
-    }
-);
 
+        // Upload to Cloudinary
+        const cloudinaryResponse = await UploadImageAsset(file.path);
+
+        if (!cloudinaryResponse.success || !cloudinaryResponse.data) {
+            await cleanup();
+            return res.status(422).json({
+                success: false,
+                message: "Failed to upload image to cloud storage",
+                error: cloudinaryResponse.error?.message || 'Upload failed'
+            });
+        }
+
+        // Create asset record
+        const asset = await Asset.create({
+            name: file.originalname,
+            url: cloudinaryResponse.data.url,
+            asset_type: AssetType.IMAGE,
+            size: file.size,
+            uploadInfo: {
+                host: 'cloudinary',
+                host_id: cloudinaryResponse.data.cloudinary_id,
+                path: cloudinaryResponse.data.url
+            }
+        });
+
+        // Cleanup temporary file
+        await cleanup();
+
+        // Return success response
+        return res.status(201).json({
+            success: true,
+            message: "Image uploaded successfully",
+            data: {
+                asset: {
+                    id: asset.id,
+                    url: asset.url,
+                    name: asset.name || file.originalname,
+                    size: asset.size || file.size,
+                    type: asset.asset_type
+                }
+            }
+        });
+
+    } catch (error) {
+        await cleanup();
+
+        // Handle specific error types
+        if (error instanceof ZodError) {
+            return res.status(400).json({
+                success: false,
+                message: "Validation error",
+                error: error.errors.map(e => e.message).join(', ')
+            });
+        }
+
+        console.error('Image upload error:', error);
+
+        // Return generic error response
+        return res.status(500).json({
+            success: false,
+            message: "Failed to process image upload",
+            error: "Internal server error during upload process"
+        });
+    }
+}
+);
 
 export default router;

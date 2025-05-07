@@ -18,7 +18,7 @@ import generateMatrimonyId from "../lib/core/mid-geneator";
 
 const router: Router = express.Router();
 
-// router.use(rateLimiter(600 * 100, 100));
+router.use(rateLimiter(600 * 100, 100));
 // Create registration session endpoint
 
 router.post("/create-registration-session", async function (req: Request, res: Response): Promise<Response | any> {
