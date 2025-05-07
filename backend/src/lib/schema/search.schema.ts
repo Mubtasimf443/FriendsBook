@@ -1,7 +1,7 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 import { z } from 'zod';
-import { Height, Language, MaritalStatus, Occupation, Religion } from '../types/user.types';
+import { EducationLevel, Height, Language, MaritalStatus, Occupation, Religion } from '../types/user.types';
 import { CountryNamesEnum } from '../types/country_names.enum';
 import countryNames from '../data/countryNames';
 import { CurrencyCode } from '../types/currencyCodes.enum';
@@ -262,3 +262,70 @@ export const filterUsersSchema = z.object({
 
 // Type for TypeScript type checking
 export type FilterUsersQueryParams = z.infer<typeof filterUsersSchema>;
+
+
+// Add these new schemas for preferred searches
+
+export const preferredEducationSearchSchema = z.object({
+    page: pageValidation,
+    limit: limitValidation,
+    count: z.enum(['yes', 'no'])
+        .optional()
+        .default('no'),
+    educationLevels: z.array(z.nativeEnum(EducationLevel))
+        .optional()
+        .default([EducationLevel.BACHELORS_DEGREE])
+});
+
+export const preferredLocationSearchSchema = z.object({
+    page: pageValidation,
+    limit: limitValidation,
+    count: z.enum(['yes', 'no'])
+        .optional()
+        .default('no'),
+    countries: z.array(z.nativeEnum(CountryNamesEnum) ).optional().default([CountryNamesEnum.BANGLADESH]),
+    division_ids: z.array(
+        z.string()
+            .regex(/^\d+$/, "Division ID must be a number")
+            .transform(Number)
+            .pipe(
+                z.number()
+                    .int("Division ID must be an integer")
+                    .min(1, "Division ID must be at least 1")
+                    .max(8, "Division ID cannot exceed 8")
+            )
+    ).optional().default([])
+   ,
+}).refine(
+    (data) => {
+        console.log(data);
+        
+        if (data.countries.includes(CountryNamesEnum.BANGLADESH) ) {
+            if (data.division_ids.length === 0) {
+                return false;
+            }
+            
+        }
+        return true;
+    },
+    {
+        message: "Division IDs must be provided when country is Bangladesh",
+        path: ["division_ids"]
+    }
+);
+
+// Add this new schema for preferred occupation search
+
+export const preferredOccupationSearchSchema = z.object({
+    page: pageValidation,
+    limit: limitValidation,
+    count: z.enum(['yes', 'no'])
+        .optional()
+        .default('no'),
+    occupations: z.array(
+        z.nativeEnum(Occupation)
+    )
+        .max(10, "Maximum 10 occupations can be searched at once")
+        .optional()
+        .default([Occupation.ENGINEER])
+});

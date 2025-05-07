@@ -7,9 +7,11 @@ import { IAuthSession } from "../models/AuthSession";
 import { CountryNamesEnum } from "../lib/types/country_names.enum";
 import { findNearestDistricts, searchHeightGenerator } from "../controllers/search.controller";
 import { User } from "../models/user";
-import { FilterUsersQueryParams, filterUsersSchema, getUserByMIDSchema, justJoinedSchema, limitValidation, notViewedSchema, onlineUsersSchema, searchQuertSchema, todaysMatchSchema } from "../lib/schema/search.schema";
+import { FilterUsersQueryParams, filterUsersSchema, getUserByMIDSchema, justJoinedSchema, limitValidation, notViewedSchema, onlineUsersSchema, preferredEducationSearchSchema, preferredLocationSearchSchema, preferredOccupationSearchSchema, searchQuertSchema, todaysMatchSchema } from "../lib/schema/search.schema";
 import { ProfileView } from "../models/ProfileView";
 import queryMiddleware from "../lib/middlewares/query.middleware";
+import { EducationLevel } from "../lib/types/userEducation.types";
+import { Occupation } from "../lib/types/user.types";
 
 const router: Router = Router();
 
@@ -427,7 +429,7 @@ router.get('/users/mutual', async function (req: Request, res: Response): Promis
     }
 })
 
-router.get('/users/shortlist', async function (req: Request, res: Response): Promise<Response | any> {
+router.get('/users/suggested-for-you' ,async function (req: Request, res: Response): Promise<Response | any> { 
     try {
         
     } catch (error) {
@@ -435,74 +437,6 @@ router.get('/users/shortlist', async function (req: Request, res: Response): Pro
     }
 });
 
-
-router.get('/users/premium', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-
-    } catch (error) {
-        console.error(`premium profile listing api error:`, error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
-
-
-
-router.get('/users/viewed-not-contact', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-
-    } catch (error) {
-        console.error(`premium profile listing api error:`, error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
-
-
-router.get('/users/preferred-occupation', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-
-    } catch (error) {
-        console.error(`premium profile listing api error:`, error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
-
-router.get('/users/preferred-education', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-
-    } catch (error) {
-        console.error(`premium profile listing api error:`, error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
-
-router.get('/users/preferred-location', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-
-    } catch (error) {
-        console.error(`premium profile listing api error:`, error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
 
 router.get('/users/others-viewed-my-profile', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -555,6 +489,324 @@ router.get('/users/others-viewed-my-profile', async function (req: Request, res:
         });
     }
 })
+
+
+router.get('/users/shortlist', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        
+    } catch (error) {
+        
+    }
+});
+
+
+router.get('/users/premium', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+
+    } catch (error) {
+        console.error(`premium profile listing api error:`, error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+
+
+router.get('/users/viewed-not-contact', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+
+    } catch (error) {
+        console.error(`premium profile listing api error:`, error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+
+// Add these implementations to your existing search.ts file
+
+router.get('/users/preferred-occupation', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        Array.isArray(req.query.occupations) === false && (req.query.occupations = [req.query.occupations || Occupation.DOCTOR]);
+       
+        // Validate query parameters
+        const validationResult = preferredOccupationSearchSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { 
+            page, 
+            limit, 
+            count: shouldCount,
+            occupations 
+        } = validationResult.data;
+        
+        const userData = req.authSession.value;
+
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+
+        // Construct base query with occupation filter
+        const baseQuery = {
+            isSuspended: false,
+            '_id': { $ne: userData.userId },
+            gender: { $ne: userData.gender },
+            religion: userData.religion,
+            occupation: { $in: occupations }
+        };
+
+      
+
+        // Find matching users with occupation details
+        const users = await User.find(baseQuery, userField)
+            .skip(skip)
+            .limit(limit)
+            .lean();
+
+
+        // Get total count if requested
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        // Get occupation distribution for analytics
+        const occupationDistribution = await User.find(baseQuery , userField);
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        // Set cache control header for 1 minute
+        // Short cache time because occupation data might change frequently
+        res.set('Cache-Control', 'public, max-age=60');
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+               
+            }
+        });
+
+    } catch (error) {
+        // Log the error with request details for debugging
+        console.error('Preferred occupation API error:', {
+            error,
+            query: req.query,
+            userId: req.authSession?.value?.userId
+        });
+
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+
+router.get('/users/preferred-education', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        Array.isArray(req.query.educationLevels) === false && (req.query.educationLevels = [req.query.educationLevels || EducationLevel.BACHELORS_DEGREE]);
+        const validationResult = preferredEducationSearchSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { 
+            page, 
+            limit, 
+            count: shouldCount,
+            educationLevels  
+        } = validationResult.data;
+        
+        const userData = req.authSession.value;
+
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+
+        // Base query for finding users
+        const baseQuery = {
+            isSuspended: false,
+            '_id': { $ne: userData.userId },
+            gender: { $ne: userData.gender },
+            religion: userData.religion,
+            isEducated: true,
+            "education.level":{ $in: educationLevels } 
+        };
+
+        // Find users with aggregation to get highest matching education level
+        const users = await User.find(baseQuery, userField)
+            .skip(skip)
+            .limit(limit)
+            .lean();
+
+        // Get total count if requested
+        let totalCount: number | undefined = undefined;
+
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+                searchCriteria: {
+                    educationLevels
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Preferred education API error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+router.get('/users/preferred-location', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        (typeof req.query.countries === "string" ) && (req.query.countries = [req.query.countries]);
+        (typeof req.query.division_ids === "string" ) && (req.query.division_ids = [req.query.division_ids]);
+        const validationResult = preferredLocationSearchSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { 
+            page, 
+            limit, 
+            count: shouldCount,
+            countries,
+            division_ids 
+        } = validationResult.data;
+        
+        const userData = req.authSession.value;
+
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+
+        // Base query for finding users
+        const baseQuery: any = {
+            isSuspended: false,
+            '_id': { $ne: userData.userId },
+            gender: { $ne: userData.gender },
+            religion: userData.religion,
+            'address.country': { $in: countries }
+        };
+
+        // Add division filter if country includes Bangladesh
+        if (countries.includes(CountryNamesEnum.BANGLADESH) &&division_ids.length > 0 ) {
+            baseQuery['address.division.id'] = { $in: division_ids };
+        }
+
+        // Find users
+        let users = await User.find(baseQuery, userField)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        // Get total count if requested
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+                searchCriteria: {
+                    countries,
+                    divisions_ids : division_ids || []
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Preferred location API error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
 
 
 /* Add these new routes to your existing search.ts */
@@ -670,16 +922,13 @@ router.get('/users/filter', async function(req: Request, res: Response): Promise
         if (minHeight && maxHeight) {
             query.height.$in = searchHeightGenerator(minHeight , maxHeight);
         }
-
         if (maritalStatus?.length && maritalStatus?.length > 0) {
             query.maritalStatus = { $in: maritalStatus };
         }
-
         // Add occupation filter
         if (occupation?.length  && occupation?.length > 0) {
             query.occupation = { $in: occupation };
         }
-
         // Add annual income filter
         if (minAnnualIncome || maxAnnualIncome) {
             query['annualIncome.currency'] = incomeCurrency;

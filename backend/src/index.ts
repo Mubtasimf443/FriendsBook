@@ -27,8 +27,10 @@ async function main() {
     app.use(cookieParser());
     app.use(ExpressJsonMidleware());
     app.use(cors)
-  
+    
     NODE_ENV === 'developement' && app.use(morgan('dev'));
+
+    
 
 
     // routes
