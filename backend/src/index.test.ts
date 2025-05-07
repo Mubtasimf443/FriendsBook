@@ -5,26 +5,17 @@ import { connectDB } from "./config/connectDB"
 import { User } from "./models/user";
 import { Occupation } from "./lib/types/user.types";
 import { log } from "console";
+import { randomUUID } from "crypto";
 
 
 async function main() {
-    await connectDB();
-    const getRandomElement = (arr :string[]) => arr[Math.floor(Math.random() * arr.length)];
-    let occupations = Object.values(Occupation).slice(0 , 10);
-    let data:any[] = []
-    let usersIds =await User.find({} , '_id');
-    for (let i = 0; i < usersIds.length; i++) {
-        const _id = usersIds[i];
-        data.push({
-                updateOne: {
-                    filter: { _id },
-                    update: { $set: { "occupation": getRandomElement(occupations) } }
-                }
-            })
+    let arr: string[] = [];
+    for (let i = 0; i < 100000; i++) {
+        let id = randomUUID();
+        if (arr.includes(id)) throw 'UUID EXIST';
+        else arr.push(id);
+        if (i %1000 ===0) console.log(i);
     }
-
-    await User.bulkWrite(data);
-    log('User Updates')
 }
 main();
 

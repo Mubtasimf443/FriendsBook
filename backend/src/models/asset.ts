@@ -1,6 +1,9 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
+import { randomUUID } from 'crypto';
 import mongoose, { Document, Schema } from 'mongoose';
+
+
 
 // Define the asset types we'll support
 export enum AssetType {
@@ -26,6 +29,7 @@ export interface IAsset extends Document {
   created_at: Date;
   updated_at?: Date;
   uploadInfo: IUploadInfo;
+  id : string;
 }
 
 // Create the uploadInfo schema
@@ -50,6 +54,14 @@ const UploadInfoSchema = new Schema<IUploadInfo>({
 // Create the Asset Schema
 const AssetSchema = new Schema<IAsset>(
   {
+    id : {
+      type :String,
+      required : true,
+      index : true ,
+      unique : true , 
+      immutable : true ,
+      default : randomUUID
+    },
     name: {
       type: String,
       required: false,
