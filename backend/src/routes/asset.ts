@@ -10,7 +10,7 @@ import path from 'path';
 import { ZodError } from "zod";
 import rateLimiter from "../config/rateRimiter";
 import { validateUser } from "../lib/middlewares/auth.middleware";
-import { ApiResponse } from "../lib/types/api.response";
+
 
 const router: Router = Router();
 router.use(rateLimiter(120 * 1000, 120));
