@@ -1,6 +1,5 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-
 import mongoose, { Document, Schema } from 'mongoose';
 
 // Define the asset types we'll support
@@ -11,48 +10,74 @@ export enum AssetType {
   AUDIO = 'audio'
 }
 
+// Upload info interface
+export interface IUploadInfo {
+  host: string;      
+  host_id: string;   
+  path?: string;    
+}
+
 // Interface for Asset document
 export interface IAsset extends Document {
   name?: string;
-  path: string;
   url: string;
   asset_type: AssetType;
-  id: string;
   size?: number;
   created_at: Date;
   updated_at?: Date;
+  uploadInfo: IUploadInfo;
 }
+
+// Create the uploadInfo schema
+const UploadInfoSchema = new Schema<IUploadInfo>({
+  host: {
+    type: String,
+    required: [true, 'Host service name is required'],
+    trim: true
+  },
+  host_id: {
+    type: String,
+    required: [true, 'Host ID is required'],
+    trim: true
+  },
+  path: {
+    type: String,
+    required: false,
+    trim: true
+  }
+}, { _id: false }); // Disable _id for subdocument
 
 // Create the Asset Schema
 const AssetSchema = new Schema<IAsset>(
   {
     name: {
       type: String,
-      required:false,
+      required: false,
       trim: true,
-    },
-    path: {
-      type: String,
-      required: [true, 'Asset path is required'],
     },
     url: {
       type: String,
       required: [true, 'Asset URL is required'],
-      unique : true
+      unique: true,
+      trim: true
     },
     asset_type: {
       type: String,
       enum: Object.values(AssetType),
       required: [true, 'Asset type is required'],
     },
-    id: {
-      type: String,
-      required: [true, 'Cloudinary ID is required'],
-      unique: true,
-    },
     size: {
-      type: Number
+      type: Number,
+      min: 0,
+      validate: {
+        validator: Number.isInteger,
+        message: 'Size must be an integer'
+      }
     },
+    uploadInfo: {
+      type: UploadInfoSchema,
+      required: [true, 'Upload information is required']
+    }
   },
   {
     timestamps: {
@@ -62,15 +87,14 @@ const AssetSchema = new Schema<IAsset>(
   }
 );
 
-// 1. Index asset_type for filtering by file type (image, video, etc.)
+// Indexes for performance optimization
 AssetSchema.index({ asset_type: 1 });
-
-// 2. Index created_at for sorting by newest/oldest assets
 AssetSchema.index({ created_at: -1 });
-
-// 3. Optional: Index size if you query/filter based on file size
-// (e.g., all assets under 5MB)
 AssetSchema.index({ size: 1 });
+AssetSchema.index({ 'uploadInfo.host': 1 });
+AssetSchema.index({ 'uploadInfo.host_id': 1 });
 
+// Add compound index for host and host_id
+AssetSchema.index({ 'uploadInfo.host': 1, 'uploadInfo.host_id': 1 }, { unique: true });
 
 export const Asset = mongoose.model<IAsset>('Asset', AssetSchema);
