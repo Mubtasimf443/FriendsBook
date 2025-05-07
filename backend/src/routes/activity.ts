@@ -6,6 +6,7 @@ import { ShortList } from "../models/ShortList";
 import { ProfileView } from "../models/ProfileView";
 import { z } from "zod";
 import { _idValidator } from "../lib/schema/schemaComponents";
+import { shortListSchema } from "../lib/schema/activity.schema";
 
 const router: Router = express.Router();
 
@@ -15,9 +16,6 @@ const router: Router = express.Router();
 // Add to shortlist
 router.post('/users/short-list/add', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        const shortListSchema = z.object({
-            shortListedId: _idValidator
-        });        
         const validation = shortListSchema.safeParse(req.body);
         if (!validation.success) {
             return res.status(400).json({
@@ -71,6 +69,46 @@ router.post('/users/short-list/add', async function (req: Request, res: Response
         });
     }
 });
+router.delete('/users/short-list/remove', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        const validation = shortListSchema.safeParse(req.body);
+        if (!validation.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid input",
+                errors: validation.error.errors
+            });
+        }
+
+        const userId = req.authSession.value.userId;
+        const { shortListedId } = validation.data;
+
+        // Find and delete the shortlist entry
+        const deletedEntry = await ShortList.findOneAndDelete({
+            userId,
+            shortListedId
+        });
+
+        if (!deletedEntry) {
+            return res.status(404).json({
+                success: false,
+                message: "Profile was not in your shortlist"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile removed from shortlist"
+        });
+
+    } catch (error) {
+        console.error("Remove from shortlist error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+});
 
 // Mark user as online
 router.put('/users/online/active', async function (req: Request, res: Response): Promise<Response | any> {
@@ -80,7 +118,6 @@ router.put('/users/online/active', async function (req: Request, res: Response):
         await User.findByIdAndUpdate(userId, {
             'onlineStatus.isOnline': true,
             'onlineStatus.lastActive': new Date(),
-            'onlineStatus.lastSeen': new Date()
         });
 
         return res.status(200).json({
@@ -190,5 +227,11 @@ router.post('/users/visit-profile', async function (req: Request, res: Response)
         });
     }
 });
+
+
+
+
+
+
 
 export default router;
