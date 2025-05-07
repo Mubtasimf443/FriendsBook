@@ -5,27 +5,15 @@ import { EducationLevel, Height, Language, MaritalStatus, Occupation, Religion }
 import { CountryNamesEnum } from '../types/country_names.enum';
 import countryNames from '../data/countryNames';
 import { CurrencyCode } from '../types/currencyCodes.enum';
+import { countriesValidator, countValidation, division_ids_valdator, incomeCurrencyValidator, languagesValdator, limitValidation, maritalStatusesValdator, occupationsValidator, pageValidation, religionValidator } from './schemaComponents';
+import { educationLevelValidator } from './profile.schema';
 
-// Define Zod schema for query parameters
-export const limitValidation = z.optional(z.enum(['10', '25', '50', '100']))
-    .default('25')
-    .transform(str => parseInt(str));
-    
-export const pageValidation = z.optional(
-    z.string()
-        .regex(/^\d+$/, {
-            message: "Page must be a positive integer"
-        })
-        .max(4)
-).default('1').transform(val => val ? parseInt(val, 10) : 1)
 
 
 export const searchQuertSchema = z.object({
     page: pageValidation,
     limit: limitValidation,
-    count: z.enum(['yes', 'no'])
-        .optional()
-        .default('no')
+    count: countValidation
 });
 
 
@@ -37,72 +25,92 @@ export const justJoinedSchema = z.object({
     timeRange: z.optional(z.enum(['7', '15', '30'])).default('7'),
     limit: limitValidation,
     page: pageValidation,
-    count: z.enum(['yes', 'no'])
-        .optional()
-        .default('no')
+    count: countValidation
 });
 
 export const notViewedSchema = z.object({
     page: pageValidation,
     limit: limitValidation,
-    count: z.enum(['yes', 'no'])
-        .optional()
-        .default('no'),
+    count: countValidation,
 });
 
 export const onlineUsersSchema = z.object({
     page: pageValidation,
     limit: limitValidation,
-    count: z.enum(['yes', 'no'])
-        .optional()
-        .default('no'),
+    count: countValidation,
 });
 
 
 /* Add these new schemas to your existing search.schema.ts */
-
 export const getUserByMIDSchema = z.object({
     mid: z.string()
         .min(1, "MID is required")
         .max(50, "MID is too long")
 });
+
+
+
+   
+
+// Type for TypeScript type checking
+export type FilterUsersQueryParams = z.infer<typeof filterUsersSchema>;
+
+
+// Add these new schemas for preferred searches
+
+export const preferredEducationSearchSchema = z.object({
+    page: pageValidation,
+    limit: limitValidation,
+    count:countValidation,
+    educationLevels:educationLevelValidator
+});
+
+export const preferredLocationSearchSchema = z.object({
+    page: pageValidation,
+    limit: limitValidation,
+    count: countValidation,
+    countries: countriesValidator,
+    division_ids: division_ids_valdator,
+})
+    .refine(
+        (data) => {
+            if (data.countries.includes(CountryNamesEnum.BANGLADESH)) {
+                if (data.division_ids.length === 0) {
+                    return false;
+                }
+            }
+            return true;
+        },
+        {
+            message: "Division IDs must be provided when country is Bangladesh",
+            path: ["division_ids"]
+        }
+    );
+
+// Add this new schema for preferred occupation search
+
+export const preferredOccupationSearchSchema = z.object({
+    page: pageValidation,
+    limit: limitValidation,
+    count: countValidation,
+    occupations: occupationsValidator
+});
+
 export const filterUsersSchema = z.object({
     // Pagination params (keeping existing validation)
     page: pageValidation,
     limit: limitValidation,
-    count: z.enum(['yes', 'no'])
-        .optional()
-        .default('no'),
+    count: countValidation,
 
     // Enums (keeping existing validation)
-    religion: z.nativeEnum(Religion)
-        .optional(),
-    languages: z.optional(
-        z.string()
-            .transform(val => val.split(','))
-            .pipe(z.array(z.nativeEnum(Language)))
-    ),
-    country: z.nativeEnum(CountryNamesEnum)
-        .optional(),
+    religion:religionValidator,
+    languages: languagesValdator,
+    countries: countriesValidator,
+    division_ids : division_ids_valdator,
+    isEducated: z.enum(['yes', 'no']).optional().default('yes').transform(val => val === 'yes'),
+    maritalStatuses: maritalStatusesValdator,
+    occupations:occupationsValidator,
 
-    division: z.string()
-        .regex(/^\d+$/, "Division ID must be a number")
-        .transform(Number)
-        .pipe(
-            z.number()
-                .int("Division ID must be an integer")
-                .min(1, "Division ID must be at least 1")
-                .max(8, "Division ID cannot exceed 8")
-        )
-        .optional(),
-
-    // Boolean field (keeping existing validation)
-    isEducated: z.enum(['yes', 'no'])
-        .optional()
-        .default('yes')
-        .transform(val => val === 'yes'),
-
-    // Numeric fields (keeping existing validation)
     minWeight: z.string()
         .regex(/^\d+$/, "Must be a positive number")
         .transform(Number)
@@ -159,22 +167,7 @@ export const filterUsersSchema = z.object({
         )
         .optional(),
 
-    maritalStatus: z.union([
-        z.nativeEnum(MaritalStatus),
-        z.array(z.nativeEnum(MaritalStatus))
-    ])
-        .optional()
-        .transform(val => Array.isArray(val) ? val : [val]),
-
-    // Add occupation filter
-    occupation: z.union([
-        z.nativeEnum(Occupation),
-        z.array(z.nativeEnum(Occupation))
-    ])
-        .optional()
-        .transform(val => Array.isArray(val) ? val : [val]),
-
-    // Add annualIncome range filter
+    
     minAnnualIncome: z.string()
         .regex(/^\d+$/, "Must be a positive number")
         .transform(Number)
@@ -185,18 +178,14 @@ export const filterUsersSchema = z.object({
         )
         .optional(),
 
-    maxAnnualIncome: z.string()
-        .regex(/^\d+$/, "Must be a positive number")
-        .transform(Number)
+    maxAnnualIncome: z.string().regex(/^\d+$/, "Must be a positive number").transform(Number)
         .pipe(
             z.number()
                 .min(0, "Minimum annual income cannot be negative")
                 .max(1000000000, "Maximum annual income cannot exceed 1 billion")
         )
         .optional(),
-    incomeCurrency: z.nativeEnum(CurrencyCode).optional()
-
-
+    incomeCurrency:incomeCurrencyValidator
 })
     .refine(
         (data) => {
@@ -257,75 +246,18 @@ export const filterUsersSchema = z.object({
             message: "incomeCurrency is required if You have given minAnnualIncome, maxAnnualIncome",
             path: ["minAnnualIncome", "maxAnnualIncome"]
         }
-    );
-   
-
-// Type for TypeScript type checking
-export type FilterUsersQueryParams = z.infer<typeof filterUsersSchema>;
-
-
-// Add these new schemas for preferred searches
-
-export const preferredEducationSearchSchema = z.object({
-    page: pageValidation,
-    limit: limitValidation,
-    count: z.enum(['yes', 'no'])
-        .optional()
-        .default('no'),
-    educationLevels: z.array(z.nativeEnum(EducationLevel))
-        .optional()
-        .default([EducationLevel.BACHELORS_DEGREE])
-});
-
-export const preferredLocationSearchSchema = z.object({
-    page: pageValidation,
-    limit: limitValidation,
-    count: z.enum(['yes', 'no'])
-        .optional()
-        .default('no'),
-    countries: z.array(z.nativeEnum(CountryNamesEnum) ).optional().default([CountryNamesEnum.BANGLADESH]),
-    division_ids: z.array(
-        z.string()
-            .regex(/^\d+$/, "Division ID must be a number")
-            .transform(Number)
-            .pipe(
-                z.number()
-                    .int("Division ID must be an integer")
-                    .min(1, "Division ID must be at least 1")
-                    .max(8, "Division ID cannot exceed 8")
-            )
-    ).optional().default([])
-   ,
-}).refine(
-    (data) => {
-        console.log(data);
-        
-        if (data.countries.includes(CountryNamesEnum.BANGLADESH) ) {
-            if (data.division_ids.length === 0) {
-                return false;
-            }
-            
-        }
-        return true;
-    },
-    {
-        message: "Division IDs must be provided when country is Bangladesh",
-        path: ["division_ids"]
-    }
-);
-
-// Add this new schema for preferred occupation search
-
-export const preferredOccupationSearchSchema = z.object({
-    page: pageValidation,
-    limit: limitValidation,
-    count: z.enum(['yes', 'no'])
-        .optional()
-        .default('no'),
-    occupations: z.array(
-        z.nativeEnum(Occupation)
     )
-        .max(10, "Maximum 10 occupations can be searched at once")
-        .optional()
-        .default([Occupation.ENGINEER])
-});
+    .refine(
+        (data) => {
+            if (data.countries.includes(CountryNamesEnum.BANGLADESH) ) {
+                if (data.division_ids.length === 0) {
+                    return false;
+                }  
+            }
+            return true;
+        },
+        {
+            message: "Division IDs must be provided when country is Bangladesh",
+            path: ["division_ids"]
+        }
+    ) ;
