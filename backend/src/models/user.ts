@@ -6,8 +6,112 @@ import { countryCodes } from '../lib/data/countryCodes';
 import countryNames from '../lib/data/countryNames';
 import generateMatrimonyId from '../lib/core/mid-geneator';
 import { CurrencyCode } from '../lib/types/currencyCodes.enum';
+import { 
+    PhysicalStatus, 
+    ReligiousBranch, 
+    BadHabits, 
+    Sports, 
+    Hobbies, 
+    MusicTypes, 
+    FoodTypes,
+    SettingsPermissionType 
+} from '../lib/types/userProfile.types';
 
 
+const aboutMeSchema = new Schema({
+    description: {
+        type: String,
+        trim: true,
+        maxlength: 1000
+    },
+    physicalStatus: {
+        type: String,
+        enum: Object.values(PhysicalStatus),
+        default: PhysicalStatus.NORMAL
+    },
+    religiousBranch: {
+        type: String,
+        enum: Object.values(ReligiousBranch)
+    },
+    badHabits: [{
+        type: String,
+        enum: Object.values(BadHabits),
+        default: [BadHabits.NONE]
+    }],
+    interestedSports: [{
+        type: String,
+        enum: Object.values(Sports)
+    }],
+    interestedHobbies: [{
+        type: String,
+        enum: Object.values(Hobbies)
+    }],
+    interestedFoodTypes: [{
+        type: String,
+        enum: Object.values(FoodTypes)
+    }],
+    interestedMusicTypes: [{
+        type: String,
+        enum: Object.values(MusicTypes)
+    }]
+});
+
+const familyInfoSchema = new Schema({
+    aboutFamily: {
+        type: String,
+        trim: true,
+        maxlength: 1000
+    },
+    familyOrigin: {
+        type: String,
+        trim: true
+    },
+    numberOfBrothers: {
+        type: Number,
+        min: 0,
+        default: 0
+    },
+    numberOfSisters: {
+        type: Number,
+        min: 0,
+        default: 0
+    },
+    numberOfMarriedBrothers: {
+        type: Number,
+        min: 0,
+        default: 0,
+        validate: {
+            validator: function(this: any, val: number) {
+                return val <= this.numberOfBrothers;
+            },
+            message: 'Number of married brothers cannot exceed total brothers'
+        }
+    },
+    numberOfMarriedSisters: {
+        type: Number,
+        min: 0,
+        default: 0,
+        validate: {
+            validator: function(this: any, val: number) {
+                return val <= this.numberOfSisters;
+            },
+            message: 'Number of married sisters cannot exceed total sisters'
+        }
+    }
+});
+
+const blockedProfileSchema = new Schema({
+    userId: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    blockedAt: {
+        type: Date,
+        default: Date.now
+    },
+    reason: String
+});
 
 
 const userSchema = new Schema<IUser>({
@@ -425,6 +529,61 @@ const userSchema = new Schema<IUser>({
         lastActive: {
             type: Date,
             default: Date.now,
+        }
+    },
+    aboutMe: aboutMeSchema,
+    familyInfo: familyInfoSchema,
+    coverImage: {
+        url: String,
+        id: String
+    },
+    enhancedSettings: {
+        blocked: [blockedProfileSchema],
+        privacy: {
+            whoCanViewProfile: {
+                type: String,
+                enum: Object.values(SettingsPermissionType),
+                default: SettingsPermissionType.EVERYONE
+            },
+            whoCanContactMe: {
+                type: String,
+                enum: Object.values(SettingsPermissionType),
+                default: SettingsPermissionType.EVERYONE
+            },
+            showShortlistedNotification: {
+                type: Boolean,
+                default: true
+            },
+            showProfileViewNotification: {
+                type: Boolean,
+                default: true
+            }
+        },
+        notifications: {
+            dailyRecommendations: {
+                type: Boolean,
+                default: true
+            },
+            todaysMatch: {
+                type: Boolean,
+                default: true
+            },
+            profileViews: {
+                type: Boolean,
+                default: true
+            },
+            shortlists: {
+                type: Boolean,
+                default: true
+            },
+            messages: {
+                type: Boolean,
+                default: true
+            },
+            connectionRequests: {
+                type: Boolean,
+                default: true
+            }
         }
     }
 });

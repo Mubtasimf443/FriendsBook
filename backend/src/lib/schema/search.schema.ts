@@ -5,8 +5,7 @@ import { EducationLevel, Height, Language, MaritalStatus, Occupation, Religion }
 import { CountryNamesEnum } from '../types/country_names.enum';
 import countryNames from '../data/countryNames';
 import { CurrencyCode } from '../types/currencyCodes.enum';
-import { countriesValidator, countValidation, division_ids_valdator, incomeCurrencyValidator, languagesValdator, limitValidation, maritalStatusesValdator, occupationsValidator, pageValidation, religionValidator } from './schemaComponents';
-import { educationLevelValidator } from './profile.schema';
+import { countriesValidator, countValidation, division_ids_valdator, educationLevelsValidator, incomeCurrencyValidator, languagesValdator, limitValidation, maritalStatusesValdator, occupationsValidator, pageValidation, religionValidator } from './schemaComponents';
 
 
 
@@ -62,7 +61,7 @@ export const preferredEducationSearchSchema = z.object({
     page: pageValidation,
     limit: limitValidation,
     count:countValidation,
-    educationLevels:educationLevelValidator
+    educationLevels:educationLevelsValidator
 });
 
 export const preferredLocationSearchSchema = z.object({

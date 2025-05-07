@@ -4,6 +4,7 @@ import { Document } from 'mongoose';
 import { EducationLevel, Education ,EducationPreference , CertificateType } from './userEducation.types';
 import { ICity, IDistrict, IDivision, IState, IUpazila } from './location.types';
 import { CountryNamesEnum } from './country_names.enum';
+import { IAboutMe  , IFamilyInfo , IEnhancedPrivacySettings, IEnhancedUserSettings } from './userProfile.types';
 
 export enum ProfileCreatedBy {
     SELF = 'self',
@@ -429,6 +430,10 @@ export interface IUser extends Document {
     mid :string;
     profileCreatedBy: ProfileCreatedBy;
     profileImage : IUserImage,
+    aboutMe?: IAboutMe;
+    familyInfo?: IFamilyInfo;
+    enhancedSettings: IEnhancedUserSettings;
+    coverImage?: IUserImage;
     userImages : IUserImage[],
     gender: Gender;
     name: CountryNamesEnum;

@@ -490,8 +490,33 @@ router.get('/users/others-viewed-my-profile', async function (req: Request, res:
     }
 })
 
-
 router.get('/users/shortlist', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        
+    } catch (error) {
+        
+    }
+});
+
+
+router.get('/users/viewed-profiles', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        
+    } catch (error) {
+        
+    }
+});
+
+router.get('/users/viewed-my-profile', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        
+    } catch (error) {
+        
+    }
+});
+
+
+router.get('/users/others-shortlisted-me', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         
     } catch (error) {
@@ -527,6 +552,8 @@ router.get('/users/viewed-not-contact', async function (req: Request, res: Respo
         });
     }
 });
+
+
 
 
 // Add these implementations to your existing search.ts file
@@ -806,8 +833,6 @@ router.get('/users/preferred-location', async function (req: Request, res: Respo
         });
     }
 });
-
-
 
 /* Add these new routes to your existing search.ts */
 

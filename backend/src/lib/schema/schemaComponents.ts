@@ -18,6 +18,7 @@ export const pageValidation = z.optional(
         })
         .max(4)
 ).default('1').transform(val => val ? parseInt(val, 10) : 1)
+
 export const countValidation = z.enum(['yes', 'no'])
     .optional()
     .default('no');
