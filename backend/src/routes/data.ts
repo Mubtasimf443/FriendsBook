@@ -14,19 +14,20 @@ import { countryAndCurrency } from "../lib/types/currencyCodes.enum";
 import { EducationLevel } from "../lib/types/userEducation.types";
 import { MaritalStatus } from "../lib/types/user.types";
 import rateLimiter from "../config/rateRimiter";
+import getEducationCertificates from "../lib/core/getEducationCertificates";
 
 
 
 const router: Router = Router();
-router.use(rateLimiter(30 * 1000 , 100))
-router.use(function(req: Request, res: Response, next : NextFunction){
+router.use(rateLimiter(30 * 1000, 100))
+router.use(function (req: Request, res: Response, next: NextFunction) {
     res.set("cache-control", "max-age=3600, public");
     next();
     return;
 });
 
 router.get("/location/country-names", async function (req: Request, res: Response): Promise<any> {
-    return res.status(200).json({ success: true, message: "ok", data: {names : countryNames } })
+    return res.status(200).json({ success: true, message: "ok", data: { names: countryNames } })
 });
 
 router.get("/location/divisions", async function (req: Request, res: Response): Promise<any> {
@@ -47,7 +48,7 @@ router.get("/location/districts", async function (req: Request, res: Response): 
         }
 
         if (success && data) {
-          
+
 
 
             let districts = Districts.filter(function (element: IDistrict): object | undefined {
@@ -55,7 +56,7 @@ router.get("/location/districts", async function (req: Request, res: Response): 
                     return element;
                 }
             });
-            
+
             res.status(200).json({
                 success: true,
                 data: districts
@@ -86,7 +87,7 @@ router.get("/location/upazilas", async function (req: Request, res: Response): P
         }
 
         if (success && data) {
-           
+
             let upazilas = Upazilas.filter(function (element: IUpazila): object | undefined {
                 if (element.district_id === String(data)) {
                     return element;
@@ -122,8 +123,8 @@ router.get("/location/unions", async function (req: Request, res: Response): Pro
         }
 
         if (success && data) {
-          
-            let cities = Unions.filter(function (element: ICity){
+
+            let cities = Unions.filter(function (element: ICity) {
                 if (element.upazilla_id === String(data)) {
                     return element;
                 }
@@ -145,7 +146,6 @@ router.get("/location/unions", async function (req: Request, res: Response): Pro
     }
 })
 
-
 router.get('/currency', async function (req: Request, res: Response): Promise<any> {
     return res.status(200).json({
         success: true,
@@ -153,37 +153,58 @@ router.get('/currency', async function (req: Request, res: Response): Promise<an
     })
 });
 
-router.get('/education', async function (req: Request, res: Response): Promise<any> {
-    return res.status(200).json({
-        success: true,
-        data: { 
-            levels : Object.values(EducationLevel)
-        }
-    })
-});
-
 
 router.get('/education', async function (req: Request, res: Response): Promise<any> {
     return res.status(200).json({
         success: true,
-        data: { 
-            levels : Object.values(EducationLevel)
+        data: {
+            levels: Object.values(EducationLevel)
         }
     })
 });
-
-
 router.get('/marital-status', async function (req: Request, res: Response): Promise<any> {
     return res.status(200).json({
         success: true,
-        data: { 
-            marital_statuses :Object.values(MaritalStatus)
+        data: {
+            marital_statuses: Object.values(MaritalStatus)
         }
     })
 });
 
+router.get('/certificates', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        const educationLevelValidator = z.nativeEnum(EducationLevel, { message: "Not a Education level" });
+        const validationResult = await educationLevelValidator.safeParseAsync(req.query.education_level);
 
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid education level provided",
+                errors: validationResult.error.errors.map(err => ({
+                    path: err.path.join('.'),
+                    message: err.message
+                }))
+            });
+        }
 
+        const educationLevel = validationResult.data as EducationLevel;
+        const certificates = getEducationCertificates(educationLevel);
+
+        
+        return res.status(200).json({
+            success: true,
+            message: `Certificates for ${educationLevel}`,
+            data: { certificates }
+        });
+    } catch (error) {
+        console.error('/data/certificate api error ' , error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            data: null
+        });
+    }
+});
 
 
 export default router;
