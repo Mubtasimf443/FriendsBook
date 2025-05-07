@@ -94,7 +94,7 @@ export const educationLevelsValidator = z
     .min(1, { message: "At least one education level must be selected" })
     .max(10, { message: "Cannot select more than 10 education levels" })
     .optional()
-    .default([EducationLevel.BACHELORS_DEGREE])
+    .default([])
     .describe("List of acceptable education levels");
 
 
@@ -103,7 +103,7 @@ export const occupationsValidator = z.array(
 )
     .max(10, "Maximum 10 occupations can be searched at once")
     .optional()
-    .default([Occupation.ENGINEER]);
+    .default([]);
 
 
 export const division_ids_valdator = z.array(

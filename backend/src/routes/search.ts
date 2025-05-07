@@ -7,7 +7,7 @@ import { IAuthSession } from "../models/AuthSession";
 import { CountryNamesEnum } from "../lib/types/country_names.enum";
 import { findNearestDistricts, searchHeightGenerator } from "../controllers/search.controller";
 import { User } from "../models/user";
-import { FilterUsersQueryParams, filterUsersSchema, getUserByMIDSchema, justJoinedSchema, limitValidation, notViewedSchema, onlineUsersSchema, preferredEducationSearchSchema, preferredLocationSearchSchema, preferredOccupationSearchSchema, searchQuertSchema, todaysMatchSchema } from "../lib/schema/search.schema";
+import { FilterUsersQueryParams, filterUsersSchema, getUserByMIDSchema, justJoinedSchema,  notViewedSchema, onlineUsersSchema, preferredEducationSearchSchema, preferredLocationSearchSchema, preferredOccupationSearchSchema, searchQuertSchema, todaysMatchSchema } from "../lib/schema/search.schema";
 import { ProfileView } from "../models/ProfileView";
 import queryMiddleware from "../lib/middlewares/query.middleware";
 import { EducationLevel } from "../lib/types/userEducation.types";
@@ -861,101 +861,113 @@ router.get('/user', async function(req: Request, res: Response): Promise<Respons
 
 router.get('/users/filter', async function(req: Request, res: Response): Promise<Response | any> {
     try {
+        // Handle array parameters that might come as strings
         (typeof req.query.languages === "string") && (req.query.languages = [req.query.languages]);
+        (typeof req.query.countries === "string") && (req.query.countries = [req.query.countries]);
+        (typeof req.query.division_ids === "string") && (req.query.division_ids = [req.query.division_ids]);
+        (typeof req.query.maritalStatuses === "string") && (req.query.maritalStatuses = [req.query.maritalStatuses]);
+        (typeof req.query.occupations === "string") && (req.query.occupations = [req.query.occupations]);
 
-        
         const queryResult = filterUsersSchema.safeParse(req.query);
         if (!queryResult.success) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid query parameters",
-                errors: queryResult.error.format()
+                errors: queryResult.error.errors,
+                data: null
             });
         }
 
-        const validatedQuery: FilterUsersQueryParams = queryResult.data;
-        // Use validatedQuery safely with proper types
+        const validatedQuery = queryResult.data;
+        const userData = req.authSession.value;
 
+        // Destructure all query parameters
         const {
             page,
             limit,
             count: shouldCount,
             religion,
             languages,
-            country,
-            division,
+            countries,
+            division_ids,
             isEducated,
             minWeight,
             maxWeight,
-            minHeight , 
+            minHeight,
             maxHeight,
             minAge,
             maxAge,
-            maritalStatus,
-            occupation,
+            maritalStatuses,
+            occupations,
             minAnnualIncome,
             maxAnnualIncome,
             incomeCurrency,
         } = validatedQuery;
 
+        // Build the base query
+        const baseQuery: any = {
+            isSuspended: false,
+            '_id': { $ne: userData.userId }, // Exclude current user
+            'gender': { $ne: userData.gender }, // Match opposite gender
+        };
 
+        // Add optional filters
+        if (religion) baseQuery.religion = religion;
+        if (languages?.length > 0) baseQuery.languages = { $all: languages };
+        if (countries?.length > 0) baseQuery['address.country'] = { $in: countries };
+        if (countries?.includes(CountryNamesEnum.BANGLADESH) && division_ids?.length > 0) {
+            baseQuery['address.division.id'] = { $in: division_ids };
+        }
+        if (isEducated) baseQuery.isEducated = isEducated;
 
-        // Build query object
-        const query: any = { isSuspended: false };
-
-        // Add filters if they exist
-        if (religion) query.religion = religion;
-        if (languages?.length !== 0) query.languages = { $all: languages };
-        if (country) query['address.country'] = country;
-        if (division) query['address.division.id'] = division;
-        if (isEducated ) query.isEducated = true;
+        // Add range-based filters
         if (minWeight || maxWeight) {
-            query.weight = {};
-            if (minWeight) query.weight.$gte = minWeight;
-            if (maxWeight) query.weight.$lte = maxWeight;
-        }
-        if (minAge || maxAge) {
-            query.age = {};
-            if (minAge) query.age.$gte = minAge;
-            if (maxAge) query.age.$lte = maxAge;
-        }
-        if (minHeight && maxHeight) {
-            query.height.$in = searchHeightGenerator(minHeight , maxHeight);
-        }
-        if (maritalStatus?.length && maritalStatus?.length > 0) {
-            query.maritalStatus = { $in: maritalStatus };
-        }
-        // Add occupation filter
-        if (occupation?.length  && occupation?.length > 0) {
-            query.occupation = { $in: occupation };
-        }
-        // Add annual income filter
-        if (minAnnualIncome || maxAnnualIncome) {
-            query['annualIncome.currency'] = incomeCurrency;
-            query['annualIncome.amount'] = {};
-            
-            if (minAnnualIncome) {
-                query['annualIncome.amount'].$gte = minAnnualIncome;
-            }
-            if (maxAnnualIncome) {
-                query['annualIncome.amount'].$lte = maxAnnualIncome;
-            }
+            baseQuery.weight = {};
+            if (minWeight) baseQuery.weight.$gte = minWeight;
+            if (maxWeight) baseQuery.weight.$lte = maxWeight;
         }
 
+        if (minAge || maxAge) {
+            baseQuery.age = {};
+            if (minAge) baseQuery.age.$gte = minAge;
+            if (maxAge) baseQuery.age.$lte = maxAge;
+        }
+
+        if (minHeight && maxHeight) {
+            baseQuery.height = { $in: searchHeightGenerator(minHeight, maxHeight) };
+        }
+
+        // Add array-based filters
+        if (maritalStatuses?.length > 0) {
+            baseQuery.maritalStatus = { $in: maritalStatuses };
+        }
+
+        if (occupations?.length > 0) {
+            baseQuery.occupation = { $in: occupations };
+        }
+
+        // Add income-based filters
+        if (minAnnualIncome && maxAnnualIncome) {
+            baseQuery['annualIncome.currency'] = incomeCurrency;
+            baseQuery['annualIncome.amount'] = {};
+            if (minAnnualIncome) baseQuery['annualIncome.amount'].$gte = minAnnualIncome;
+            if (maxAnnualIncome) baseQuery['annualIncome.amount'].$lte = maxAnnualIncome;
+        }
+
+        // Calculate pagination
         const skip = (page - 1) * limit;
 
-        // Execute query with pagination
-        const users = await User.find(query, userField)
-            .sort({ 'createdAt': -1 })
+        // Execute the query with pagination
+        const users = await User.find(baseQuery, userField)
             .skip(skip)
             .limit(limit)
             .lean()
-            .maxTimeMS(20000);
+            .maxTimeMS(20000); // Set maximum execution time
 
         // Get total count if requested
         let totalCount: number | undefined = undefined;
         if (shouldCount === 'yes') {
-            totalCount = await User.countDocuments(query).maxTimeMS(10000);
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
         }
 
         // Prepare pagination info
@@ -972,14 +984,31 @@ router.get('/users/filter', async function(req: Request, res: Response): Promise
             };
         }
 
-        // Cache response for 1 minute
-        res.set('Cache-Control', 'public, max-age=60');
+        // Set cache headers for better performance
+        res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
 
         return res.status(200).json({
             success: true,
             data: {
                 users,
                 pagination,
+                filterCriteria: {
+                    religion,
+                    languages,
+                    countries,
+                    division_ids,
+                    isEducated,
+                    weightRange: minWeight || maxWeight ? { min: minWeight, max: maxWeight } : undefined,
+                    ageRange: minAge || maxAge ? { min: minAge, max: maxAge } : undefined,
+                    heightRange: minHeight || maxHeight ? { min: minHeight, max: maxHeight } : undefined,
+                    maritalStatuses,
+                    occupations,
+                    incomeRange: minAnnualIncome || maxAnnualIncome ? {
+                        min: minAnnualIncome,
+                        max: maxAnnualIncome,
+                        currency: incomeCurrency
+                    } : undefined
+                }
             }
         });
 
@@ -992,7 +1021,6 @@ router.get('/users/filter', async function(req: Request, res: Response): Promise
         });
     }
 });
-
 
 
 
