@@ -15,7 +15,13 @@ export enum MembershipDuration {
     SIX_MONTHS = 6,
     TWELVE_MONTHS = 12
 }
-
+export enum PaymentMethod {
+    BKASH = 'BKASH',
+    NAGAD = 'NAGAD',
+    ROCKET = 'ROCKET',
+    BANK_TRANSFER = 'BANK_TRANSFER',
+    OTHERS = 'OTHERS'
+}
 
 
 export enum MembershipRequestStatus {
@@ -23,6 +29,7 @@ export enum MembershipRequestStatus {
     APPROVED = 'approved',
     REJECTED = 'rejected',
     CANCELLED = 'cancelled'
+
 }
 
 export interface IMembershipRequest {
@@ -31,8 +38,8 @@ export interface IMembershipRequest {
         transactionId: string;
         amount: number;
         currency: string;
-        paymentMethod: string;
         paymentDate: Date;
+        paymentMethod: PaymentMethod; // Updated to use the enum
         verificationImage?: {
             url: string;
             id: string;
@@ -50,4 +57,5 @@ export interface IMembershipRequest {
     processedDate?: Date;
     processedBy?: mongoose.Types.ObjectId;
     requesterID: mongoose.Types.ObjectId;
+    cancel() : void
 }

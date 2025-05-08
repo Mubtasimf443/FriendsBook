@@ -11,6 +11,9 @@ import { array, object, z } from 'zod';
 import queryMiddleware from "../lib/middlewares/query.middleware";
 import { userDetailsQuerySchema } from "../lib/schema/profile.schema";
 import { updateUserSchema, UpdateUserInput } from '../lib/schema/updateUser.schema';
+import { MembershipRequest } from "../models/membershipRequest";
+import { MembershipRequestStatus } from "../lib/types/memberdship.types";
+import { membershipRequestQuerySchema, membershipRequestSchema } from "../lib/schema/membership.schema";
 
 const router: Router = Router();
 
@@ -217,50 +220,279 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
 });
 
 
-
-router.get('/membership-request' , async function (req : Request , res : Response) :Promise<any>{ 
+router.post('/membership-request' , async function (req: Request, res: Response): Promise<any> {
     try {
-        
-    } catch (error) {
-        console.error('[get Membership request api]', error);
-        return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
+        const userId = req.authSession.value.userId;
+
+        // Check if user exists
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+                data: null
+            });
+        }
+
+        const pendingRequest = await MembershipRequest.findOne({
+            requesterID: userId,
+            requestStatus: MembershipRequestStatus.PENDING
         });
-    }
-})
+
+        if (pendingRequest) {
+            return res.status(400).json({
+                success: false,
+                message: 'You already have a pending membership request',
+                data: null
+            });
+        }
+
+        let db_user =await User.findById(userId , 'membership');
+
+        if (!db_user ) {
+            res.status(401).json({
+                success: false,
+                message: 'Could not find The User Account',
+                data: null
+            });
+            return;
+        }
+
+
+        if (db_user.hasActiveMembership()) {
+            res.status(400).json({
+                success: false,
+                message: 'User Already has an active membership, You can not request membership when User has a membership active',
+
+                data: null
+            });
+            return;
+        }
 
 
 
+        // // Validate request body
+        const validatedData = await membershipRequestSchema.parseAsync(req.body);
+        const startDate = new Date(validatedData.startDate);
 
-
-router.post('/membership-request' , async function (req : Request , res : Response) :Promise<any>{ 
-    try {
-        
-    } catch (error) {
-        console.error('[post Membership request api error]', error);
-        return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
+        // Create membership request
+        const membershipRequest = new MembershipRequest({
+            ...validatedData,
+            startDate,
+            requesterID: userId,
+            requestStatus: MembershipRequestStatus.PENDING,
+            requestDate: new Date(),
+            endDate: new Date(startDate.getTime() + validatedData.duration * 30 * 24 * 60 * 60 * 1000)
         });
-    }
-})
 
+        await membershipRequest.save();
 
-router.delete('/membership-request' , async function (req : Request , res : Response) :Promise<any>{ 
-    try {
-        
+        return res.status(201).json({
+            success: true,
+            message: 'Membership request created successfully',
+            data: membershipRequest
+        });
+
     } catch (error) {
-        console.error('[delete Membership request api error]', error);
+        console.error('[Membership Request API Error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString()
+        });
+
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation error',
+                error: error.errors,
+                data: null
+            });
+        }
+
         return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
+            success: false,
+            message: 'Internal server error',
+            data: null
         });
     }
 });
+
+// // GET /membership-request - Get membership request history
+router.get('/membership-request', validateUser, async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        const userId = req.authSession.value.userId;
+        
+        // Validate query parameters
+        const validationResult = membershipRequestQuerySchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, status, count: shouldCount } = validationResult.data;
+
+        // Build query
+        const query: any = { requesterID: userId };
+        if (status && status !== 'all') {
+            query.requestStatus = status;
+        }
+
+        // Execute query with pagination
+        const requests = await MembershipRequest.find(query)
+            .sort({ requestDate: -1 })
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(10000); // Set maximum execution time
+
+        // Get total count if requested
+        let totalCount: number | undefined;
+
+        if (shouldCount === 'yes') {
+            totalCount = await MembershipRequest.countDocuments(query)
+                .maxTimeMS(5000);
+        }
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalRequests: totalCount
+            };
+        }
+
+        // Set cache headers
+        res.set('Cache-Control', 'private, max-age=30'); // Cache for 30 seconds, private because it's user-specific
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                requests,
+                pagination,
+                filterCriteria: {
+                    status
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('[Get Membership History API Error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString(),
+            userId: req.authSession?.value?.userId
+        });
+
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation error',
+                error: error.errors,
+                data: null
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+// PUT /membership-request/cancel - Cancel pending membership request
+router.put('/membership-request/cancel', validateUser, async function (req: Request, res: Response): Promise<any> {
+    try {
+        const userId = req.authSession.value.userId;
+
+        const membershipRequest = await MembershipRequest.findOne({
+            requesterID: userId,
+            requestStatus: MembershipRequestStatus.PENDING
+        });
+
+        if (!membershipRequest) {
+            return res.status(404).json({
+                success: false,
+                message: 'No pending membership request found',
+                data: null
+            });
+        }
+
+        membershipRequest.cancel();
+        await membershipRequest.save();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Membership request cancelled successfully',
+            data: membershipRequest
+        });
+
+    } catch (error) {
+        console.error('[Cancel Membership Request API Error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString()
+        });
+
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+// DELETE /membership-request - Delete cancelled membership request
+router.delete('/membership-request', validateUser, async function (req: Request, res: Response): Promise<any> {
+    try {
+        const userId = req.authSession.value.userId;
+
+        const membershipRequest = await MembershipRequest.findOne({
+            requesterID: userId,
+            requestStatus: MembershipRequestStatus.CANCELLED
+        });
+
+        if (!membershipRequest) {
+            return res.status(404).json({
+                success: false,
+                message: 'No cancelled membership request found',
+                data: null
+            });
+        }
+
+        await membershipRequest.deleteOne();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Membership request deleted successfully',
+            data: null
+        });
+
+    } catch (error) {
+        console.error('[Delete Membership Request API Error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString()
+        });
+
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
 
 
 

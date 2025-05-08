@@ -1,7 +1,7 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 import mongoose, { Schema } from 'mongoose';
-import { IUser, ProfileCreatedBy, Gender, Height, Religion, Language, EducationLevel, SettingsType, MaritalStatus, Occupation } from '../lib/types/user.types';
+import { IUser, ProfileCreatedBy, Gender, Height, Religion, Language, EducationLevel, SettingsType, MaritalStatus, Occupation, IUserMembership } from '../lib/types/user.types';
 import { countryCodes } from '../lib/data/countryCodes';
 import countryNames from '../lib/data/countryNames';
 import generateMatrimonyId from '../lib/core/mid-geneator';
@@ -117,21 +117,15 @@ const blockedProfileSchema = new Schema({
     reason: String
 });
 
-const userMembershipSchema = new Schema({
+const userMembershipSchema = new Schema<IUserMembership >({
     currentMembership: {
         requestId: {
             type: Schema.Types.ObjectId,
             ref: 'MembershipRequest',
             required: false
         },
-    },
-    membershipRequestHistory: [{
-        requestId: {
-            type: Schema.Types.ObjectId,
-            ref: 'MembershipRequest',
-            required: false
-        },
-    }]
+        membership_exipation_date : Date
+    }
 });
 
 
@@ -147,6 +141,248 @@ const suspensionEntrySchema = new Schema({
     }
 });
 
+const settingsSchema = new Schema({
+    notifications: {
+        dailyRecommendations: {
+            type: String,
+            required: true,
+            enum: Object.values(SettingsType),
+            default: Object.values(SettingsType)[0]
+        },
+        todaysMatch: {
+            type: String,
+            required: true,
+            enum: Object.values(SettingsType),
+            default: Object.values(SettingsType)[0]
+        },
+        viewedMyProfile: {
+            type: String,
+            required: true,
+            enum: Object.values(SettingsType),
+            default: Object.values(SettingsType)[0]
+        },
+    },
+    privacy: {
+        sendNotificationOnProfileView: {
+            type: String,
+            required: true,
+            enum: Object.values(SettingsType),
+            default: Object.values(SettingsType)[0]
+        }
+    }
+})
+
+const onlineStatusSchema = new Schema( {
+    isOnline: {
+        type: Boolean,
+        default: false,
+        required: true
+    },
+    lastSeen: {
+        type: Date,
+        default: Date.now,
+    },
+    lastActive: {
+        type: Date,
+        default: Date.now,
+    }
+});
+const enhancedSettingsSchema = new Schema({
+    blocked: [blockedProfileSchema],
+    privacy: {
+        whoCanViewProfile: {
+            type: String,
+            enum: Object.values(SettingsPermissionType),
+            default: SettingsPermissionType.EVERYONE
+        },
+        whoCanContactMe: {
+            type: String,
+            enum: Object.values(SettingsPermissionType),
+            default: SettingsPermissionType.EVERYONE
+        },
+        showShortlistedNotification: {
+            type: Boolean,
+            default: true
+        },
+        showProfileViewNotification: {
+            type: Boolean,
+            default: true
+        }
+    },
+    notifications: {
+        dailyRecommendations: {
+            type: Boolean,
+            default: true
+        },
+        todaysMatch: {
+            type: Boolean,
+            default: true
+        },
+        profileViews: {
+            type: Boolean,
+            default: true
+        },
+        shortlists: {
+            type: Boolean,
+            default: true
+        },
+        messages: {
+            type: Boolean,
+            default: true
+        },
+        connectionRequests: {
+            type: Boolean,
+            default: true
+        }
+    }
+});
+
+const addressSchema = new Schema({
+ 
+        country: {
+            type: String,
+            required: true,
+            minlength: 2,
+            maxlength: 100,
+            default : "Bangladesh",
+            enum : countryNames
+        },
+        state: {
+            name: {
+                type: String,
+                trim: true
+            },
+            id : {
+                type : String
+            },
+            country_name : {
+                type : String
+            }
+        },
+        division: {
+            id: {
+                type: String,
+                required: function (this: any) {
+                    return this.country === "Bangladesh";
+                }
+            },
+            name: {
+                type: String,
+                required: function (this: any) {
+                    return this.country === "Bangladesh";
+                }
+            },
+            bd_name: {
+                type: String,
+                required: function (this: any) {
+                    return this.country === "Bangladesh";
+                }
+            }
+        },
+        district: {
+            id: {
+                type: String,
+                required: function (this: any) {
+                    return this.country === "Bangladesh";
+                }
+            },
+            division_id: {
+                type: String,
+                required: function (this: any) {
+                    return this.country === "Bangladesh";
+                },
+                
+            },
+            name: {
+                type: String,
+                required: function (this: any) {
+                    return this.country === "Bangladesh";
+                }
+            },
+            bn_name: {
+                type: String,
+                required: function (this: any) {
+                    return this.country === "Bangladesh";
+                }
+            },
+            lat: Number,
+            long: Number
+        },
+        upazila: {
+            id: {
+                type: String,
+                required: function (this: any) {
+                    return this.country === "Bangladesh";
+                }
+            },
+            district_id: {
+                type: String,
+                required: function (this: any) {
+                    return this.country === "Bangladesh";
+                },
+            
+            },
+            name: {
+                type: String,
+                required: function (this: any) {
+                    return this.country === "Bangladesh";
+                }
+            },
+            bn_name: {
+                type: String,
+             
+            }
+        },
+        union: {
+            id: {
+                type: String,
+                required: function (this: any) {
+                    return this.country === "Bangladesh";
+                }
+            },
+            upazilla_id: {
+                type: String,
+                required: function (this: any) {
+                    return this.country === "Bangladesh";
+                },
+           
+            },
+            name: {
+                type: String,
+                required: function (this: any) {
+                    return this.country === "Bangladesh";
+                }
+            },
+            bn_name: {
+                type: String,
+                required: function (this: any) {
+                    return this.country === "Bangladesh";
+                }
+            }
+        }
+    
+    
+});
+
+const phoneInfoSchema = new Schema({
+    number: {
+        type: String,
+        required: true
+    },
+    country: {
+        name: {
+            type: String,
+            enum: countryCodes.map(element => element.country),
+            required: true
+        },
+        phone_code: {
+            type: String,
+            required: true,
+            enum: countryCodes.map(element => element.code),
+            maxlength: 5
+        }
+    }
+});
 
 const userSchema = new Schema<IUser>({
     mid : {
@@ -170,12 +406,14 @@ const userSchema = new Schema<IUser>({
     profileImage: {
         url: {
             type: String,
-            required: function () { return !!this.profileImage?.id }
         },
         id: {
             type: String,
-            required: function () { return !!this.profileImage?.url }
         }
+    },
+    coverImage: {
+        url: String,
+        id: String
     },
     userImages: [{
         url: {
@@ -256,151 +494,11 @@ const userSchema = new Schema<IUser>({
     }],
     
     address: {
-        type: {
-            country: {
-                type: String,
-                required: true,
-                minlength: 2,
-                maxlength: 100,
-                default : "Bangladesh",
-                enum : countryNames
-            },
-            state: {
-                name: {
-                    type: String,
-                    trim: true
-                },
-                id : {
-                    type : String
-                },
-                country_name : {
-                    type : String
-                }
-            },
-            division: {
-                id: {
-                    type: String,
-                    required: function (this: any) {
-                        return this.country === "Bangladesh";
-                    }
-                },
-                name: {
-                    type: String,
-                    required: function (this: any) {
-                        return this.country === "Bangladesh";
-                    }
-                },
-                bd_name: {
-                    type: String,
-                    required: function (this: any) {
-                        return this.country === "Bangladesh";
-                    }
-                }
-            },
-            district: {
-                id: {
-                    type: String,
-                    required: function (this: any) {
-                        return this.country === "Bangladesh";
-                    }
-                },
-                division_id: {
-                    type: String,
-                    required: function (this: any) {
-                        return this.country === "Bangladesh";
-                    },
-                    
-                },
-                name: {
-                    type: String,
-                    required: function (this: any) {
-                        return this.country === "Bangladesh";
-                    }
-                },
-                bn_name: {
-                    type: String,
-                    required: function (this: any) {
-                        return this.country === "Bangladesh";
-                    }
-                },
-                lat: Number,
-                long: Number
-            },
-            upazila: {
-                id: {
-                    type: String,
-                    required: function (this: any) {
-                        return this.country === "Bangladesh";
-                    }
-                },
-                district_id: {
-                    type: String,
-                    required: function (this: any) {
-                        return this.country === "Bangladesh";
-                    },
-                
-                },
-                name: {
-                    type: String,
-                    required: function (this: any) {
-                        return this.country === "Bangladesh";
-                    }
-                },
-                bn_name: {
-                    type: String,
-                 
-                }
-            },
-            union: {
-                id: {
-                    type: String,
-                    required: function (this: any) {
-                        return this.country === "Bangladesh";
-                    }
-                },
-                upazilla_id: {
-                    type: String,
-                    required: function (this: any) {
-                        return this.country === "Bangladesh";
-                    },
-               
-                },
-                name: {
-                    type: String,
-                    required: function (this: any) {
-                        return this.country === "Bangladesh";
-                    }
-                },
-                bn_name: {
-                    type: String,
-                    required: function (this: any) {
-                        return this.country === "Bangladesh";
-                    }
-                }
-            }
-        },
+        type : addressSchema ,
         required: true
     },
 
-    phoneInfo: {
-        number: {
-            type: String,
-            required: true
-        },
-        country: {
-            name: {
-                type: String,
-                enum: countryCodes.map(element => element.country),
-                required: true
-            },
-            phone_code: {
-                type: String,
-                required: true,
-                enum: countryCodes.map(element => element.code),
-                maxlength: 5
-            }
-        }
-    },
+    phoneInfo: phoneInfoSchema,
 
     languages: [{
         type: String,
@@ -426,8 +524,7 @@ const userSchema = new Schema<IUser>({
         required: false
     },
 
-    annualIncome: {
-        
+    annualIncome: {  
         amount: {
             type: Number,
             required: false,
@@ -505,36 +602,7 @@ const userSchema = new Schema<IUser>({
         required: true,
         default: Date.now
     },
-    settings: {
-        notifications: {
-            dailyRecommendations: {
-                type: String,
-                required: true,
-                enum: Object.values(SettingsType),
-                default: Object.values(SettingsType)[0]
-            },
-            todaysMatch: {
-                type: String,
-                required: true,
-                enum: Object.values(SettingsType),
-                default: Object.values(SettingsType)[0]
-            },
-            viewedMyProfile: {
-                type: String,
-                required: true,
-                enum: Object.values(SettingsType),
-                default: Object.values(SettingsType)[0]
-            },
-        },
-        privacy: {
-            sendNotificationOnProfileView: {
-                type: String,
-                required: true,
-                enum: Object.values(SettingsType),
-                default: Object.values(SettingsType)[0]
-            }
-        }
-    },
+    settings: settingsSchema,
    
     password: {
         hashed: {
@@ -546,76 +614,11 @@ const userSchema = new Schema<IUser>({
             required: true
         },
     },
-    onlineStatus: {
-        isOnline: {
-            type: Boolean,
-            default: false,
-            required: true
-        },
-        lastSeen: {
-            type: Date,
-            default: Date.now,
-        },
-        lastActive: {
-            type: Date,
-            default: Date.now,
-        }
-    },
+    onlineStatus:onlineStatusSchema,
     aboutMe: aboutMeSchema,
     familyInfo: familyInfoSchema,
-    coverImage: {
-        url: String,
-        id: String
-    },
-    enhancedSettings: {
-        blocked: [blockedProfileSchema],
-        privacy: {
-            whoCanViewProfile: {
-                type: String,
-                enum: Object.values(SettingsPermissionType),
-                default: SettingsPermissionType.EVERYONE
-            },
-            whoCanContactMe: {
-                type: String,
-                enum: Object.values(SettingsPermissionType),
-                default: SettingsPermissionType.EVERYONE
-            },
-            showShortlistedNotification: {
-                type: Boolean,
-                default: true
-            },
-            showProfileViewNotification: {
-                type: Boolean,
-                default: true
-            }
-        },
-        notifications: {
-            dailyRecommendations: {
-                type: Boolean,
-                default: true
-            },
-            todaysMatch: {
-                type: Boolean,
-                default: true
-            },
-            profileViews: {
-                type: Boolean,
-                default: true
-            },
-            shortlists: {
-                type: Boolean,
-                default: true
-            },
-            messages: {
-                type: Boolean,
-                default: true
-            },
-            connectionRequests: {
-                type: Boolean,
-                default: true
-            }
-        }
-    },
+  
+    enhancedSettings: enhancedSettingsSchema,
     // Memberships 
     membership :userMembershipSchema,
 
@@ -629,33 +632,20 @@ const userSchema = new Schema<IUser>({
 
 });
 
-userSchema.methods.hasMembership = function() {
-    return this.membership && 
-           this.membership.currentMembership && 
-           this.membership.currentMembership.isActive;
-};
+
 
 userSchema.methods.hasActiveMembership = function() {
-    if (!this.hasMembership()) return false;
-    
-    const now = new Date();
-    return this.membership.currentMembership.isActive && 
-           now >= this.membership.currentMembership.startDate && 
-           now <= this.membership.currentMembership.endDate;
+    if ( !this.currentMembership.requestId  || !this.currentMembership.membership_exipation_date ) return false ;
+    else if (Date.now() > this.currentMembership.membership_exipation_date.getTime() ) return true;
+    else return false;
 };
 
-userSchema.methods.canViewVerifiedMail = function() {
-    return this.hasActiveMembership() && this.membership.verifiedMailsRemaining > 0;
-};
+userSchema.methods.getActiveMembershipID =  function() {
+    if (!this.hasActiveMembership()) throw new Error("This member does not have a any active membership");
+    return this.currentMembership.requestId;
+}
 
-userSchema.methods.useVerifiedMail = function() {
-    if (this.canViewVerifiedMail()) {
-        this.membership.verifiedMailsViewed += 1;
-        this.membership.verifiedMailsRemaining -= 1;
-        return true;
-    }
-    return false;
-};
+
 
 userSchema.methods.hasProfileHighlighter = function() {
     return this.hasActiveMembership() && this.membership.hasProfileHighlighter;

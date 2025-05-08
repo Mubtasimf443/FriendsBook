@@ -5,7 +5,7 @@ import { EducationLevel, Education ,EducationPreference , CertificateType } from
 import { ICity, IDistrict, IDivision, IState, IUpazila } from './location.types';
 import { CountryNamesEnum } from './country_names.enum';
 import { IAboutMe  , IFamilyInfo , IEnhancedPrivacySettings, IEnhancedUserSettings } from './userProfile.types';
-import { IMembership , MembershipTier , MembershipDuration} from './memberdship.types';
+import {  MembershipTier , MembershipDuration} from './memberdship.types';
 
 export enum ProfileCreatedBy {
     SELF = 'self',
@@ -437,17 +437,11 @@ interface ISuspension {
 
 export interface IUserMembership {
     currentMembership: {
-        membershipId: mongoose.Types.ObjectId;
-        tier: MembershipTier;
-        duration: MembershipDuration;
-        startDate: Date;
-        endDate: Date;
-        isActive: boolean;
+        requestId : string;
+        membership_exipation_date : Date,
     };
-    membershipHistory: mongoose.Types.ObjectId[];
-    verifiedMailsViewed: number;
-    verifiedMailsRemaining: number;
-    hasProfileHighlighter: boolean;
+  
+   
 }
 
 
@@ -484,6 +478,7 @@ export interface IUser extends Document {
     annualIncome?: IAnualIncome;
     createPreference(): void;
     createMID(): string;
+    hasActiveMembership() : boolean;
     membership?: IUserMembership;
     
 }

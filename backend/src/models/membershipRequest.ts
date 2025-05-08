@@ -1,7 +1,7 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 import mongoose, { Schema } from 'mongoose';
-import { IMembershipRequest, MembershipTier, MembershipDuration, MembershipRequestStatus } from '../lib/types/memberdship.types';
+import { IMembershipRequest, MembershipTier, MembershipDuration, MembershipRequestStatus, PaymentMethod } from '../lib/types/memberdship.types';
 
 const verificationImageSchema = new Schema(
     {
@@ -44,11 +44,6 @@ const paymentInfoSchema = new Schema(
             minlength: 3,
             maxlength: 3,
             default: 'BDT'
-        },
-        paymentMethod: {
-            type: String,
-            required: true,
-            trim: true
         },
         paymentMethod: {
             type: String,

@@ -18,6 +18,8 @@ router.get('/membership-request' ,async function (req : Request , res : Response
     }
 });
 
+
+
 router.put('/membership-request' ,async function (req : Request , res : Response) :Promise<any>{
     try {
         
@@ -30,6 +32,8 @@ router.put('/membership-request' ,async function (req : Request , res : Response
         });
     }
 });
+
+
 
 
 
