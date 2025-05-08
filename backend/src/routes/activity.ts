@@ -6,7 +6,16 @@ import { ShortList } from "../models/ShortListedProfiles";
 import { ProfileView } from "../models/ProfileView";
 import { z } from "zod";
 import { _idValidator } from "../lib/schema/schemaComponents";
-import { shortListSchema } from "../lib/schema/activity.schema";
+import { 
+    shortListSchema ,
+    likeProfileSchema ,
+    sendMailSchema,
+    sendSmsSchema
+} from "../lib/schema/activity.schema";
+import { LikedProfile } from "../models/LikedProfile";
+import { SmsSendedProfile } from "../models/SmsSendedProfile";
+import { SendMailedProfile } from "../models/SendMailedProfile";
+
 
 const router: Router = express.Router();
 
@@ -226,6 +235,287 @@ router.post('/users/visit-profile', async function (req: Request, res: Response)
         });
     }
 });
+
+
+router.post('/users/like-profile', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        const validation = likeProfileSchema.safeParse(req.body);
+        if (!validation.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid input",
+                errors: validation.error.errors
+            });
+        }
+
+        const likerId = req.authSession.value.userId;
+        const { likedId } = validation.data;
+
+        // Check if liked profile exists and is not suspended
+        const likedUser = await User.findOne({
+            _id: likedId,
+            'suspension.isSuspended': false
+        });
+
+        if (!likedUser) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found or is suspended"
+            });
+        }
+
+        // Prevent self-like recording
+        if (likerId === likedId) {
+            return res.status(400).json({
+                success: false,
+                message: "Self-like not allowed"
+            });
+        }
+
+        // Find existing like or create new one
+        const existingLike = await LikedProfile.findOne({ likerId, likedId });
+
+        if (existingLike) {
+            // Add new timestamp to existing likedAt array
+            existingLike.likedAt.push(new Date());
+            await existingLike.save();
+        } else {
+            // Create new like record
+            await LikedProfile.create({
+                likerId,
+                likedId,
+                likedAt: [new Date()]
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile like recorded"
+        });
+
+    } catch (error) {
+        console.error("[Profile like error]:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+});
+
+// Record email sent to profile
+router.post('/users/send-mail', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        const validation = sendMailSchema.safeParse(req.body);
+        if (!validation.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid input",
+                errors: validation.error.errors
+            });
+        }
+
+        const senderId = req.authSession.value.userId;
+        const { receiverId, message } = validation.data;
+
+        // Check if receiver exists and is not suspended
+        const receiverUser = await User.findOne({
+            _id: receiverId,
+            'suspension.isSuspended': false
+        });
+
+        if (!receiverUser) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found or is suspended"
+            });
+        }
+
+        // Prevent sending mail to self
+        if (senderId === receiverId) {
+            return res.status(400).json({
+                success: false,
+                message: "Cannot send mail to yourself"
+            });
+        }
+
+        // Find existing mail record or create new one
+        const existingMail = await SendMailedProfile.findOne({ senderId, receiverId });
+
+        if (existingMail) {
+            // Add new timestamp to existing emailedAt array
+            existingMail.emailedAt.push(new Date());
+            await existingMail.save();
+        } else {
+            // Create new mail record
+            await SendMailedProfile.create({
+                senderId,
+                receiverId,
+                emailType: 'INTEREST',
+                emailStatus: 'PENDING',
+                emailedAt: [new Date()]
+            });
+        }
+
+        // TODO: Implement actual email sending logic here
+        // This would typically involve a messaging queue and separate worker
+
+        return res.status(200).json({
+            success: true,
+            message: "Email queued for sending"
+        });
+
+    } catch (error) {
+        console.error("[Send mail error]:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+});
+
+// Record SMS sent to profile
+router.post('/users/send-sms', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        const validation = sendSmsSchema.safeParse(req.body);
+        if (!validation.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid input",
+                errors: validation.error.errors
+            });
+        }
+
+        const senderId = req.authSession.value.userId;
+        const { receiverId, message } = validation.data;
+
+        // Check if receiver exists and is not suspended
+        const receiverUser = await User.findOne({
+            _id: receiverId,
+            'suspension.isSuspended': false
+        });
+
+        if (!receiverUser) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found or is suspended"
+            });
+        }
+
+        // Prevent sending SMS to self
+        if (senderId === receiverId) {
+            return res.status(400).json({
+                success: false,
+                message: "Cannot send SMS to yourself"
+            });
+        }
+
+        // Find existing SMS record or create new one
+        const existingSms = await SmsSendedProfile.findOne({ senderId, receiverId });
+
+        if (existingSms) {
+            // Add new timestamp to existing sentAt array
+            existingSms.sentAt.push(new Date());
+            await existingSms.save();
+        } else {
+            // Create new SMS record
+            await SmsSendedProfile.create({
+                senderId,
+                receiverId,
+                smsType: 'INTEREST',
+                smsStatus: 'PENDING',
+                sentAt: [new Date()]
+            });
+        }
+
+        // TODO: Implement actual SMS sending logic here
+        // This would typically involve an SMS gateway service
+
+        return res.status(200).json({
+            success: true,
+            message: "SMS queued for sending"
+        });
+
+    } catch (error) {
+        console.error("[Send SMS error]:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+});
+
+// Get activity history
+router.get('/users/activity-history', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        const userId = req.authSession.value.userId;
+        const type = req.query.type as string;
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
+        const skip = (page - 1) * limit;
+
+        let activities;
+        let total = 0;
+
+        switch (type) {
+            case 'likes':
+                activities = await LikedProfile.find({ likerId: userId })
+                    .sort({ 'likedAt': -1 })
+                    .skip(skip)
+                    .limit(limit)
+                    .populate('likedId', 'name profileImage');
+                total = await LikedProfile.countDocuments({ likerId: userId });
+                break;
+
+            case 'emails':
+                activities = await SendMailedProfile.find({ senderId: userId })
+                    .sort({ 'emailedAt': -1 })
+                    .skip(skip)
+                    .limit(limit)
+                    .populate('receiverId', 'name profileImage');
+                total = await SendMailedProfile.countDocuments({ senderId: userId });
+                break;
+
+            case 'sms':
+                activities = await SmsSendedProfile.find({ senderId: userId })
+                    .sort({ 'sentAt': -1 })
+                    .skip(skip)
+                    .limit(limit)
+                    .populate('receiverId', 'name profileImage');
+                total = await SmsSendedProfile.countDocuments({ senderId: userId });
+                break;
+
+            default:
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid activity type"
+                });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                activities,
+                pagination: {
+                    page,
+                    limit,
+                    total,
+                    pages: Math.ceil(total / limit)
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error("[Activity history error]:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+});
+
+
+
+
 
 
 
