@@ -8,36 +8,26 @@ import { CurrencyCode } from '../types/currencyCodes.enum';
 import { countriesValidator, countValidation, division_ids_valdator, educationLevelsValidator, incomeCurrencyValidator, languagesValdator, limitValidation, maritalStatusesValdator, occupationsValidator, pageValidation, religionValidator } from './schemaComponents';
 
 
-
-export const searchQuertSchema = z.object({
+export const paginationSchema = z.object({
     page: pageValidation,
     limit: limitValidation,
     count: countValidation
 });
+
+
+
 
 
 export const todaysMatchSchema = z.object({ limit: limitValidation })
 
 
 // Add this new schema for just-joined endpoint
-export const justJoinedSchema = z.object({
+export const justJoinedSchema = paginationSchema.extend({
     timeRange: z.optional(z.enum(['7', '15', '30'])).default('7'),
-    limit: limitValidation,
-    page: pageValidation,
-    count: countValidation
-});
+})
 
-export const notViewedSchema = z.object({
-    page: pageValidation,
-    limit: limitValidation,
-    count: countValidation,
-});
 
-export const onlineUsersSchema = z.object({
-    page: pageValidation,
-    limit: limitValidation,
-    count: countValidation,
-});
+
 
 
 /* Add these new schemas to your existing search.schema.ts */
@@ -49,7 +39,7 @@ export const getUserByMIDSchema = z.object({
 
 
 
-   
+
 
 // Type for TypeScript type checking
 export type FilterUsersQueryParams = z.infer<typeof filterUsersSchema>;
@@ -57,17 +47,11 @@ export type FilterUsersQueryParams = z.infer<typeof filterUsersSchema>;
 
 // Add these new schemas for preferred searches
 
-export const preferredEducationSearchSchema = z.object({
-    page: pageValidation,
-    limit: limitValidation,
-    count:countValidation,
-    educationLevels:educationLevelsValidator
+export const preferredEducationSearchSchema =  paginationSchema.extend({
+    educationLevels: educationLevelsValidator
 });
 
-export const preferredLocationSearchSchema = z.object({
-    page: pageValidation,
-    limit: limitValidation,
-    count: countValidation,
+export const preferredLocationSearchSchema =  paginationSchema.extend({
     countries: countriesValidator,
     division_ids: division_ids_valdator,
 })
@@ -88,27 +72,20 @@ export const preferredLocationSearchSchema = z.object({
 
 // Add this new schema for preferred occupation search
 
-export const preferredOccupationSearchSchema = z.object({
-    page: pageValidation,
-    limit: limitValidation,
-    count: countValidation,
+export const preferredOccupationSearchSchema =  paginationSchema.extend({
     occupations: occupationsValidator
 });
 
-export const filterUsersSchema = z.object({
-    // Pagination params (keeping existing validation)
-    page: pageValidation,
-    limit: limitValidation,
-    count: countValidation,
+export const filterUsersSchema =  paginationSchema.extend({
 
     // Enums (keeping existing validation)
-    religion:religionValidator,
+    religion: religionValidator,
     languages: languagesValdator,
     countries: countriesValidator,
-    division_ids : division_ids_valdator,
+    division_ids: division_ids_valdator,
     isEducated: z.enum(['yes', 'no']).optional().default('yes').transform(val => val === 'yes'),
     maritalStatuses: maritalStatusesValdator,
-    occupations:occupationsValidator,
+    occupations: occupationsValidator,
 
     minWeight: z.string()
         .regex(/^\d+$/, "Must be a positive number")
@@ -166,7 +143,7 @@ export const filterUsersSchema = z.object({
         )
         .optional(),
 
-    
+
     minAnnualIncome: z.string()
         .regex(/^\d+$/, "Must be a positive number")
         .transform(Number)
@@ -184,7 +161,7 @@ export const filterUsersSchema = z.object({
                 .max(1000000000, "Maximum annual income cannot exceed 1 billion")
         )
         .optional(),
-    incomeCurrency:incomeCurrencyValidator
+    incomeCurrency: incomeCurrencyValidator
 })
     .refine(
         (data) => {
@@ -248,10 +225,10 @@ export const filterUsersSchema = z.object({
     )
     .refine(
         (data) => {
-            if (data.countries.includes(CountryNamesEnum.BANGLADESH) ) {
+            if (data.countries.includes(CountryNamesEnum.BANGLADESH)) {
                 if (data.division_ids.length === 0) {
                     return false;
-                }  
+                }
             }
             return true;
         },
@@ -259,4 +236,6 @@ export const filterUsersSchema = z.object({
             message: "Division IDs must be provided when country is Bangladesh",
             path: ["division_ids"]
         }
-    ) ;
+    );
+
+
