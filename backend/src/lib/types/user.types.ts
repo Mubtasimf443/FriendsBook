@@ -425,6 +425,13 @@ interface IAnualIncome {
     currency: string;
 }
 
+interface ISuspension {
+    isSuspended : boolean ;
+    suspensions : [{
+        reason : string ,
+        date : string;
+    }]
+}
 
 export interface IUser extends Document {
     mid :string;
@@ -452,7 +459,7 @@ export interface IUser extends Document {
     preferences: IUserPreferences;
     createdAt: Date;
     settings : UserSettings
-    isSuspended : boolean,
+    suspension : ISuspension,
     onlineStatus: IOnlineStatus;
     maritalStatus ?: MaritalStatus;
     occupation ?: Occupation;

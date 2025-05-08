@@ -30,6 +30,55 @@ const userImageSchema = z.object({
     id: z.string().optional()
 });
 
+const weightPreferenceSchema = z.object({
+    minWeight: z.number().min(30).max(200).optional(),
+    maxWeight: z.number().min(30).max(200).optional()
+}).optional().refine(data => {
+    if (data?.minWeight && data?.maxWeight) {
+        return data.minWeight <= data.maxWeight;
+    }
+    return true;
+}, {
+    message: "Minimum weight must be less than or equal to maximum weight"
+});
+
+const heightPreferenceSchema = z.object({
+    minHeight: z.number().min(3).max(9).optional(),
+    maxHeight: z.number().min(3).max(9).optional()
+}).optional().refine(data => {
+    if (data?.minHeight && data?.maxHeight) {
+        return data.minHeight <= data.maxHeight;
+    }
+    return true;
+}, {
+    message: "Minimum height must be less than or equal to maximum height"
+});
+
+const agePreferenceSchema = z.object({
+    minAge: z.number().min(18).max(70).optional(),
+    maxAge: z.number().min(18).max(70).optional()
+}).optional().refine(data => {
+    if (data?.minAge && data?.maxAge) {
+        return data.minAge <= data.maxAge;
+    }
+    return true;
+}, {
+    message: "Minimum age must be less than or equal to maximum age"
+});
+
+const educationPreferenceSchema = z.object({
+    level: z.nativeEnum(EducationLevel)
+});
+
+const preferencesSchema = z.object({
+    isEducated: z.boolean().optional(),
+    education: z.array(educationPreferenceSchema).optional(),
+    location: z.array(z.string()).optional(),
+    weight: weightPreferenceSchema,
+    height: heightPreferenceSchema,
+    age: agePreferenceSchema,
+    lastUpdated: z.date().optional()
+}).optional();
 
 const educationSchema = z.object({
     level: z.nativeEnum(EducationLevel),
@@ -127,27 +176,43 @@ const enhancedSettingsSchema = z.object({
     }).optional()
 }).optional();
 
-// Main update schema
 export const updateUserSchema = z.object({
+    // Basic Information
     name: z.string().min(1).optional(),
+    gender: z.nativeEnum(Gender).optional(),
+    dateOfBirth: z.string().datetime().optional(),
+    age: z.number().int().min(18).max(70).optional(),
+    
+    // Physical Attributes
+    height: z.nativeEnum(Height).optional(),
+    weight: z.number().min(30).max(200).optional(),
+    
+    // Profile Media
     profileImage: userImageSchema.optional(),
     userImages: z.array(userImageSchema).optional(),
     coverImage: userImageSchema.optional(),
-    gender: z.nativeEnum(Gender).optional(),
-    dateOfBirth: z.string().datetime().optional(),
-    height: z.nativeEnum(Height).optional(),
-    weight: z.number().min(30).max(200).optional(),
+    
+    // Education & Career
     isEducated: z.boolean().optional(),
     education: z.array(educationSchema).optional(),
+    occupation: z.nativeEnum(Occupation).optional(),
+    annualIncome: annualIncomeSchema,
+    
+    // Location & Contact
     address: addressSchema,
     phoneInfo: phoneInfoSchema,
+    
+    // Personal Background
     languages: z.array(z.nativeEnum(Language)).optional(),
     religion: z.nativeEnum(Religion).optional(),
     maritalStatus: z.nativeEnum(MaritalStatus).optional(),
-    occupation: z.nativeEnum(Occupation).optional(),
-    annualIncome: annualIncomeSchema,
+    
+    // Additional Information
     aboutMe: aboutMeSchema,
     familyInfo: familyInfoSchema,
+    
+    // Preferences & Settings
+    preferences: preferencesSchema,
     enhancedSettings: enhancedSettingsSchema
 });
 

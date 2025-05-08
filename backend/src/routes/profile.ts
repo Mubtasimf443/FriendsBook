@@ -7,7 +7,7 @@ import { IAuthSession } from "../models/AuthSession";
 import { User } from "../models/user";
 import { _idValidator } from "../lib/schema/schemaComponents";
 import { formatDistanceToNow } from 'date-fns';
-import { object, z } from 'zod';
+import { array, object, z } from 'zod';
 import queryMiddleware from "../lib/middlewares/query.middleware";
 import { userDetailsQuerySchema } from "../lib/schema/profile.schema";
 import { updateUserSchema, UpdateUserInput } from '../lib/schema/updateUser.schema';
@@ -94,9 +94,6 @@ router.get('/user-details', async function (req: Request, res: Response): Promis
     }
 });
 
-
-
-
 router.put('/user-details', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // 1. Parse and validate request body
@@ -105,36 +102,71 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         // 2. Get user ID from auth session
         const userId = req.authSession.value.userId;
 
-        let updatesData :any={};
+        let updatesData: any = {};
       
+        // Basic Information
         if (updateData.name) updatesData['name'] = updateData.name;
-        if (updateData.gender) updatesData['age'] = updateData.gender;
-        // if (updateData.age) updatesData['age'] = updateData.age;
+        if (updateData.gender) updatesData['gender'] = updateData.gender;
+        if (updateData.dateOfBirth) updatesData['dateOfBirth'] = updateData.dateOfBirth;
+        if (updateData.age) updatesData['age'] = updateData.age;
         if (updateData.weight) updatesData['weight'] = updateData.weight;
-        if (updateData.height) updatesData['weight'] = updateData.height;
+        if (updateData.height) updatesData['height'] = updateData.height;
+        if (updateData.maritalStatus) updatesData['maritalStatus'] = updateData.maritalStatus;
+        
 
-     
+        if (updateData.phoneInfo) updatesData['phoneInfo'] = updateData.phoneInfo;
+        if (updateData.address) updatesData['address'] = updateData.address;
+        
+        // Background Information
+        if (updateData.religion) updatesData['religion'] = updateData.religion;
+        if (updateData.languages) updatesData['languages'] = updateData.languages;
+        
+        // Education & Career
+        if (updateData.isEducated !== undefined) updatesData['isEducated'] = updateData.isEducated;
+        if (updateData.education) updatesData['education'] = updateData.education;
+        if (updateData.occupation) updatesData['occupation'] = updateData.occupation;
+        if (updateData.annualIncome) updatesData['annualIncome'] = updateData.annualIncome;
+        
+        // Profile Media
+        if (updateData.profileImage) updatesData['profileImage'] = updateData.profileImage;
+        if (updateData.coverImage) updatesData['coverImage'] = updateData.coverImage;
+        if (updateData.userImages) updatesData['userImages'] = updateData.userImages;
+        
+        // Additional Information
+        if (updateData.aboutMe) updatesData['aboutMe'] = updateData.aboutMe;
+        if (updateData.familyInfo) updatesData['familyInfo'] = updateData.familyInfo;
+        
+        // Preferences
+        if (updateData.preferences) updatesData['preferences'] = updateData.preferences;
+        
+        // Settings
+        if (updateData.enhancedSettings) updatesData['enhancedSettings'] = updateData.enhancedSettings;
 
+        // Filter out undefined values
         updatesData = Object.fromEntries(
             Object.entries(updatesData).filter(([_, value]) => value !== undefined)
-        )
+        );
 
-        if (Object.values(updatesData).length === 0) {
-            res.status(400).json({
+        if (Object.keys(updatesData).length === 0) {
+            return res.status(400).json({
                 success: false,
-                message: 'No Perameter found to Update the user',
+                message: 'No parameters found to update the user',
                 data: null
             });
-            return;
         }
 
-   
+        // Add last update timestamp
+        updatesData['lastUpdated'] = new Date();
 
+        // Update the user and return the new document
         const updatedUser = await User.findByIdAndUpdate(
             userId,
             { $set: updatesData },
+            { 
+                new: true, // Return the updated document
+                runValidators: true // Run model validators
+            }
         );
-
 
         if (!updatedUser) {
             return res.status(404).json({
@@ -144,7 +176,6 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
             });
         }
 
-       
 
         return res.status(200).json({
             success: true,
@@ -152,8 +183,12 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
             data: updatedUser
         });
 
-    } catch (error : any) {
-        console.error('[User Details Update api error]', error);
+    } catch (error: any) {
+        console.error('[User Details Update api error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString()
+        });
         
         if (error instanceof z.ZodError) {
             return res.status(400).json({
@@ -164,11 +199,12 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
             });
         }
 
-        if ( error?.code == 11000) { 
+        if (error?.code === 11000) { 
             return res.status(409).json({
                 success: false,
                 message: 'MongoDB duplicate key error',
-                data: null
+                data: null,
+                error: Object.keys(error.keyPattern).join(', ') + ' already exists'
             });
         }
 
@@ -179,5 +215,4 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         });
     }
 });
-
 export default router;
