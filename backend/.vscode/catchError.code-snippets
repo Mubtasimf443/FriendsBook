@@ -10,7 +10,7 @@
 		"scope": "typescript,javascript",
 		"prefix": "capi",
 		"body": [
-			"console.error('', error);",
+			"console.error('[$1]', error);",
 			"return res.status(500).json({",
 			"   success: false,",
 			"   message: 'Internal server error',",

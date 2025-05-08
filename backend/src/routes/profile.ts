@@ -7,10 +7,10 @@ import { IAuthSession } from "../models/AuthSession";
 import { User } from "../models/user";
 import { _idValidator } from "../lib/schema/schemaComponents";
 import { formatDistanceToNow } from 'date-fns';
-import { z } from 'zod';
-import createHttpError from 'http-errors';
+import { object, z } from 'zod';
 import queryMiddleware from "../lib/middlewares/query.middleware";
 import { userDetailsQuerySchema } from "../lib/schema/profile.schema";
+import { updateUserSchema, UpdateUserInput } from '../lib/schema/updateUser.schema';
 
 const router: Router = Router();
 
@@ -31,8 +31,6 @@ declare global {
         }
     }
 }
-
-
 
 router.get('/user-details', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -61,8 +59,6 @@ router.get('/user-details', async function (req: Request, res: Response): Promis
 
         // Format user details
         const userDetails :any= user;
-
-
 
         return res.status(200).json({
             success: true,
@@ -93,6 +89,92 @@ router.get('/user-details', async function (req: Request, res: Response): Promis
             success: false,
             message: 'Internal server error',
             error: 'InternalServerError',
+            data: null
+        });
+    }
+});
+
+
+
+
+router.put('/user-details', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        // 1. Parse and validate request body
+        const updateData = await updateUserSchema.parseAsync(req.body);
+        
+        // 2. Get user ID from auth session
+        const userId = req.authSession.value.userId;
+
+        let updatesData :any={};
+      
+        if (updateData.name) updatesData['name'] = updateData.name;
+        if (updateData.gender) updatesData['age'] = updateData.gender;
+        // if (updateData.age) updatesData['age'] = updateData.age;
+        if (updateData.weight) updatesData['weight'] = updateData.weight;
+        if (updateData.height) updatesData['weight'] = updateData.height;
+
+     
+
+        updatesData = Object.fromEntries(
+            Object.entries(updatesData).filter(([_, value]) => value !== undefined)
+        )
+
+        if (Object.values(updatesData).length === 0) {
+            res.status(400).json({
+                success: false,
+                message: 'No Perameter found to Update the user',
+                data: null
+            });
+            return;
+        }
+
+   
+
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: updatesData },
+        );
+
+
+        if (!updatedUser) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+                data: null
+            });
+        }
+
+       
+
+        return res.status(200).json({
+            success: true,
+            message: 'User details updated successfully',
+            data: updatedUser
+        });
+
+    } catch (error : any) {
+        console.error('[User Details Update api error]', error);
+        
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation error',
+                data: null,
+                errors: error.errors
+            });
+        }
+
+        if ( error?.code == 11000) { 
+            return res.status(409).json({
+                success: false,
+                message: 'MongoDB duplicate key error',
+                data: null
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
             data: null
         });
     }
