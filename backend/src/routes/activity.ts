@@ -144,6 +144,7 @@ router.put('/users/online/active', async function (req: Request, res: Response):
         });
     }
 });
+
 // Mark user as offline
 router.put('/users/online/in-active', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -167,6 +168,7 @@ router.put('/users/online/in-active', async function (req: Request, res: Respons
         });
     }
 });
+
 // Record profile visit
 router.post('/users/visit-profile', async function (req: Request, res: Response): Promise<Response | any> {
     try {
