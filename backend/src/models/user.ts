@@ -108,7 +108,7 @@ const blockedProfileSchema = new Schema({
     userId: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        required: false
     },
     blockedAt: {
         type: Date,
@@ -116,43 +116,22 @@ const blockedProfileSchema = new Schema({
     },
     reason: String
 });
+
 const userMembershipSchema = new Schema({
     currentMembership: {
-        membershipId: {
+        requestId: {
             type: Schema.Types.ObjectId,
-            ref: 'Membership'
+            ref: 'MembershipRequest',
+            required: false
         },
-        tier: {
-            type: String,
-            enum: Object.values(MembershipTier)
+    },
+    membershipRequestHistory: [{
+        requestId: {
+            type: Schema.Types.ObjectId,
+            ref: 'MembershipRequest',
+            required: false
         },
-        duration: {
-            type: Number,
-            enum: Object.values(MembershipDuration)
-        },
-        startDate: Date,
-        endDate: Date,
-        isActive: {
-            type: Boolean,
-            default: false
-        }
-    },
-    membershipHistory: [{
-        type: Schema.Types.ObjectId,
-        ref: 'Membership'
-    }],
-    verifiedMailsViewed: {
-        type: Number,
-        default: 0
-    },
-    verifiedMailsRemaining: {
-        type: Number,
-        default: 0
-    },
-    hasProfileHighlighter: {
-        type: Boolean,
-        default: false
-    }
+    }]
 });
 
 
@@ -167,6 +146,8 @@ const suspensionEntrySchema = new Schema({
         required: false,
     }
 });
+
+
 const userSchema = new Schema<IUser>({
     mid : {
         type: String,
@@ -636,12 +617,17 @@ const userSchema = new Schema<IUser>({
         }
     },
     // Memberships 
-    membership :userMembershipSchema
+    membership :userMembershipSchema,
 
-    
+    suspension : {
+        isSuspended : {
+            type : Boolean , 
+            default : false ,
+        },
+        suspensions : [suspensionEntrySchema]
+    }
 
 });
-
 
 userSchema.methods.hasMembership = function() {
     return this.membership && 

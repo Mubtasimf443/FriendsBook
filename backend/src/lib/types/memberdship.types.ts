@@ -16,24 +16,38 @@ export enum MembershipDuration {
     TWELVE_MONTHS = 12
 }
 
-// Interface for membership
-export interface IMembership {
-    userId: mongoose.Types.ObjectId;
-    tier: MembershipTier;
-    duration: MembershipDuration;
-    startDate: Date;
-    endDate: Date;
-    verifiedMailsLimit: number;
-    verifiedMailsViewed: number;
-    hasProfileHighlighter: boolean;
-    isActive: boolean;
+
+
+export enum MembershipRequestStatus {
+    PENDING = 'pending',
+    APPROVED = 'approved',
+    REJECTED = 'rejected',
+    CANCELLED = 'cancelled'
+}
+
+export interface IMembershipRequest {
+    requestStatus: MembershipRequestStatus;
     paymentInfo: {
         transactionId: string;
         amount: number;
         currency: string;
         paymentMethod: string;
         paymentDate: Date;
+        verificationImage?: {
+            url: string;
+            id: string;
+        };
     };
-    createdAt: Date;
-    updatedAt: Date;
+    verifiedPhoneLimit: number;
+    verifiedPhoneViewed: number;
+    hasProfileHighlighter: boolean;
+    tier: MembershipTier;
+    duration: MembershipDuration;
+    startDate: Date;
+    endDate: Date;
+    adminNote?: string;
+    requestDate: Date;
+    processedDate?: Date;
+    processedBy?: mongoose.Types.ObjectId;
+    requesterID: mongoose.Types.ObjectId;
 }

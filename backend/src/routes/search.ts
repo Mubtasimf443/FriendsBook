@@ -1288,6 +1288,17 @@ router.get('/users/filter', async function(req: Request, res: Response): Promise
     }
 });
 
+
+router.get('/hisory', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        
+    } catch (error) {
+        
+    }
+});
+
+
+
 router.get('/users/mutual', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         
