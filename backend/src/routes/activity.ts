@@ -2,7 +2,7 @@
 
 import express, { Router, Request, Response } from "express";
 import { User } from "../models/user";
-import { ShortList } from "../models/ShortList";
+import { ShortList } from "../models/ShortListedProfiles";
 import { ProfileView } from "../models/ProfileView";
 import { z } from "zod";
 import { _idValidator } from "../lib/schema/schemaComponents";
@@ -69,6 +69,7 @@ router.post('/users/short-list/add', async function (req: Request, res: Response
         });
     }
 });
+
 router.delete('/users/short-list/remove', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         const validation = shortListSchema.safeParse(req.body);
@@ -109,6 +110,7 @@ router.delete('/users/short-list/remove', async function (req: Request, res: Res
         });
     }
 });
+
 // Mark user as online
 router.put('/users/online/active', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -224,6 +226,8 @@ router.post('/users/visit-profile', async function (req: Request, res: Response)
         });
     }
 });
+
+
 
 
 

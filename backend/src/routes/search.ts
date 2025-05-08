@@ -12,7 +12,7 @@ import { ProfileView } from "../models/ProfileView";
 import queryMiddleware from "../lib/middlewares/query.middleware";
 import { EducationLevel } from "../lib/types/userEducation.types";
 import { Occupation } from "../lib/types/user.types";
-import { ShortList } from "../models/ShortList";
+import { ShortList } from "../models/ShortListedProfiles";
 import { SearchHistory } from "../models/SearchHistory";
 import { _idValidator } from "../lib/schema/schemaComponents";
 import { z } from "zod";
