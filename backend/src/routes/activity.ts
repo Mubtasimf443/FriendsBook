@@ -10,7 +10,8 @@ import {
     shortListSchema ,
     likeProfileSchema ,
     sendMailSchema,
-    sendSmsSchema
+    sendSmsSchema,
+    activityHistorySchema
 } from "../lib/schema/activity.schema";
 import { LikedProfile } from "../models/LikedProfile";
 import { SmsSendedProfile } from "../models/SmsSendedProfile";
@@ -444,71 +445,114 @@ router.post('/users/send-sms', async function (req: Request, res: Response): Pro
     }
 });
 
-// Get activity history
+// Activity history endpoint
 router.get('/users/activity-history', async function (req: Request, res: Response): Promise<Response | any> {
     try {
+        // Validate query parameters using the schema
+        const validationResult = activityHistorySchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                errors: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount, type } = validationResult.data;
         const userId = req.authSession.value.userId;
-        const type = req.query.type as string;
-        const page = parseInt(req.query.page as string) || 1;
-        const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
+
+        // Calculate pagination
         const skip = (page - 1) * limit;
 
-        let activities;
-        let total = 0;
+        // Define query configuration based on activity type
+        const queryConfig :any = {
+            likes: {
+                model: LikedProfile,
+                query: { likerId: userId },
+                sort: { 'likedAt': -1 },
+                populate: { path: 'likedId', select: 'name profileImage' },
+                timestamp: 'likedAt'
+            },
+            emails: {
+                model: SendMailedProfile,
+                query: { senderId: userId },
+                sort: { 'emailedAt': -1 },
+                populate: { path: 'receiverId', select: 'name profileImage' },
+                timestamp: 'emailedAt'
+            },
+            sms: {
+                model: SmsSendedProfile,
+                query: { senderId: userId },
+                sort: { 'sentAt': -1 },
+                populate: { path: 'receiverId', select: 'name profileImage' },
+                timestamp: 'sentAt'
+            }
+        };
 
-        switch (type) {
-            case 'likes':
-                activities = await LikedProfile.find({ likerId: userId })
-                    .sort({ 'likedAt': -1 })
-                    .skip(skip)
-                    .limit(limit)
-                    .populate('likedId', 'name profileImage');
-                total = await LikedProfile.countDocuments({ likerId: userId });
-                break;
+        const config :any= queryConfig[type];
 
-            case 'emails':
-                activities = await SendMailedProfile.find({ senderId: userId })
-                    .sort({ 'emailedAt': -1 })
-                    .skip(skip)
-                    .limit(limit)
-                    .populate('receiverId', 'name profileImage');
-                total = await SendMailedProfile.countDocuments({ senderId: userId });
-                break;
+        // Execute queries with error handling and timeouts
+        const [activities, total] = await Promise.all([
+            config.model.find(config.query)
+                .sort(config.sort)
+                .skip(skip)
+                .limit(limit)
+                .populate(config.populate)
+                .lean()
+                .maxTimeMS(5000), // 5 second timeout
 
-            case 'sms':
-                activities = await SmsSendedProfile.find({ senderId: userId })
-                    .sort({ 'sentAt': -1 })
-                    .skip(skip)
-                    .limit(limit)
-                    .populate('receiverId', 'name profileImage');
-                total = await SmsSendedProfile.countDocuments({ senderId: userId });
-                break;
+            shouldCount === 'yes'
+                ? config.model.countDocuments(config.query).maxTimeMS(3000)
+                : Promise.resolve(undefined)
+        ])
+            .catch(error => {
+                console.error(`[Activity history query error] type: ${type}`, error);
+                throw new Error('Database query failed');
+            });
 
-            default:
-                return res.status(400).json({
-                    success: false,
-                    message: "Invalid activity type"
-                });
+        // Prepare pagination info
+        let pagination: Record<string, any> = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (total !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(total / limit),
+                totalActivities: total
+            };
         }
+
+        // Add cache headers for better performance
+        // Cache for 1 minute since activity data can change frequently
+        res.set('Cache-Control', 'private, max-age=60');
 
         return res.status(200).json({
             success: true,
             data: {
-                activities,
-                pagination: {
-                    page,
-                    limit,
-                    total,
-                    pages: Math.ceil(total / limit)
-                }
+                type,
+                activities: activities,
+                pagination
             }
         });
 
     } catch (error) {
-        console.error("[Activity history error]:", error);
+        // Enhanced error logging
+        console.error('[Activity history error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            userId: req.authSession?.value?.userId,
+            query: req.query,
+            timestamp: new Date().toISOString()
+        });
+
         return res.status(500).json({
             success: false,
-            message: "Internal server error"
+            message: 'Internal server error',
+            error: 'ACTIVITY_HISTORY_ERROR',
+            data: null
         });
     }
 });
