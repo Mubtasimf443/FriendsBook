@@ -3,57 +3,67 @@
 import mongoose, { Schema } from 'mongoose';
 import { IMembershipRequest, MembershipTier, MembershipDuration, MembershipRequestStatus } from '../lib/types/memberdship.types';
 
-const verificationImageSchema = new Schema({
-    url: {
-        type: String,
-        required: true
-    },
-    id: {
-        type: String,
-        required: true
-    }
-}, 
-{ _id: false }
-);
-
-const paymentInfoSchema = new Schema({
-    transactionId: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true
-    },
-    amount: {
-        type: Number,
-        required: true,
-        min: 0,
-        validate: {
-            validator: Number.isInteger,
-            message: 'Amount must be a whole number'
+const verificationImageSchema = new Schema(
+    {
+        url: {
+            type: String,
+            required: true
+        },
+        id: {
+            type: String,
+            required: true
         }
     },
-    currency: {
-        type: String,
-        required: true,
-        uppercase: true,
-        minlength: 3,
-        maxlength: 3,
-        default: 'BDT'
+    { 
+        _id: false
+    }
+);
+
+const paymentInfoSchema = new Schema(
+    {
+
+        transactionId: {
+            type: String,
+            required: true,
+            unique: true,
+            trim: true
+        },
+        amount: {
+            type: Number,
+            required: true,
+            min: 0,
+            validate: {
+                validator: Number.isInteger,
+                message: 'Amount must be a whole number'
+            }
+        },
+        currency: {
+            type: String,
+            required: true,
+            uppercase: true,
+            minlength: 3,
+            maxlength: 3,
+            default: 'BDT'
+        },
+        paymentMethod: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        paymentMethod: {
+            type: String,
+            enum: Object.values(PaymentMethod),  // Using the PaymentMethod enum
+            required: true
+        },
+        paymentDate: {
+            type: Date,
+            required: true,
+            default: Date.now
+        },
+        verificationImage: verificationImageSchema
     },
-    paymentMethod: {
-        type: String,
-        required: true,
-        trim: true
-    },
-    paymentDate: {
-        type: Date,
-        required: true,
-        default: Date.now
-    },
-    verificationImage: verificationImageSchema
-}, 
-{ _id: false })
-;
+    { _id: false }
+);
 
 const membershipRequestSchema = new Schema<IMembershipRequest>({
     requestStatus: {
