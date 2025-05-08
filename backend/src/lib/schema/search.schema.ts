@@ -239,3 +239,9 @@ export const filterUsersSchema =  paginationSchema.extend({
     );
 
 
+
+
+export const searchHistorySchema = z.object({
+    title: z.string().max(80).min(3).trim().transform(el => el.replace('  ', ' ')),
+    searchQuery : filterUsersSchema
+})

@@ -7,12 +7,15 @@ import { IAuthSession } from "../models/AuthSession";
 import { CountryNamesEnum } from "../lib/types/country_names.enum";
 import { findNearestDistricts, searchHeightGenerator } from "../controllers/search.controller";
 import { User } from "../models/user";
-import { FilterUsersQueryParams, filterUsersSchema, getUserByMIDSchema, justJoinedSchema, preferredEducationSearchSchema, preferredLocationSearchSchema, preferredOccupationSearchSchema, paginationSchema, todaysMatchSchema } from "../lib/schema/search.schema";
+import { FilterUsersQueryParams, filterUsersSchema, getUserByMIDSchema, justJoinedSchema, preferredEducationSearchSchema, preferredLocationSearchSchema, preferredOccupationSearchSchema, paginationSchema, todaysMatchSchema, searchHistorySchema } from "../lib/schema/search.schema";
 import { ProfileView } from "../models/ProfileView";
 import queryMiddleware from "../lib/middlewares/query.middleware";
 import { EducationLevel } from "../lib/types/userEducation.types";
 import { Occupation } from "../lib/types/user.types";
 import { ShortList } from "../models/ShortList";
+import { SearchHistory } from "../models/SearchHistory";
+import { _idValidator } from "../lib/schema/schemaComponents";
+import { z } from "zod";
 
 const router: Router = Router();
 
@@ -1289,14 +1292,191 @@ router.get('/users/filter', async function(req: Request, res: Response): Promise
 });
 
 
-router.get('/hisory', async function (req: Request, res: Response): Promise<Response | any> {
+router.get('/search-history', async function(req: Request, res: Response): Promise<Response | any> {
     try {
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const userId = req.authSession.value.userId;
+
+
+        // Get search history
+        const searchHistory = await SearchHistory.find({ userId , } , 'title query savedAt userId')
+            .sort({ savedAt: -1 })
+            .lean()
+            .maxTimeMS(10000);
+
         
+
+        if (searchHistory.length > 50) {
+            for (let i = 0; i < searchHistory.length; i++) {
+                const { savedAt, _id } = searchHistory[i];
+                if (savedAt.getTime() < (Date.now() - 7 * 24 * 3600 * 1000)) await SearchHistory.findByIdAndDelete(_id);
+            }
+        }
+
+        // Set cache headers
+        res.set('Cache-Control', 'private, max-age=60'); // Cache for 1 minute, private because it's user-specific
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                searchHistory,
+            
+            }
+        });
+
     } catch (error) {
-        
+        console.error('[Get Search History API Error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString()
+        });
+
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
     }
 });
 
+
+router.post('/search-history', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        // Validate request body
+        const validationResult = searchHistorySchema.safeParse(req.body);
+    
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid request parameters",
+                error: 'VALIDATION_ERROR',
+                errors: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { searchQuery, title } = validationResult.data;
+        const userId = req.authSession.value.userId;
+
+        // Check if title already exists for this user
+        const isHistoryExists = await SearchHistory.findOne(
+            { userId, title },
+            '_id'
+        ).lean();
+
+        if (isHistoryExists) {
+            return res.status(409).json({
+                success: false,
+                message: 'A search history with this title already exists',
+                error: 'DUPLICATE_TITLE',
+                data: null
+            });
+        }
+
+        // Create new search history
+        const newSearchHistory = await SearchHistory.create({
+            title,
+            userId,
+            searchQuery,
+            savedAt: new Date()
+        });
+
+        // Return success response
+        return res.status(201).json({
+            success: true,
+            data: {
+                id: newSearchHistory._id,
+                title: newSearchHistory.title,
+                createdAt: newSearchHistory.savedAt
+            },
+            error: null,
+            message: 'Search history saved successfully'
+        });
+
+    } catch (error) {
+        console.error('[Save search history API error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString(),
+            userId: req.authSession?.value?.userId
+        });
+
+        return res.status(500).json({
+            success: false,
+            message: 'An error occurred while saving search history',
+            error: 'INTERNAL_SERVER_ERROR',
+            data: null
+        });
+    }
+});
+
+router.delete('/search-history/:id', async function(req: Request, res: Response): Promise<Response | any> { 
+    try {
+        // Validate ID parameter
+        const historyId = _idValidator.parse(req.params.id);
+        const userId = req.authSession.value.userId;
+
+        // Find and delete the search history
+        const searchHistory = await SearchHistory.findById(historyId);
+
+        if (!searchHistory) {
+            return res.status(404).json({
+                success: false,
+                message: 'Search history not found or you do not have permission to delete it',
+                error: 'NOT_FOUND',
+                data: null
+            });
+        }
+
+        await searchHistory.deleteOne();
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                id: historyId,
+                deletedAt: new Date()
+            },
+            error: null,
+            message: 'Search history deleted successfully'
+        });
+
+    } catch (error) {
+        // Handle validation errors
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid search history ID',
+                error: 'INVALID_ID',
+                errors: error.errors,
+                data: null
+            });
+        }
+
+        console.error('[Delete search history API error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString(),
+            userId: req.authSession?.value?.userId,
+            historyId: req.params.id
+        });
+
+        return res.status(500).json({
+            success: false,
+            message: 'An error occurred while deleting search history',
+            error: 'INTERNAL_SERVER_ERROR',
+            data: null
+        });
+    }
+});
 
 
 router.get('/users/mutual', async function (req: Request, res: Response): Promise<Response | any> {
@@ -1319,6 +1499,7 @@ router.get('/users/viewed-not-contact', async function (req: Request, res: Respo
         });
     }
 });
+
 
 router.get('/users/suggested-for-you' ,async function (req: Request, res: Response): Promise<Response | any> { 
     try {
