@@ -3,13 +3,16 @@
 import { Router, Request, Response } from "express";
 import { upload } from "../config/multer";
 import { Asset, AssetType, IAsset } from "../models/asset";
-import { UploadImageAsset, detroyAsset } from "../lib/core/Asset";
+// import { UploadImageAsset, detroyAsset } from "../lib/core/Asset";
 import { createImageAssetSchema } from "../lib/schema/asset.schema";
 import fs from 'fs/promises';
 import path from 'path';
 import { ZodError } from "zod";
 import rateLimiter from "../config/rateRimiter";
 import { validateUser } from "../lib/middlewares/auth.middleware";
+
+import cloudinary from "../config/cloudinary";
+import { UploadApiResponse } from "cloudinary";
 
 
 const router: Router = Router();
@@ -49,6 +52,8 @@ router.post('/upload/image', upload.single('image'), async function (req: Reques
             }
         });
 
+       
+
         if (!validationResult.success) {
             await cleanup();
             return res.status(400).json({
@@ -59,31 +64,35 @@ router.post('/upload/image', upload.single('image'), async function (req: Reques
         }
 
         // Upload to Cloudinary
-        const cloudinaryResponse = await UploadImageAsset(file.path);
+        let r :UploadApiResponse= await cloudinary.uploader.upload(file.path , {
+                unique_filename : true,
+                resource_type : 'image',
+                transformation: ["media_lib_thumb"]
+            });
+        
+        if (!r.public_id ||  !r.url ) {
 
-        if (!cloudinaryResponse.success || !cloudinaryResponse.data) {
             await cleanup();
             return res.status(422).json({
                 success: false,
                 message: "Failed to upload image to cloud storage",
-                error: cloudinaryResponse.error?.message || 'Upload failed'
             });
         }
 
         // Create asset record
         const asset = await Asset.create({
             name: file.originalname,
-            url: cloudinaryResponse.data.url,
+            url: r.url,
             asset_type: AssetType.IMAGE,
             size: file.size,
             uploadInfo: {
                 host: 'cloudinary',
-                host_id: cloudinaryResponse.data.cloudinary_id,
-                path: cloudinaryResponse.data.url
+                host_id: r.public_id,
+                path: r.url
             }
         });
 
-        // Cleanup temporary file
+       // Cleanup temporary file
         await cleanup();
 
         // Return success response
@@ -100,9 +109,8 @@ router.post('/upload/image', upload.single('image'), async function (req: Reques
                 }
             }
         });
-
     } catch (error) {
-        await cleanup();
+        await cleanup().catch((_) => {});
 
         // Handle specific error types
         if (error instanceof ZodError) {

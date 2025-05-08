@@ -214,6 +214,17 @@ export const updateUserSchema = z.object({
     // Preferences & Settings
     preferences: preferencesSchema,
     enhancedSettings: enhancedSettingsSchema
+})
+.refine(data => {
+    // Additional validation to ensure age matches dateOfBirth if both are provided
+    if (data.age && data.dateOfBirth) {
+        const birthDate = new Date(data.dateOfBirth);
+        const age = new Date().getFullYear() - birthDate.getFullYear();
+        return age === data.age;
+    }
+    return true;
+}, {
+    message: "Age must match the provided date of birth"
 });
 
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;

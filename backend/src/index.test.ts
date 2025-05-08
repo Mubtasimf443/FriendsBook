@@ -1,99 +1,27 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-import { connectDB } from "./config/connectDB"
-import { User } from "./models/user";
-import { Occupation } from "./lib/types/user.types";
 import { log } from "console";
+import cloudinary from "./config/cloudinary";
+import { dirname, resolve } from "path";
 import { randomUUID } from "crypto";
 
-import { PhysicalStatus, ReligiousBranch, BadHabits, SettingsPermissionType } from './lib/types/userProfile.types';
-
-const defaultAboutMe = {
-    description: '',
-    physicalStatus: PhysicalStatus.NORMAL,
-    religiousBranch: ReligiousBranch.PREFER_NOT_TO_SAY,
-    badHabits: [BadHabits.NONE],
-    interestedSports: [],
-    interestedHobbies: [],
-    interestedFoodTypes: [],
-    interestedMusicTypes: []
-};
-
-const defaultFamilyInfo = {
-    aboutFamily: '',
-    familyOrigin: '',
-    numberOfBrothers: 0,
-    numberOfSisters: 0,
-    numberOfMarriedBrothers: 0,
-    numberOfMarriedSisters: 0
-};
-
-const defaultEnhancedSettings = {
-    blocked: [],
-    privacy: {
-        whoCanViewProfile: SettingsPermissionType.EVERYONE,
-        whoCanContactMe: SettingsPermissionType.EVERYONE,
-        showShortlistedNotification: true,
-        showProfileViewNotification: true
-    },
-    notifications: {
-        dailyRecommendations: true,
-        todaysMatch: true,
-        profileViews: true,
-        shortlists: true,
-        messages: true,
-        connectionRequests: true
-    }
-};
+// let __dirname = dirname(fileURLToPath(import.meta.url))
 
 async function main() {
-    await connectDB();
-    let unmigratedUsers = await User.countDocuments({
-        $or: [
-            { aboutMe: { $exists: false } },
-            { familyInfo: { $exists: false } },
-            { enhancedSettings: { $exists: false } }
-        ]
-    });
+    try {
+        let p = resolve(__dirname, '../uploads/image-1746675284950-941515612.png');
 
-    if (unmigratedUsers > 0) {
-        console.error(`Found ${unmigratedUsers} users that were not migrated properly`);
-    } else {
-        console.info('All users were migrated successfully');
+        let res = await cloudinary.uploader.upload(p, {
+            public_id: randomUUID(),
+            unique_filename: true,
+            transformation: ["media_lib_thumb"]
+        });
+        log(res)
+    } catch (error) {
+        console.error(error);
+
     }
 
-    await User.updateMany({
-        $or: [
-            { aboutMe: { $exists: false } },
-            { familyInfo: { $exists: false } },
-            { enhancedSettings: { $exists: false } }
-        ]
-    },
-        {
-            $set: {
-                aboutMe: defaultAboutMe,
-                familyInfo: defaultFamilyInfo,
-                enhancedSettings: defaultEnhancedSettings
-            }
-        },
-        {
-            multi: true,
-        }
-    )
-
-    unmigratedUsers = await User.countDocuments({
-        $or: [
-            { aboutMe: { $exists: false } },
-            { familyInfo: { $exists: false } },
-            { enhancedSettings: { $exists: false } }
-        ]
-    });
-
-    if (unmigratedUsers > 0) {
-        console.error(`Found ${unmigratedUsers} users that were not migrated properly`);
-    } else {
-        console.info('All users were migrated successfully');
-    }
 }
 main();
 

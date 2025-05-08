@@ -1,10 +1,11 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-import { Document } from 'mongoose';
+import mongoose, { Document } from 'mongoose';
 import { EducationLevel, Education ,EducationPreference , CertificateType } from './userEducation.types';
 import { ICity, IDistrict, IDivision, IState, IUpazila } from './location.types';
 import { CountryNamesEnum } from './country_names.enum';
 import { IAboutMe  , IFamilyInfo , IEnhancedPrivacySettings, IEnhancedUserSettings } from './userProfile.types';
+import { IMembership , MembershipTier , MembershipDuration} from './memberdship.types';
 
 export enum ProfileCreatedBy {
     SELF = 'self',
@@ -433,6 +434,23 @@ interface ISuspension {
     }]
 }
 
+
+export interface IUserMembership {
+    currentMembership: {
+        membershipId: mongoose.Types.ObjectId;
+        tier: MembershipTier;
+        duration: MembershipDuration;
+        startDate: Date;
+        endDate: Date;
+        isActive: boolean;
+    };
+    membershipHistory: mongoose.Types.ObjectId[];
+    verifiedMailsViewed: number;
+    verifiedMailsRemaining: number;
+    hasProfileHighlighter: boolean;
+}
+
+
 export interface IUser extends Document {
     mid :string;
     profileCreatedBy: ProfileCreatedBy;
@@ -466,9 +484,9 @@ export interface IUser extends Document {
     annualIncome?: IAnualIncome;
     createPreference(): void;
     createMID(): string;
-
+    membership?: IUserMembership;
+    
 }
-
 
 
 

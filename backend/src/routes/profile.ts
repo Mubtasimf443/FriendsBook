@@ -130,7 +130,7 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         // Profile Media
         if (updateData.profileImage) updatesData['profileImage'] = updateData.profileImage;
         if (updateData.coverImage) updatesData['coverImage'] = updateData.coverImage;
-        if (updateData.userImages) updatesData['userImages'] = updateData.userImages;
+        // if (updateData.userImages) updatesData['userImages'] = updateData.userImages;
         
         // Additional Information
         if (updateData.aboutMe) updatesData['aboutMe'] = updateData.aboutMe;
@@ -215,4 +215,53 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         });
     }
 });
+
+
+
+router.get('/membership-request' , async function (req : Request , res : Response) :Promise<any>{ 
+    try {
+        
+    } catch (error) {
+        console.error('[get Membership request api]', error);
+        return res.status(500).json({
+           success: false,
+           message: 'Internal server error',
+           data: null
+        });
+    }
+})
+
+
+
+
+
+router.post('/membership-request' , async function (req : Request , res : Response) :Promise<any>{ 
+    try {
+        
+    } catch (error) {
+        console.error('[post Membership request api error]', error);
+        return res.status(500).json({
+           success: false,
+           message: 'Internal server error',
+           data: null
+        });
+    }
+})
+
+
+router.delete('/membership-request' , async function (req : Request , res : Response) :Promise<any>{ 
+    try {
+        
+    } catch (error) {
+        console.error('[delete Membership request api error]', error);
+        return res.status(500).json({
+           success: false,
+           message: 'Internal server error',
+           data: null
+        });
+    }
+});
+
+
+
 export default router;

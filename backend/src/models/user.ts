@@ -16,6 +16,10 @@ import {
     FoodTypes,
     SettingsPermissionType 
 } from '../lib/types/userProfile.types';
+import { MembershipDuration, MembershipTier } from '../lib/types/memberdship.types';
+
+
+
 
 
 const aboutMeSchema = new Schema({
@@ -111,6 +115,44 @@ const blockedProfileSchema = new Schema({
         default: Date.now
     },
     reason: String
+});
+const userMembershipSchema = new Schema({
+    currentMembership: {
+        membershipId: {
+            type: Schema.Types.ObjectId,
+            ref: 'Membership'
+        },
+        tier: {
+            type: String,
+            enum: Object.values(MembershipTier)
+        },
+        duration: {
+            type: Number,
+            enum: Object.values(MembershipDuration)
+        },
+        startDate: Date,
+        endDate: Date,
+        isActive: {
+            type: Boolean,
+            default: false
+        }
+    },
+    membershipHistory: [{
+        type: Schema.Types.ObjectId,
+        ref: 'Membership'
+    }],
+    verifiedMailsViewed: {
+        type: Number,
+        default: 0
+    },
+    verifiedMailsRemaining: {
+        type: Number,
+        default: 0
+    },
+    hasProfileHighlighter: {
+        type: Boolean,
+        default: false
+    }
 });
 
 
@@ -593,16 +635,45 @@ const userSchema = new Schema<IUser>({
             }
         }
     },
-    suspension: {
-        isSuspended: {
-            type: Boolean,
-            required: true,
-            default: false
-        },
-        suspensions: [suspensionEntrySchema]
-    },
+    // Memberships 
+    membership :userMembershipSchema
+
     
+
 });
+
+
+userSchema.methods.hasMembership = function() {
+    return this.membership && 
+           this.membership.currentMembership && 
+           this.membership.currentMembership.isActive;
+};
+
+userSchema.methods.hasActiveMembership = function() {
+    if (!this.hasMembership()) return false;
+    
+    const now = new Date();
+    return this.membership.currentMembership.isActive && 
+           now >= this.membership.currentMembership.startDate && 
+           now <= this.membership.currentMembership.endDate;
+};
+
+userSchema.methods.canViewVerifiedMail = function() {
+    return this.hasActiveMembership() && this.membership.verifiedMailsRemaining > 0;
+};
+
+userSchema.methods.useVerifiedMail = function() {
+    if (this.canViewVerifiedMail()) {
+        this.membership.verifiedMailsViewed += 1;
+        this.membership.verifiedMailsRemaining -= 1;
+        return true;
+    }
+    return false;
+};
+
+userSchema.methods.hasProfileHighlighter = function() {
+    return this.hasActiveMembership() && this.membership.hasProfileHighlighter;
+};
 
 userSchema.methods.createPreference = function() {
     // Age preferences based on gender and cultural norms
@@ -712,7 +783,30 @@ userSchema.methods.createPreference = function() {
 userSchema.methods.createMID = function() {
     return generateMatrimonyId(this.address.country);
 };
+userSchema.methods.suspend = function(reason: string) {
+    this.suspension.isSuspended = true;
+    this.suspension.suspensions.push({
+        reason,
+        date: new Date()
+    });
+    return this;
+};
 
+userSchema.methods.unsuspend = function() {
+    this.suspension.isSuspended = false;
+    return this;
+};
+
+userSchema.methods.getSuspensionHistory = function() {
+    return this.suspension.suspensions;
+};
+// Add virtual for last suspension
+userSchema.virtual('lastSuspension').get(function() {
+    if (this.suspension.suspensions.length > 0) {
+        return this.suspension.suspensions[this.suspension.suspensions.length - 1];
+    }
+    return null;
+});
 
 userSchema.index({ gender: 1, country: 1 });
 userSchema.index({ age: 1 });
@@ -724,7 +818,9 @@ userSchema.index({ 'onlineStatus.lastActive': -1});
 userSchema.index({ maritalStatus: 1 });
 userSchema.index({ occupation: 1 });
 userSchema.index({ 'annualIncome.amount': 1, 'annualIncome.currency': 1 });
-
+userSchema.index({ 'membership.currentMembership.isActive': 1 });
+userSchema.index({ 'membership.currentMembership.endDate': 1 });
+userSchema.index({ 'membership.currentMembership.tier': 1 });
 
 export const User = mongoose.model<IUser>('User', userSchema);
 

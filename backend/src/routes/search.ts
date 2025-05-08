@@ -7,11 +7,12 @@ import { IAuthSession } from "../models/AuthSession";
 import { CountryNamesEnum } from "../lib/types/country_names.enum";
 import { findNearestDistricts, searchHeightGenerator } from "../controllers/search.controller";
 import { User } from "../models/user";
-import { FilterUsersQueryParams, filterUsersSchema, getUserByMIDSchema, justJoinedSchema,  notViewedSchema, onlineUsersSchema, preferredEducationSearchSchema, preferredLocationSearchSchema, preferredOccupationSearchSchema, searchQuertSchema, todaysMatchSchema } from "../lib/schema/search.schema";
+import { FilterUsersQueryParams, filterUsersSchema, getUserByMIDSchema, justJoinedSchema, preferredEducationSearchSchema, preferredLocationSearchSchema, preferredOccupationSearchSchema, paginationSchema, todaysMatchSchema } from "../lib/schema/search.schema";
 import { ProfileView } from "../models/ProfileView";
 import queryMiddleware from "../lib/middlewares/query.middleware";
 import { EducationLevel } from "../lib/types/userEducation.types";
 import { Occupation } from "../lib/types/user.types";
+import { ShortList } from "../models/ShortList";
 
 const router: Router = Router();
 
@@ -35,7 +36,7 @@ router.get('/users/matching/location', async function (req: Request, res: Respon
       
         let userData = req.authSession.value;
 
-        const validationResult = searchQuertSchema.safeParse(req.query);
+        const validationResult = paginationSchema.safeParse(req.query);
         if (!validationResult.success) {
             return res.status(400).json({
                 success: false,
@@ -259,7 +260,7 @@ router.get('/users/just-joined', async function (req: Request, res: Response): P
 
 router.get('/users/not-viewed', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        const validationResult = notViewedSchema.safeParse(req.query);
+        const validationResult = paginationSchema.safeParse(req.query);
 
         if (!validationResult.success) {
             return res.status(400).json({
@@ -342,7 +343,7 @@ router.get('/users/not-viewed', async function (req: Request, res: Response): Pr
 router.get('/users/online' ,async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // Validate query parameters
-        const validationResult = onlineUsersSchema.safeParse(req.query);
+        const validationResult = paginationSchema.safeParse(req.query);
 
         if (!validationResult.success) {
             return res.status(400).json({
@@ -421,26 +422,9 @@ router.get('/users/online' ,async function (req: Request, res: Response): Promis
     }
 });
 
-router.get('/users/mutual', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        
-    } catch (error) {
-        
-    }
-})
-
-router.get('/users/suggested-for-you' ,async function (req: Request, res: Response): Promise<Response | any> { 
-    try {
-        
-    } catch (error) {
-        
-    }
-});
-
 
 router.get('/users/others-viewed-my-profile', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-      
         const userData = req.authSession.value;
 
         // Get IDs of profiles already viewed by the user
@@ -454,14 +438,10 @@ router.get('/users/others-viewed-my-profile', async function (req: Request, res:
 
 
         const baseQuery :any= {
-            'address.country':userData.address.country,
             _id: { 
-                $ne: userData.userId,  // Exclude current user
                 $in: viewedMyProfileIds // Exclude viewed profiles
             },
-            isSuspended: false,
-            gender: { $ne: userData.gender }, // Match opposite gender
-            religion: userData.religion
+            'suspension.isSuspended': false,
         };
 
         
@@ -477,7 +457,7 @@ router.get('/users/others-viewed-my-profile', async function (req: Request, res:
             success: true,
             data: {
                 users,
-                
+
             }
         });
     } catch (error) {
@@ -488,75 +468,341 @@ router.get('/users/others-viewed-my-profile', async function (req: Request, res:
             data: null
         });
     }
-})
+});
 
-router.get('/users/shortlist', async function (req: Request, res: Response): Promise<Response | any> {
+// Complete the shortlist APIs in search.ts
+router.get('/users/my-shortlist', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        
+        // Validate query parameters
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount } = validationResult.data;
+        const userId = req.authSession.value.userId;
+
+        // Get shortlisted user IDs
+        let shortlistedIds = await ShortList.distinct('shortListedId', { 
+            shortListerId: userId 
+        });
+
+        // Base query
+        const baseQuery = {
+            _id: {
+                $in: shortlistedIds,
+            },
+            'suspension.isSuspended': false,
+        };
+
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+
+        // Find users with pagination
+        let users = await User.find(baseQuery, userField)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        // Get total count if requested
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        // Set cache headers
+        res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination
+            }
+        });
+
     } catch (error) {
+        console.error('[Shortlist search api error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString()
+        });
         
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
     }
 });
 
+router.get('/users/others-shortlisted-me', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        // Validate query parameters
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount } = validationResult.data;
+        const userId = req.authSession.value.userId;
+
+        // Get IDs of users who shortlisted the current user
+        let shortlistedByIds = await ShortList.distinct('shortListerId', { 
+            shortListedId: userId 
+        });
+
+        // Base query for finding users
+        const baseQuery = {
+            _id: {
+                $in: shortlistedByIds,
+            },
+            'suspension.isSuspended': false,
+        };
+
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+
+        // Find users with pagination
+        let users = await User.find(baseQuery, userField)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        // Get total count if requested
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        // Set cache headers
+        res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination
+            }
+        });
+
+    } catch (error) {
+        console.error('[Others shortlisted me api error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString()
+        });
+        
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
 
 router.get('/users/viewed-profiles', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        
+        const validationResult = paginationSchema.safeParse(req.query);
+
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount, } = validationResult.data;
+        const userData = req.authSession.value;
+
+        // Get IDs of profiles already viewed by the user
+        const viewedProfileIds = await ProfileView.distinct('viewedId', {
+            viewerId: userData.userId
+        });
+
+
+        const baseQuery :any= {
+       
+            _id: { 
+                $ne: userData.userId,  // Exclude current user
+                $in: viewedProfileIds // Exclude viewed profiles
+            },
+            'suspension.isSuspended': false,
+       
+        };
+
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+
+        // Find users with pagination
+        let users = await User.find(baseQuery, userField)
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        // Get total count if requested
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+        res.set("cache-control", "max-age=60, public");
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+              
+            }
+        });
+
     } catch (error) {
-        
+        console.error('[Viewed Profile search api error]', error);
+        return res.status(500).json({
+           success: false,
+           message: 'Internal server error',
+           data: null
+        });
     }
 });
 
 router.get('/users/viewed-my-profile', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        
+        const validationResult = paginationSchema.safeParse(req.query);
+
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount, } = validationResult.data;
+        const userData = req.authSession.value;
+
+        // Get IDs of profiles already viewed by the user
+        const viewedProfileIds = await ProfileView.distinct('viewerId', {
+            viewedId: userData.userId
+        });
+        const baseQuery :any= {
+            'address.country':userData.address.country,
+            _id: { 
+                $ne: userData.userId,  // Exclude current user
+                $in: viewedProfileIds // Exclude viewed profiles
+            },
+            'suspension.isSuspended': false,
+            gender: { $ne: userData.gender }, // Match opposite gender
+            religion: userData.religion
+        };
+
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+
+        // Find users with pagination
+        let users = await User.find(baseQuery, userField)
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        // Get total count if requested
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+        res.set("cache-control", "max-age=60, public");
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+              
+            }
+        });
+
     } catch (error) {
-        
-    }
-});
-
-
-router.get('/users/others-shortlisted-me', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        
-    } catch (error) {
-        
-    }
-});
-
-
-router.get('/users/premium', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-
-    } catch (error) {
-        console.error(`premium profile listing api error:`, error);
+        console.error('[Viewed My Profiles]', error);
         return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
+           success: false,
+           message: 'Internal server error',
+           data: null
         });
     }
 });
-
-
-
-router.get('/users/viewed-not-contact', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-
-    } catch (error) {
-        console.error(`premium profile listing api error:`, error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
-
-
-
-
-// Add these implementations to your existing search.ts file
 
 router.get('/users/preferred-occupation', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -654,7 +900,6 @@ router.get('/users/preferred-occupation', async function (req: Request, res: Res
         });
     }
 });
-
 
 router.get('/users/preferred-education', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -834,9 +1079,6 @@ router.get('/users/preferred-location', async function (req: Request, res: Respo
     }
 });
 
-/* Add these new routes to your existing search.ts */
-
-
 router.get('/user', async function(req: Request, res: Response): Promise<Response | any> {
     try {
         const validationResult = getUserByMIDSchema.safeParse(req.query);
@@ -882,7 +1124,6 @@ router.get('/user', async function(req: Request, res: Response): Promise<Respons
         });
     }
 });
-
 
 router.get('/users/filter', async function(req: Request, res: Response): Promise<Response | any> {
     try {
@@ -1047,6 +1288,42 @@ router.get('/users/filter', async function(req: Request, res: Response): Promise
     }
 });
 
+router.get('/users/mutual', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        
+    } catch (error) {
+        
+    }
+});
+
+router.get('/users/viewed-not-contact', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+
+    } catch (error) {
+        console.error(`premium profile listing api error:`, error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+router.get('/users/suggested-for-you' ,async function (req: Request, res: Response): Promise<Response | any> { 
+    try {
+        
+    } catch (error) {
+        
+    }
+});
+
+router.get('/users/premium' ,async function (req: Request, res: Response): Promise<Response | any> { 
+    try {
+        
+    } catch (error) {
+        
+    }
+});
 
 
 

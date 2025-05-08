@@ -5,7 +5,7 @@ import { NODE_ENV, PORT } from './config/env';
 import { connectDB } from './config/connectDB';
 import authRouter from './routes/auth';
 import searchRouter from './routes/search';
-import assetsRouter from './routes/asset';
+import assetsRouter from './routes/assets';
 import profileRouter from './routes/profile';
 import cronJobsRouter from './routes/cron-jobs';
 import dataRouter from './routes/data';
