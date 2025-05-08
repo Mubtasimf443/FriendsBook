@@ -143,7 +143,7 @@ router.get('/users/matching/daily', async function (req: Request, res: Response)
         const baseQuery = {
             'address.country': CountryNamesEnum.BANGLADESH,
             'address.district.id': { $in: nearestDistricts.map(district => district.id) },
-            'isSuspended': false,
+            'suspension.isSuspended': false,
             '_id': { $ne: userData.userId }, // Exclude current user
             religion: userData.religion,
             'gender': { $ne: userData.gender }, // Basic preference matching
@@ -283,7 +283,7 @@ router.get('/users/not-viewed', async function (req: Request, res: Response): Pr
                 $ne: userData.userId,  // Exclude current user
                 $nin: viewedProfileIds // Exclude viewed profiles
             },
-            isSuspended: false,
+            'suspension.isSuspended': false,
             gender: { $ne: userData.gender }, // Match opposite gender
             religion: userData.religion
         };
@@ -362,7 +362,7 @@ router.get('/users/online' ,async function (req: Request, res: Response): Promis
         // Base query for finding online users
         const baseQuery = {
             'address.country': userData.address.country,
-            isSuspended: false,
+           'suspension.isSuspended': false,
             '_id': { $ne: userData.userId },
             'gender': { $ne: userData.gender },
             'onlineStatus.isOnline': true,
@@ -587,7 +587,7 @@ router.get('/users/preferred-occupation', async function (req: Request, res: Res
 
         // Construct base query with occupation filter
         const baseQuery = {
-            isSuspended: false,
+            'suspension.isSuspended': false,
             '_id': { $ne: userData.userId },
             gender: { $ne: userData.gender },
             religion: userData.religion,
@@ -683,7 +683,7 @@ router.get('/users/preferred-education', async function (req: Request, res: Resp
 
         // Base query for finding users
         const baseQuery = {
-            isSuspended: false,
+            'suspension.isSuspended': false,
             '_id': { $ne: userData.userId },
             gender: { $ne: userData.gender },
             religion: userData.religion,
@@ -770,7 +770,7 @@ router.get('/users/preferred-location', async function (req: Request, res: Respo
 
         // Base query for finding users
         const baseQuery: any = {
-            isSuspended: false,
+           'suspension.isSuspended': false,
             '_id': { $ne: userData.userId },
             gender: { $ne: userData.gender },
             religion: userData.religion,
@@ -853,7 +853,7 @@ router.get('/user', async function(req: Request, res: Response): Promise<Respons
         const { mid } = validationResult.data;
 
         const user = await User.findOne(
-            { mid, isSuspended: false },
+            { mid, 'suspension.isSuspended': false },
             userField
         ).lean();
 
@@ -931,7 +931,7 @@ router.get('/users/filter', async function(req: Request, res: Response): Promise
 
         // Build the base query
         const baseQuery: any = {
-            isSuspended: false,
+            'suspension.isSuspended': false,
             '_id': { $ne: userData.userId }, // Exclude current user
             'gender': { $ne: userData.gender }, // Match opposite gender
         };

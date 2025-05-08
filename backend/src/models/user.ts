@@ -114,6 +114,17 @@ const blockedProfileSchema = new Schema({
 });
 
 
+const suspensionEntrySchema = new Schema({
+    reason: {
+        type: String,
+        required: false,
+        trim: true
+    },
+    date: {
+        type: Date,
+        required: false,
+    }
+});
 const userSchema = new Schema<IUser>({
     mid : {
         type: String,
@@ -501,11 +512,7 @@ const userSchema = new Schema<IUser>({
             }
         }
     },
-    isSuspended: {
-        type: Boolean,
-        required: true,
-        default: false
-    },
+   
     password: {
         hashed: {
             type: String,
@@ -585,7 +592,16 @@ const userSchema = new Schema<IUser>({
                 default: true
             }
         }
-    }
+    },
+    suspension: {
+        isSuspended: {
+            type: Boolean,
+            required: true,
+            default: false
+        },
+        suspensions: [suspensionEntrySchema]
+    },
+    
 });
 
 userSchema.methods.createPreference = function() {
