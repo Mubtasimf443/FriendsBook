@@ -14,6 +14,7 @@ import { updateUserSchema, UpdateUserInput } from '../lib/schema/updateUser.sche
 import { MembershipRequest } from "../models/membershipRequest";
 import { MembershipRequestStatus } from "../lib/types/memberdship.types";
 import { membershipRequestQuerySchema, membershipRequestSchema } from "../lib/schema/membership.schema";
+import { Asset } from "../models/asset";
 
 const router: Router = Router();
 
@@ -37,16 +38,16 @@ declare global {
 
 router.get('/user-details', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-       
+
         if (typeof req.query.fields === 'string') req.query.fields = [req.query.fields];
 
         const { fields } = await userDetailsQuerySchema.parseAsync(req.body);
-        
+
         // Parse and validate user ID
         const userId = await _idValidator.parseAsync(req.authSession.value.userId);
 
         // Default fields if none specified
-        const selectedFields = fields 
+        const selectedFields = fields
 
         // Fetch user details
         const user = await User.findById(userId).select(selectedFields).lean();
@@ -61,7 +62,7 @@ router.get('/user-details', async function (req: Request, res: Response): Promis
         }
 
         // Format user details
-        const userDetails :any= user;
+        const userDetails: any = user;
 
         return res.status(200).json({
             success: true,
@@ -101,12 +102,12 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
     try {
         // 1. Parse and validate request body
         const updateData = await updateUserSchema.parseAsync(req.body);
-        
+
         // 2. Get user ID from auth session
         const userId = req.authSession.value.userId;
 
         let updatesData: any = {};
-      
+
         // Basic Information
         if (updateData.name) updatesData['name'] = updateData.name;
         if (updateData.gender) updatesData['gender'] = updateData.gender;
@@ -115,33 +116,29 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         if (updateData.weight) updatesData['weight'] = updateData.weight;
         if (updateData.height) updatesData['height'] = updateData.height;
         if (updateData.maritalStatus) updatesData['maritalStatus'] = updateData.maritalStatus;
-        
+
 
         if (updateData.phoneInfo) updatesData['phoneInfo'] = updateData.phoneInfo;
         if (updateData.address) updatesData['address'] = updateData.address;
-        
+
         // Background Information
         if (updateData.religion) updatesData['religion'] = updateData.religion;
         if (updateData.languages) updatesData['languages'] = updateData.languages;
-        
+
         // Education & Career
         if (updateData.isEducated !== undefined) updatesData['isEducated'] = updateData.isEducated;
         if (updateData.education) updatesData['education'] = updateData.education;
         if (updateData.occupation) updatesData['occupation'] = updateData.occupation;
         if (updateData.annualIncome) updatesData['annualIncome'] = updateData.annualIncome;
-        
-        // Profile Media
-        if (updateData.profileImage) updatesData['profileImage'] = updateData.profileImage;
-        if (updateData.coverImage) updatesData['coverImage'] = updateData.coverImage;
-        // if (updateData.userImages) updatesData['userImages'] = updateData.userImages;
-        
+
+
         // Additional Information
         if (updateData.aboutMe) updatesData['aboutMe'] = updateData.aboutMe;
         if (updateData.familyInfo) updatesData['familyInfo'] = updateData.familyInfo;
-        
+
         // Preferences
         if (updateData.preferences) updatesData['preferences'] = updateData.preferences;
-        
+
         // Settings
         if (updateData.enhancedSettings) updatesData['enhancedSettings'] = updateData.enhancedSettings;
 
@@ -165,7 +162,7 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         const updatedUser = await User.findByIdAndUpdate(
             userId,
             { $set: updatesData },
-            { 
+            {
                 new: true, // Return the updated document
                 runValidators: true // Run model validators
             }
@@ -192,7 +189,7 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
             stack: error instanceof Error ? error.stack : undefined,
             timestamp: new Date().toISOString()
         });
-        
+
         if (error instanceof z.ZodError) {
             return res.status(400).json({
                 success: false,
@@ -202,7 +199,7 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
             });
         }
 
-        if (error?.code === 11000) { 
+        if (error?.code === 11000) {
             return res.status(409).json({
                 success: false,
                 message: 'MongoDB duplicate key error',
@@ -219,8 +216,7 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
     }
 });
 
-
-router.post('/membership-request' , async function (req: Request, res: Response): Promise<any> {
+router.post('/membership-request', async function (req: Request, res: Response): Promise<any> {
     try {
         const userId = req.authSession.value.userId;
 
@@ -247,9 +243,9 @@ router.post('/membership-request' , async function (req: Request, res: Response)
             });
         }
 
-        let db_user =await User.findById(userId , 'membership');
+        let db_user = await User.findById(userId, 'membership');
 
-        if (!db_user ) {
+        if (!db_user) {
             res.status(401).json({
                 success: false,
                 message: 'Could not find The User Account',
@@ -317,11 +313,273 @@ router.post('/membership-request' , async function (req: Request, res: Response)
     }
 });
 
+router.post('/update-photo', async function (req: Request, res: Response): Promise<any> {
+    try {
+        enum PhotoType {
+            Profile = 'profileImage',
+            Cover = 'coverImage',
+            userImages = 'userImages',
+        }
+
+        let updatePhotoSchema = z.object({
+            photoType: z.nativeEnum(PhotoType),
+            asset_id: z.string().uuid({
+                message: "Invalid asset ID format. Must be a valid UUID."
+            })
+        });
+
+        let validationResult = await updatePhotoSchema.safeParseAsync(req.body);
+
+        if (!validationResult.success) {
+            res.status(400).json({
+                success: false,
+                message: 'Invalid request parameters',
+                error: validationResult.error.errors,
+                data: null
+            });
+            return;
+        }
+
+        let { photoType, asset_id } = validationResult.data;
+
+        let asset = await Asset.findOne({ id: asset_id });
+
+        if (!asset) {
+            res.status(404).json({
+                success: false,
+                message: 'Asset not found. Please ensure you are using a valid asset ID.',
+                error: 'ASSET_NOT_FOUND',
+                data: null
+            });
+            return;
+        }
+
+        let url = asset.url;
+
+        if (photoType === PhotoType.userImages) {
+            let db_user = await User.findById(req.authSession.value.userId);
+            if (!db_user) {
+                res.status(404).json({
+                    success: false,
+                    message: 'User not found. Please ensure you are logged in.',
+                    error: 'USER_NOT_FOUND',
+                    data: null
+                });
+                return;
+            }
+
+            // Initialize userImages array if it doesn't exist
+            if (!db_user.userImages) {
+                db_user.userImages = [];
+            }
+
+            if (db_user.userImages.length >= 10) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Maximum photo limit reached. You can upload up to 10 photos.',
+                    error: 'MAX_PHOTOS_LIMIT_REACHED',
+                    data: null
+                });
+                return;
+            }
+
+            // Check if image is already added
+            const isDuplicate = db_user.userImages.some(img => img.id === asset_id);
+            if (isDuplicate) {
+                res.status(400).json({
+                    success: false,
+                    message: 'This photo has already been added to your gallery.',
+                    error: 'DUPLICATE_PHOTO',
+                    data: null
+                });
+                return;
+            }
+
+            db_user.userImages.push({ url, id: asset.id });
+            await db_user.save();
+
+            res.status(200).json({
+                success: true,
+                data: {
+                    photoType,
+                    totalPhotos: db_user.userImages.length,
+                    remainingSlots: 10 - db_user.userImages.length
+                },
+                error: null,
+                message: 'Photo successfully added to your gallery'
+            });
+            return;
+        }
+
+        // For profile and cover photos
+        let updateQuery: any = {
+            $set: {}
+        };
+        updateQuery.$set[photoType] = { url, id: asset_id };
+
+        const updatedUser = await User.findByIdAndUpdate(
+            req.authSession.value.userId,
+            updateQuery,
+            { new: true }
+        );
+
+        if (!updatedUser) {
+            res.status(404).json({
+                success: false,
+                message: 'User not found. Please ensure you are logged in.',
+                error: 'USER_NOT_FOUND',
+                data: null
+            });
+            return;
+        }
+
+        const photoTypeMessages = {
+            [PhotoType.Profile]: 'Profile photo',
+            [PhotoType.Cover]: 'Cover photo',
+            [PhotoType.userImages]: 'Photo'
+        };
+
+        res.status(200).json({
+            success: true,
+            data: {
+                photoType,
+                url: url
+            },
+            error: null,
+            message: `${photoTypeMessages[photoType]} updated successfully`
+        });
+        return;
+
+    } catch (error) {
+        console.error('[Update photo api error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString(),
+            userId: req.authSession?.value?.userId
+        });
+
+        return res.status(500).json({
+            success: false,
+            message: 'An error occurred while updating your photo. Please try again later.',
+            error: 'INTERNAL_SERVER_ERROR',
+            data: null
+        });
+    }
+});
+
+router.delete('/user-image', async function (req: Request, res: Response): Promise<any> {
+    try {
+        // Define photo types enum
+        enum PhotoType {
+            Profile = 'profileImage',
+            Cover = 'coverImage',
+            UserImages = 'userImages'
+        }
+
+        // Validation schema
+        const deletePhotoSchema = z.object({
+            photoType: z.nativeEnum(PhotoType),
+            imageId: z.string().uuid({
+                message: "Invalid image ID format"
+            })
+        });
+
+        // Validate request body
+        const validationResult = await deletePhotoSchema.safeParseAsync(req.body);
+
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid request parameters',
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { photoType, imageId } = validationResult.data;
+        const userId = req.authSession.value.userId;
+
+        // Get user
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+                data: null
+            });
+        }
+
+        // Handle different photo types
+        if (photoType === PhotoType.UserImages) {
+            // Remove image from userImages array
+            const imageIndex = user.userImages.findIndex(img => img.id === imageId);
+            
+            if (imageIndex === -1) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Image not found in user images',
+                    data: null
+                });
+            }
+
+            // Remove the image
+            user.userImages.splice(imageIndex, 1);
+            await user.save();
+
+        } else {
+            // Handle profile or cover image
+            const currentImage = user[photoType];
+            
+            if (!currentImage || currentImage.id !== imageId) {
+                return res.status(404).json({
+                    success: false,
+                    message: `Image not found in ${photoType}`,
+                    data: null
+                });
+            }
+
+            // Create update query
+            const updateQuery = {
+                $unset: {
+                    [photoType]: 1
+                }
+            };
+
+            // Update user
+            await User.findByIdAndUpdate(userId, updateQuery);
+        }
+
+        // Delete the asset
+        await Asset.findOneAndDelete({ id: imageId });
+
+        // Set cache control
+        res.set('Cache-Control', 'no-cache');
+
+        return res.status(200).json({
+            success: true,
+            message: 'Image deleted successfully',
+            data: null
+        });
+
+    } catch (error) {
+        console.error('[Delete user image API Error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString()
+        });
+
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
 // // GET /membership-request - Get membership request history
 router.get('/membership-request', validateUser, async function (req: Request, res: Response): Promise<Response | any> {
     try {
         const userId = req.authSession.value.userId;
-        
+
         // Validate query parameters
         const validationResult = membershipRequestQuerySchema.safeParse(req.query);
         if (!validationResult.success) {

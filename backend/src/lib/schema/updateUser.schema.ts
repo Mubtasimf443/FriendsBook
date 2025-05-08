@@ -33,26 +33,33 @@ const userImageSchema = z.object({
 const weightPreferenceSchema = z.object({
     minWeight: z.number().min(30).max(200).optional(),
     maxWeight: z.number().min(30).max(200).optional()
-}).optional().refine(data => {
-    if (data?.minWeight && data?.maxWeight) {
-        return data.minWeight <= data.maxWeight;
-    }
-    return true;
-}, {
-    message: "Minimum weight must be less than or equal to maximum weight"
-});
+})
+    .optional()
+    .refine(data => {
+        if (data?.minWeight && data?.maxWeight) {
+            return data.minWeight <= data.maxWeight;
+        }
+        return true;
+    }, {
+        message: "Minimum weight must be less than or equal to maximum weight"
+    });
 
 const heightPreferenceSchema = z.object({
     minHeight: z.number().min(3).max(9).optional(),
     maxHeight: z.number().min(3).max(9).optional()
-}).optional().refine(data => {
-    if (data?.minHeight && data?.maxHeight) {
-        return data.minHeight <= data.maxHeight;
-    }
-    return true;
-}, {
-    message: "Minimum height must be less than or equal to maximum height"
-});
+})
+    .optional()
+    .refine(
+        (data) => {
+            if (data?.minHeight && data?.maxHeight) {
+                return data.minHeight <= data.maxHeight;
+            }
+            return true;
+        },
+        {
+            message: "Minimum height must be less than or equal to maximum height"
+        }
+    );
 
 const agePreferenceSchema = z.object({
     minAge: z.number().min(18).max(70).optional(),
@@ -186,11 +193,6 @@ export const updateUserSchema = z.object({
     // Physical Attributes
     height: z.nativeEnum(Height).optional(),
     weight: z.number().min(30).max(200).optional(),
-    
-    // Profile Media
-    profileImage: userImageSchema.optional(),
-    userImages: z.array(userImageSchema).optional(),
-    coverImage: userImageSchema.optional(),
     
     // Education & Career
     isEducated: z.boolean().optional(),
