@@ -17,6 +17,15 @@ import { CountryNamesEnum } from "../lib/types/country_names.enum";
 import generateMatrimonyId from "../lib/core/mid-geneator";
 
 const router: Router = express.Router();
+declare global {
+    namespace Express {
+        interface Request {
+            authSession: IAuthSession;
+            bearerAccessToken?: string;
+        }
+    }
+}
+
 
 router.use(rateLimiter(600 * 100, 100));
 // Create registration session endpoint
@@ -688,14 +697,7 @@ router.post("/verify-forget-password-otp", async function (req: Request, res: Re
     }
 });
 
-declare global {
-    namespace Express {
-        interface Request {
-            authSession: IAuthSession;
-            bearerAccessToken?: string;
-        }
-    }
-}
+
 // Verify forget password OTP and reset password
 router.post("/log-out", validateUser,async function (req: Request , res: Response): Promise<Response | any> {
     try {

@@ -6,17 +6,19 @@
 	// $1, $2 for tab stops, $0 for the final cursor position, and ${1:label}, ${2:another} for placeholders. 
 	// Placeholders with the same ids are connected.
 	// Example:
-	"Catch API Error": {
+	"Response": {
 		"scope": "typescript,javascript",
-		"prefix": "capi",
+		"prefix": "rr",
 		"body": [
-			"console.error('', error);",
-			"return res.status(500).json({",
-			"   success: false,",
-			"   message: 'Internal server error',",
-			"   data: null",
-			"});"
+			"res.status(200).json({",
+			"   success : true,",
+			"   data : {",
+			"   },",
+			"error : null,",
+			"message : 'OK'",
+		    "})",
+			"return;"
 		],
-		"description": "Catch API Error"
+		"description": "Response"
 	}
 }
