@@ -229,11 +229,12 @@ membershipRequestSchema.methods.cancel = function(): void {
     this.requestStatus = MembershipRequestStatus.CANCELLED;
 };
 
-membershipRequestSchema.methods.useVerifiedPhone = function(): boolean {
+membershipRequestSchema.methods.useVerifiedPhone =async function(): Promise<boolean> {
     if (!this.isActive() || !this.hasVerifiedPhonesRemaining()) {
         return false;
     }
     this.verifiedPhoneViewed += 1;
+    this.save();
     return true;
 };
 

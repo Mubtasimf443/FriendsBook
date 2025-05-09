@@ -273,20 +273,7 @@ export enum SettingsType {
 
 }
 
-interface NotificationSettings {
-    dailyRecommendations : SettingsType,
-    todaysMatch : SettingsType,
-    viewedMyProfile : SettingsType
-}
 
-interface PrivacySettings {
-    sendNotificationOnProfileView : SettingsType
-}
-
-interface UserSettings {
-    privacy : PrivacySettings,
-    notifications : NotificationSettings
-}
 
 
 // Add these new enums after the existing ones
@@ -446,44 +433,67 @@ export interface IUserMembership {
 
 
 export interface IUser extends Document {
-    mid :string;
-    profileCreatedBy: ProfileCreatedBy;
-    profileImage : IUserImage,
-    aboutMe?: IAboutMe;
-    familyInfo?: IFamilyInfo;
-    enhancedSettings: IEnhancedUserSettings;
-    coverImage?: IUserImage;
-    userImages : IUserImage[],
-    gender: Gender;
-    name: CountryNamesEnum;
-    dateOfBirth: Date;
-    email: string;
-    height: Height;
-    age: number;
-    weight: number;
-    isEducated: boolean;
-    education: Education[];
-    address : IAddress;
-    phoneInfo: IPhone;
-    password : IPassword,
-    languages: Language[];
-    religion: Religion;
-    preferences: IUserPreferences;
-    createdAt: Date;
-    settings : UserSettings
-    suspension : ISuspension,
-    onlineStatus: IOnlineStatus;
-    maritalStatus ?: MaritalStatus;
-    occupation ?: Occupation;
-    annualIncome?: IAnualIncome;
-    createPreference(): void;
-    createMID(): string;
-    hasActiveMembership() : boolean;
-    membership?: IUserMembership;
-    fcmToken?: string;
-    addFCMToken(token: string, device: string): Promise<void>;
-    removeFCMToken(token: string): Promise<void>;
+    // Basic Profile Information
+    mid: string;                           // Unique matrimony ID
+    name: CountryNamesEnum;                // User's full name
+    email: string;                         // User's email address
+    gender: Gender;                        // User's gender
+    dateOfBirth: Date;                     // User's date of birth
+    age: number;                           // User's calculated age
+    profileCreatedBy: ProfileCreatedBy;    // Who created this profile
+    createdAt: Date;                       // Profile creation timestamp
+
+    // Physical Attributes
+    height: Height;                        // User's height
+    weight: number;                        // User's weight in kg
     
+    // Contact Information
+    address: IAddress;                     // User's address details
+    phoneInfo: IPhone;                     // User's phone information
+    
+    // Authentication & Security
+    password: IPassword;                   // Hashed password and salt
+    
+    // Profile Media
+    profileImage: IUserImage;              // Primary profile picture
+    coverImage?: IUserImage;               // Optional cover photo
+    userImages: IUserImage[];              // Additional profile images
+    
+    // Educational & Professional Details
+    isEducated: boolean;                   // Education status
+    education: Education[];                // Educational background
+    occupation?: Occupation;               // Professional occupation
+    annualIncome?: IAnualIncome;           // Yearly income details
+    
+    // Personal Attributes
+    languages: Language[];                 // Languages known
+    religion: Religion;                    // Religious belief
+    maritalStatus?: MaritalStatus;         // Current marital status
+    
+    // Additional Profile Information
+    aboutMe?: IAboutMe;                   // Detailed self-description
+    familyInfo?: IFamilyInfo;             // Family background
+    
+    // Preferences & Settings
+    preferences: IUserPreferences;         // Partner preferences
+    enhancedSettings: IEnhancedUserSettings; // Advanced settings
+    
+    // Status Tracking
+    onlineStatus: IOnlineStatus;          // User's online status
+    suspension: ISuspension;               // Account suspension details
+    
+    // Membership Management
+    membership?: IUserMembership;          // Premium membership details
+    
+    // Push Notification Management
+    fcmToken?: string;                     // Firebase Cloud Messaging token
+    
+    // Instance Methods
+    createPreference(): void;              // Generate partner preferences
+    createMID(): string;                   // Generate matrimony ID
+    hasActiveMembership(): boolean;        // Check membership status
+    addFCMToken(token: string, device: string): Promise<void>;    // Add notification token
+    removeFCMToken(token: string): Promise<void>;                 // Remove notification token
 }
 
 

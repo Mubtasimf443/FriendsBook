@@ -569,6 +569,7 @@ router.get('/users/activity-history', async function (req: Request, res: Respons
 router.post('/request-phone-view', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         const validationResult = requestPhoneViewSchema.safeParse(req.body);
+       
         if (!validationResult.success) {
             return res.status(400).json({
                 success: false,
@@ -590,10 +591,32 @@ router.post('/request-phone-view', async function (req: Request, res: Response):
             });
         }
 
+
+           // Check if there's an existing active request
+        const existingRequest = await RequestMobileNumberView.findOne({
+            requesterId,
+            requestedId: requestedUserId,
+        });
+
+        if (existingRequest) {
+            let requestedUserPhoneDetails = await User.findById(requestedUserId  ).select('phoneInfo').lean() ;
+            res.status(200).json({
+                success : true,
+                data : {
+                    user : requestedUserPhoneDetails,
+                },
+                error : null,
+                message : 'OK'
+            })
+            return;
+
+        }
         // Find requester's active membership
         const activeMembership = await User.findById(requesterId)
             .select('membership')
             .lean();
+
+
 
         if (!activeMembership?.membership?.currentMembership?.requestId) {
             return res.status(403).json({
@@ -607,61 +630,51 @@ router.post('/request-phone-view', async function (req: Request, res: Response):
         const membershipDetails = await MembershipRequest.findOne({
             _id: activeMembership.membership.currentMembership.requestId,
             requestStatus: MembershipRequestStatus.APPROVED,
-            endDate: { $gt: new Date() }
-        }).lean();
+        });
+        
 
-        if (!membershipDetails || membershipDetails.verifiedPhoneViewed >= membershipDetails.verifiedPhoneLimit) {
+        
+        if (!membershipDetails ) {
+            res.status(500).json({
+                success: false,
+                message: 'Unknown server error',
+                error : {
+                    message : 'could not find the membership details of the user '
+                },
+                data: null
+            });
+            return;
+        }
+
+
+        if (membershipDetails.hasVerifiedPhonesRemaining() === false) {
             return res.status(403).json({
                 success: false,
                 message: "You have reached your phone number view limit",
                 data: null
             });
-        }
+        };
 
-        // Check if there's an existing active request
-        const existingRequest = await RequestMobileNumberView.findOne({
-            requesterId,
-            requestedId: requestedUserId,
-            status: { $in: ['PENDING', 'APPROVED'] },
-            expiresAt: { $gt: new Date() }
-        });
-
-        if (existingRequest) {
-            if (existingRequest.status === 'APPROVED') {
-                return res.status(200).json({
-                    success: true,
-                    message: "You already have access to this phone number",
-                    data: { requestId: existingRequest._id }
-                });
-            } else {
-                return res.status(200).json({
-                    success: true,
-                    message: "Request is already pending",
-                    data: { requestId: existingRequest._id }
-                });
-            }
-        }
-
+        await membershipDetails.useVerifiedPhone()
+     
         // Create new request
         const newRequest = await RequestMobileNumberView.create({
             requesterId,
             requestedId: requestedUserId,
             requestedAt: [new Date()],
-            status: 'PENDING',
-            expiresAt: addDays(new Date(), 7) // Default 7 days expiration
         });
 
-        // Increment the phone view count
-        await MembershipRequest.findByIdAndUpdate(
-            membershipDetails._id,
-            { $inc: { verifiedPhoneViewed: 1 } }
-        );
-
-        return res.status(201).json({
+    
+        let requestedUserPhoneDetails = await User.findById(requestedUserId).select('phoneInfo').lean();
+        res.status(200).json({
             success: true,
-            message: "Phone number view request created successfully",
-            data: { requestId: newRequest._id }
-        });
+            data: {
+                user: requestedUserPhoneDetails,
+            },
+            error: null,
+            message: 'OK'
+        })
+        return;
 
     } catch (error) {
         console.error('[Phone number view request error]', error);
@@ -673,124 +686,6 @@ router.post('/request-phone-view', async function (req: Request, res: Response):
     }
 });
 
-
-router.get('/phone-view/:requestId', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        const requestId = req.params.requestId;
-        const userId = req.authSession.value.userId;
-
-        const request = await RequestMobileNumberView.findOne({
-            _id: _idValidator.parse(requestId),
-            $or: [
-                { requesterId: userId },
-                { requestedId: userId }
-            ],
-            status: 'APPROVED',
-            expiresAt: { $gt: new Date() }
-        });
-
-        if (!request) {
-            return res.status(404).json({
-                success: false,
-                message: "Phone view request not found or expired",
-                data: null
-            });
-        }
-
-        // Get phone number of requested user
-        const user = await User.findById(
-            request.requesterId.toString() === userId.toString() ? 
-                request.requestedId : 
-                request.requesterId
-        ).select('phoneInfo').lean();
-
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found",
-                data: null
-            });
-        }
-
-        return res.status(200).json({
-            success: true,
-            data: {
-                phoneNumber: `+${user.phoneInfo.country.phone_code}${user.phoneInfo.number}`,
-                expiresAt: request.expiresAt
-            }
-        });
-
-    } catch (error) {
-        console.error('[Phone number view error]', error);
-
-        if (error instanceof z.ZodError) {
-            return res.status(500).json({
-                success: false,
-                message: 'Validation error',
-                error: error
-            });
-        }
-        
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
-
-
-// Respond to phone view request (approve/reject)
-router.post('/respond-phone-view', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        const validationResult = respondToPhoneRequestSchema.safeParse(req.body);
-        if (!validationResult.success) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid request parameters",
-                error: validationResult.error.errors,
-                data: null
-            });
-        }
-
-        const { requestId, action, expirationDays } = validationResult.data;
-        const userId = req.authSession.value.userId;
-
-        const request = await RequestMobileNumberView.findOne({
-            _id: requestId,
-            requestedId: userId,
-            status: 'PENDING'
-        });
-
-        if (!request) {
-            return res.status(404).json({
-                success: false,
-                message: "Phone view request not found",
-                data: null
-            });
-        }
-
-        request.status = action;
-        if (action === 'APPROVED') {
-            request.expiresAt = addDays(new Date(), expirationDays || 7);
-        }
-        await request.save();
-
-        return res.status(200).json({
-            success: true,
-            message: `Phone view request ${action.toLowerCase()} successfully`,
-            data: { requestId: request._id }
-        });
-
-    } catch (error) {
-        console.error('[Phone view response error]', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
 
 
 

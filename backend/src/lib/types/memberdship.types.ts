@@ -57,5 +57,8 @@ export interface IMembershipRequest {
     processedDate?: Date;
     processedBy?: mongoose.Types.ObjectId;
     requesterID: mongoose.Types.ObjectId;
-    cancel() : void
+    cancel() : void;
+    useVerifiedPhone(): Promise<boolean>;
+    hasVerifiedPhonesRemaining() :boolean;
+    isActive() :boolean;
 }

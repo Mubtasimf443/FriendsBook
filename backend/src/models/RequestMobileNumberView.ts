@@ -6,8 +6,7 @@ export interface IRequestMobileNumberView extends Document {
     requesterId: mongoose.Types.ObjectId;
     requestedId: mongoose.Types.ObjectId;
     requestedAt: Date[];
-    status: string;
-    expiresAt: Date;
+     
 }
 
 const requestMobileNumberViewSchema = new Schema<IRequestMobileNumberView>({
@@ -26,17 +25,7 @@ const requestMobileNumberViewSchema = new Schema<IRequestMobileNumberView>({
         required: true,
         default: Date.now
     }],
-    status: {
-        type: String,
-        required: true,
-        enum: ['PENDING', 'APPROVED', 'REJECTED', 'EXPIRED'],
-        default: 'PENDING'
-    },
-    expiresAt: {
-        type: Date,
-        required: true,
-        default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
-    }
+   
 }, {
     timestamps: false // We'll use requestedAt array
 });

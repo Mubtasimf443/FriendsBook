@@ -1,3 +1,5 @@
+/* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
+
 import { z } from 'zod';
 import { 
     ProfileCreatedBy, 
@@ -21,15 +23,10 @@ import {
 import { EducationLevel } from '../types/userEducation.types';
 import { countryCodes } from '../data/countryCodes';
 import countryNames from '../data/countryNames';
-import { min } from 'date-fns';
 
 
 
-// Nested schemas
-const userImageSchema = z.object({
-    url: z.string().url().optional(),
-    id: z.string().optional()
-});
+
 
 const weightPreferenceSchema = z.object({
     minWeight: z.number().min(30).max(200).optional(),
@@ -65,14 +62,18 @@ const heightPreferenceSchema = z.object({
 const agePreferenceSchema = z.object({
     minAge: z.number().min(18).max(70).optional(),
     maxAge: z.number().min(18).max(70).optional()
-}).optional().refine(data => {
-    if (data?.minAge && data?.maxAge) {
-        return data.minAge <= data.maxAge;
-    }
-    return true;
-}, {
-    message: "Minimum age must be less than or equal to maximum age"
-});
+})
+.optional()
+    .refine(data => {
+        if (data?.minAge && data?.maxAge) {
+            return data.minAge <= data.maxAge;
+        }
+        return true;
+    },
+        {
+            message: "Minimum age must be less than or equal to maximum age"
+        }
+    );
 
 const educationPreferenceSchema = z.object({
     level: z.nativeEnum(EducationLevel)
@@ -190,47 +191,51 @@ export const updateUserSchema = z.object({
     gender: z.nativeEnum(Gender).optional(),
     dateOfBirth: z.string().datetime().optional(),
     age: z.number().int().min(18).max(70).optional(),
-    
+    profileCreatedBy: z.nativeEnum(ProfileCreatedBy).optional(),
+
     // Physical Attributes
     height: z.nativeEnum(Height).optional(),
     weight: z.number().min(30).max(200).optional(),
-    
+
     // Education & Career
     isEducated: z.boolean().optional(),
     education: z.array(educationSchema).optional(),
     occupation: z.nativeEnum(Occupation).optional(),
     annualIncome: annualIncomeSchema,
-    
+
     // Location & Contact
     address: addressSchema,
     phoneInfo: phoneInfoSchema,
-    
+
     // Personal Background
     languages: z.array(z.nativeEnum(Language)).optional(),
     religion: z.nativeEnum(Religion).optional(),
     maritalStatus: z.nativeEnum(MaritalStatus).optional(),
-    
+
     // Additional Information
     aboutMe: aboutMeSchema,
     familyInfo: familyInfoSchema,
-    
+
     // Preferences & Settings
     preferences: preferencesSchema,
+
     enhancedSettings: enhancedSettingsSchema,
 
-
-    fcmToken : z.string().min(20).max(300)
+    fcmToken: z.string().min(20).max(300).optional()
 })
-.refine(data => {
-    // Additional validation to ensure age matches dateOfBirth if both are provided
-    if (data.age && data.dateOfBirth) {
-        const birthDate = new Date(data.dateOfBirth);
-        const age = new Date().getFullYear() - birthDate.getFullYear();
-        return age === data.age;
-    }
-    return true;
-}, {
-    message: "Age must match the provided date of birth"
-});
+    .refine(
+        (data) => {
+            // Additional validation to ensure age matches dateOfBirth if both are provided
+            if (data.age && data.dateOfBirth) {
+                const birthDate = new Date(data.dateOfBirth);
+                const age = new Date().getFullYear() - birthDate.getFullYear();
+                return age === data.age;
+            }
+            return true;
+        },
+        {
+            message: "Age must match the provided date of birth"
+        }
+    );
 
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
