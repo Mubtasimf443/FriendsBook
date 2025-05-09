@@ -487,7 +487,13 @@ export interface IUser extends Document {
     
     // Push Notification Management
     fcmToken?: string;                     // Firebase Cloud Messaging token
-    
+
+
+    // connections 
+    connections: mongoose.Types.ObjectId[];
+    pendingIncomingRequests: mongoose.Types.ObjectId[];
+    pendingOutgoingRequests: mongoose.Types.ObjectId[];
+
     // Instance Methods
     createPreference(): void;              // Generate partner preferences
     createMID(): string;                   // Generate matrimony ID

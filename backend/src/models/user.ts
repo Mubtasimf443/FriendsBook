@@ -385,46 +385,56 @@ const phoneInfoSchema = new Schema({
 });
 
 const userSchema = new Schema<IUser>({
-    mid : {
+    /**
+     * Core User Identification
+     * ----------------------
+     * Essential fields that uniquely identify and authenticate a user
+     */
+    mid: {
         type: String,
         required: true,
         unique: true,
-        immutable: true, // Cannot be changed once set
+        immutable: true, // Matrimony ID - Cannot be changed once set
         index: true,
     },
+    email: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true,
+        lowercase: true
+    },
+    password: {
+        hashed: { type: String, required: true },
+        salt: { type: String, required: true },
+    },
+
+    /**
+     * Profile Creation & Management
+     * ---------------------------
+     * Information about how and when the profile was created
+     */
     profileCreatedBy: {
         type: String,
         enum: Object.values(ProfileCreatedBy),
         required: true
     },
+    createdAt: {
+        type: Date,
+        required: true,
+        default: Date.now
+    },
+
+    /**
+     * Basic Personal Information
+     * ------------------------
+     * Fundamental details about the user
+     */
     name: {
         type: String,
         required: true,
         trim: true,
-
     },
-    profileImage: {
-        url: {
-            type: String,
-        },
-        id: {
-            type: String,
-        }
-    },
-    coverImage: {
-        url: String,
-        id: String
-    },
-    userImages: [{
-        url: {
-            type: String,
-            required: false
-        },
-        id: {
-            type: String,
-            required: false
-        }
-    }],
     gender: {
         type: String,
         enum: Object.values(Gender),
@@ -434,54 +444,75 @@ const userSchema = new Schema<IUser>({
         type: Date,
         required: true
     },
-    email: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true,
-        lowercase: true
-    },
-    height: {
-        type: String,
-        enum: Object.values(Height),
-        required: true,
-
-    },
     age: {
         type: Number,
         required: true,
         min: 18,
         max: 70
     },
+
+    /**
+     * Physical Attributes
+     * -----------------
+     * Physical characteristics of the user
+     */
+    height: {
+        type: String,
+        enum: Object.values(Height),
+        required: true,
+    },
     weight: {
         type: Number,
         required: true,
         min: 30,
-        max: 200
+        max: 200 // in kilograms
     },
+
+    /**
+     * Media & Images
+     * -------------
+     * User's profile pictures and other images
+     */
+    profileImage: {
+        url: { type: String },
+        id: { type: String }
+    },
+    coverImage: {
+        url: String,
+        id: String
+    },
+    userImages: [{
+        url: { type: String, required: false },
+        id: { type: String, required: false }
+    }],
+
+    /**
+     * Educational Background
+     * --------------------
+     * User's educational qualifications and preferences
+     */
     isEducated: {
         type: Boolean,
         default: true,
         required: true
     },
-
     education: [{
         level: {
             type: String,
-            required: function () { return this.isEducated; },
+            required: function() { return this.isEducated; },
             enum: Object.values(EducationLevel)
         },
         certificate: {
             type: String,
-            required: function () { return this.isEducated; }
+            required: function() { return this.isEducated; }
         },
         institution: {
             type: String,
-            required: function () { return this.isEducated; }
+            required: function() { return this.isEducated; }
         },
         yearOfCompletion: {
             type: Number,
-            required: function () { return this.isEducated; }
+            required: function() { return this.isEducated; }
         },
         grade: {
             type: String,
@@ -492,44 +523,55 @@ const userSchema = new Schema<IUser>({
             required: false
         }
     }],
-    
+
+    /**
+     * Contact & Location Information
+     * ----------------------------
+     * User's contact details and address
+     */
     address: {
-        type : addressSchema ,
+        type: addressSchema,
         required: true
     },
-
     phoneInfo: phoneInfoSchema,
 
+    /**
+     * Cultural & Personal Attributes
+     * ---------------------------
+     * Cultural and personal characteristics
+     */
     languages: [{
         type: String,
         enum: Object.values(Language),
         required: true
     }],
-
     religion: {
         type: String,
         enum: Object.values(Religion),
         required: true
     },
-
     maritalStatus: {
         type: String,
         enum: Object.values(MaritalStatus),
         required: false
     },
 
+    /**
+     * Professional Information
+     * ----------------------
+     * Career and financial details
+     */
     occupation: {
         type: String,
         enum: Object.values(Occupation),
         required: false
     },
-
-    annualIncome: {  
+    annualIncome: {
         amount: {
             type: Number,
             required: false,
             min: 0,
-            max: 1000000000, // 1 billion - adjust as needed
+            max: 1000000000, // 1 billion BDT
             validate: {
                 validator: Number.isInteger,
                 message: 'Annual income must be a whole number'
@@ -537,9 +579,7 @@ const userSchema = new Schema<IUser>({
         },
         currency: {
             type: String,
-            required(this) {
-                return !!this.annualIncome?.currency
-            },
+            required(this: any) { return !!this.annualIncome?.currency },
             uppercase: true,
             enum: Object.values(CurrencyCode),
             minlength: 3,
@@ -548,10 +588,13 @@ const userSchema = new Schema<IUser>({
         }
     },
 
+    /**
+     * Partner Preferences
+     * -----------------
+     * User's preferences for potential matches
+     */
     preferences: {
-        isEducated: {
-            type: Boolean
-        },
+        isEducated: { type: Boolean },
         education: [{
             type: {
                 level: {
@@ -560,80 +603,67 @@ const userSchema = new Schema<IUser>({
                 }
             }
         }],
-        location: [{
-            type: String
-        }],
+        location: [{ type: String }],
         weight: {
-            minWeight: {
-                type: Number,
-                min: 30,
-                max: 200
-            },
-            maxWeight: {
-                type: Number,
-                min: 30,
-                max: 200
-            }
+            minWeight: { type: Number, min: 30, max: 200 },
+            maxWeight: { type: Number, min: 30, max: 200 }
         },
         height: {
-            minHeight: {
-                type: Number, // Height in foots 
-                min: 3,
-                max: 9
-            },
-            maxHeight: {
-                type: Number, // Height in foots 
-                min: 3,
-                max: 9
-            }
+            minHeight: { type: Number, min: 3, max: 9 }, // Height in feet
+            maxHeight: { type: Number, min: 3, max: 9 }
         },
         age: {
-            minAge: {
-                type: Number
-            },
-            maxAge: {
-                type: Number
-            }
+            minAge: { type: Number },
+            maxAge: { type: Number }
         },
-        lastUpdated : Date,
+        lastUpdated: Date,
     },
-    createdAt: {
-        type: Date,
-        required: true,
-        default: Date.now
-    },
-   
-    password: {
-        hashed: {
-            type: String,
-            required: true
-        },
-        salt: {
-            type: String,
-            required: true
-        },
-    },
-    onlineStatus:onlineStatusSchema,
+
+    /**
+     * Platform Features & Settings
+     * -------------------------
+     * User's platform-specific settings and statuses
+     */
+    onlineStatus: onlineStatusSchema,
     aboutMe: aboutMeSchema,
     familyInfo: familyInfoSchema,
-  
     enhancedSettings: enhancedSettingsSchema,
-    // Memberships 
-    membership :userMembershipSchema,
-
-    fcmToken : {
-        type : String ,
-        required : false
+    membership: userMembershipSchema,
+    fcmToken: {
+        type: String,
+        required: false
     },
 
-    suspension : {
-        isSuspended : {
-            type : Boolean , 
-            default : false ,
-        },
-        suspensions : [suspensionEntrySchema]
-    }
+    /**
+     * Connections & Network
+     * -------------------
+     * User's connections and relationship with other users
+     */
+    connections: [{
+        type: Schema.Types.ObjectId,
+        ref: 'User'
+    }],
+    pendingIncomingRequests: [{
+        type: Schema.Types.ObjectId,
+        ref: 'ConnectionRequest'
+    }],
+    pendingOutgoingRequests: [{
+        type: Schema.Types.ObjectId,
+        ref: 'ConnectionRequest'
+    }],
 
+    /**
+     * Account Status & Moderation
+     * ------------------------
+     * Information about account status and any moderation actions
+     */
+    suspension: {
+        isSuspended: {
+            type: Boolean,
+            default: false,
+        },
+        suspensions: [suspensionEntrySchema]
+    }
 });
 
 
