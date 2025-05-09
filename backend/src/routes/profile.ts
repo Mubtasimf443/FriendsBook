@@ -139,8 +139,11 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         // Preferences
         if (updateData.preferences) updatesData['preferences'] = updateData.preferences;
 
+        // firebase
+        if (updateData.preferences) updatesData['preferences'] = updateData.preferences;
+
         // Settings
-        if (updateData.enhancedSettings) updatesData['enhancedSettings'] = updateData.enhancedSettings;
+        if (updateData.fcmToken) updatesData['fcmToken'] = updateData.fcmToken;
 
         // Filter out undefined values
         updatesData = Object.fromEntries(
@@ -161,7 +164,7 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         // Update the user and return the new document
         const updatedUser = await User.findByIdAndUpdate(
             userId,
-            { $set: updatesData },
+            { $set: updatesData , },
             {
                 new: true, // Return the updated document
                 runValidators: true // Run model validators
@@ -750,6 +753,8 @@ router.delete('/membership-request', validateUser, async function (req: Request,
         });
     }
 });
+
+
 
 
 

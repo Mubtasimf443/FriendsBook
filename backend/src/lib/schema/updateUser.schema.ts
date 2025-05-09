@@ -21,6 +21,7 @@ import {
 import { EducationLevel } from '../types/userEducation.types';
 import { countryCodes } from '../data/countryCodes';
 import countryNames from '../data/countryNames';
+import { min } from 'date-fns';
 
 
 
@@ -215,7 +216,10 @@ export const updateUserSchema = z.object({
     
     // Preferences & Settings
     preferences: preferencesSchema,
-    enhancedSettings: enhancedSettingsSchema
+    enhancedSettings: enhancedSettingsSchema,
+
+
+    fcmToken : z.string().min(20).max(300)
 })
 .refine(data => {
     // Additional validation to ensure age matches dateOfBirth if both are provided

@@ -480,11 +480,15 @@ export interface IUser extends Document {
     createMID(): string;
     hasActiveMembership() : boolean;
     membership?: IUserMembership;
+    fcmToken?: string;
+    addFCMToken(token: string, device: string): Promise<void>;
+    removeFCMToken(token: string): Promise<void>;
     
 }
 
 
-
+    
+    
 
 
 export { Education , EducationPreference, EducationLevel}

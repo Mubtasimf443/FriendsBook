@@ -622,6 +622,11 @@ const userSchema = new Schema<IUser>({
     // Memberships 
     membership :userMembershipSchema,
 
+    fcmToken : {
+        type : String ,
+        required : false
+    },
+
     suspension : {
         isSuspended : {
             type : Boolean , 
@@ -645,6 +650,17 @@ userSchema.methods.getActiveMembershipID =  function() {
     return this.currentMembership.requestId;
 }
 
+userSchema.methods.addFCMToken = async function (token: string) {
+    if (this.fcmToken === token) return;
+    this.fcmToken = token;
+    await this.save()
+}
+
+
+userSchema.methods.removeFCMToken = async function() {
+    this.fcmToken = undefined;
+    await this.save()
+};
 
 
 userSchema.methods.hasProfileHighlighter = function() {

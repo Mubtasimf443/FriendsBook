@@ -35,3 +35,15 @@ export const activityHistorySchema = paginationSchema.extend({
         invalid_type_error: "Activity type must be one of: likes, emails, sms"
     })
 });
+
+
+
+export const requestPhoneViewSchema = z.object({
+    requestedUserId: _idValidator,
+});
+
+export const respondToPhoneRequestSchema = z.object({
+    requestId: _idValidator,
+    action: z.enum(['APPROVED', 'REJECTED']),
+    expirationDays: z.number().min(1).max(30).optional().default(7)
+});
