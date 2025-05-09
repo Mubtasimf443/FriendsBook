@@ -16,6 +16,9 @@ import { ShortList } from "../models/ShortListedProfiles";
 import { SearchHistory } from "../models/SearchHistory";
 import { _idValidator } from "../lib/schema/schemaComponents";
 import { z } from "zod";
+import { SmsSendedProfile } from "../models/SmsSendedProfile";
+import { SendMailedProfile } from "../models/SendMailedProfile";
+import { LikedProfile } from "../models/LikedProfile";
 
 const router: Router = Router();
 
@@ -1498,14 +1501,450 @@ router.get('/users/viewed-my-profile', async function (req: Request, res: Respon
         });
     }
 });
+// Implement /users/liked-by-me - Get profiles that the current user has liked
+router.get('/users/liked-by-me', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
 
-router.get('/users/liked-by-me', async function (req: Request, res: Response): Promise<Response | any> { });
-router.get('/users/liked-me', async function (req: Request, res: Response): Promise<Response | any> { });
-router.get('/users/send-mails-by-me', async function (req: Request, res: Response): Promise<Response | any> { });
-router.get('/users/send-mails-to-me', async function (req: Request, res: Response): Promise<Response | any> { });
-router.get('/users/send-sms-by-me', async function (req: Request, res: Response): Promise<Response | any> { });
-router.get('/users/send-sms-to-me', async function (req: Request, res: Response): Promise<Response | any> { });
+        const { page, limit, count: shouldCount } = validationResult.data;
+        const userData = req.authSession.value;
 
+        // Get IDs of profiles liked by the current user
+        const likedProfileIds = await LikedProfile.distinct('likedId', {
+            likerId: userData.userId
+        });
+
+        const baseQuery = {
+            _id: { 
+                $in: likedProfileIds
+            },
+            'suspension.isSuspended': false,
+        };
+
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+
+        // Find users with pagination
+        let users = await User.find(baseQuery, userField)
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        // Get total count if requested
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+        res.set("cache-control", "max-age=60, public");
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+            }
+        });
+
+    } catch (error) {
+        console.error('[Liked by me profiles API error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+// Implement /users/liked-me - Get profiles that have liked the current user
+router.get('/users/liked-me', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount } = validationResult.data;
+        const userData = req.authSession.value;
+
+        // Get IDs of users who liked the current user
+        const likedByIds = await LikedProfile.distinct('likerId', {
+            likedId: userData.userId
+        });
+
+        const baseQuery = {
+            _id: { 
+                $in: likedByIds
+            },
+            'suspension.isSuspended': false,
+        };
+
+        const skip = (page - 1) * limit;
+
+        let users = await User.find(baseQuery, userField)
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        res.set("cache-control", "max-age=60, public");
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+            }
+        });
+
+    } catch (error) {
+        console.error('[Liked me profiles API error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+// Implement /users/send-mails-by-me - Get profiles to whom current user has sent emails
+router.get('/users/send-mails-by-me', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount } = validationResult.data;
+        const userData = req.authSession.value;
+
+        // Get IDs of users who received emails from current user
+        const emailedProfileIds = await SendMailedProfile.distinct('receiverId', {
+            senderId: userData.userId,
+            emailStatus: 'SENT'
+        });
+
+        const baseQuery = {
+            _id: { 
+                $in: emailedProfileIds
+            },
+            'suspension.isSuspended': false,
+        };
+
+        const skip = (page - 1) * limit;
+
+        let users = await User.find(baseQuery, userField)
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        res.set("cache-control", "max-age=60, public");
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+            }
+        });
+
+    } catch (error) {
+        console.error('[Emails sent by me API error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+// Implement /users/send-mails-to-me - Get profiles who have sent emails to current user
+router.get('/users/send-mails-to-me', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount } = validationResult.data;
+        const userData = req.authSession.value;
+
+        // Get IDs of users who sent emails to current user
+        const emailSenderIds = await SendMailedProfile.distinct('senderId', {
+            receiverId: userData.userId,
+            emailStatus: 'SENT'
+        });
+
+        const baseQuery = {
+            _id: { 
+                $in: emailSenderIds
+            },
+            'suspension.isSuspended': false,
+        };
+
+        const skip = (page - 1) * limit;
+
+        let users = await User.find(baseQuery, userField)
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        res.set("cache-control", "max-age=60, public");
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+            }
+        });
+
+    } catch (error) {
+        console.error('[Emails sent to me API error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+// Implement /users/send-sms-by-me - Get profiles to whom current user has sent SMS
+router.get('/users/send-sms-by-me', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount } = validationResult.data;
+        const userData = req.authSession.value;
+
+        // Get IDs of users who received SMS from current user
+        const smsReceiverIds = await SmsSendedProfile.distinct('receiverId', {
+            senderId: userData.userId,
+            smsStatus: 'SENT'
+        });
+
+        const baseQuery = {
+            _id: { 
+                $in: smsReceiverIds
+            },
+            'suspension.isSuspended': false,
+        };
+
+        const skip = (page - 1) * limit;
+
+        let users = await User.find(baseQuery, userField)
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        res.set("cache-control", "max-age=60, public");
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+            }
+        });
+
+    } catch (error) {
+        console.error('[SMS sent by me API error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+// Implement /users/send-sms-to-me - Get profiles who have sent SMS to current user
+router.get('/users/send-sms-to-me', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount } = validationResult.data;
+        const userData = req.authSession.value;
+
+        // Get IDs of users who sent SMS to current user
+        const smsSenderIds = await SmsSendedProfile.distinct('senderId', {
+            receiverId: userData.userId,
+            smsStatus: 'SENT'
+        });
+
+        const baseQuery = {
+            _id: { 
+                $in: smsSenderIds
+            },
+            'suspension.isSuspended': false,
+        };
+
+        const skip = (page - 1) * limit;
+
+        let users = await User.find(baseQuery, userField)
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        res.set("cache-control", "max-age=60, public");
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+            }
+        });
+
+    } catch (error) {
+        console.error('[SMS sent to me API error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
 
 router.get('/users/suggested-for-you' ,async function (req: Request, res: Response): Promise<Response | any> { 
     try {
