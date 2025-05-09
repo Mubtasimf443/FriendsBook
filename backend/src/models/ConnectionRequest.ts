@@ -32,8 +32,14 @@ export interface IConnectionRequest extends mongoose.Document {
     getStatus(): ConnectionRequestStatus;
 }
 
+interface IConnectionRequestMethods {
+    getConnectionStatus () : {
+        status : 'connected' |  'outgoing_request' |  'incoming_request' |  'not_connected' ,
+        since : Date
+    }
+}
 // Schema for connection request
-const connectionRequestSchema = new Schema<IConnectionRequest>({
+const connectionRequestSchema = new Schema<IConnectionRequest ,IConnectionRequestMethods>({
     sender: {
         type: Schema.Types.ObjectId,
         ref: 'User',
@@ -120,47 +126,16 @@ connectionRequestSchema.pre('save', function(next) {
     next();
 });
 
-// Static methods for the model
-connectionRequestSchema.statics.findActiveRequest = async function(senderId: mongoose.Types.ObjectId, recipientId: mongoose.Types.ObjectId) {
-    return this.findOne({
-        sender: senderId,
-        recipient: recipientId,
-        status: ConnectionRequestStatus.PENDING
-    });
-};
+// // Static methods for the model
+// connectionRequestSchema.statics.findActiveRequest = async function(senderId: mongoose.Types.ObjectId, recipientId: mongoose.Types.ObjectId) {
+//     return this.findOne({
+//         sender: senderId,
+//         recipient: recipientId,
+//         status: ConnectionRequestStatus.PENDING
+//     });
+// };
 
-connectionRequestSchema.statics.getConnectionStatus = async function(user1Id: mongoose.Types.ObjectId, user2Id: mongoose.Types.ObjectId) {
-    // Check for requests in both directions
-    const request1 = await this.findOne({
-        sender: user1Id,
-        recipient: user2Id,
-        status: { $in: [ConnectionRequestStatus.PENDING, ConnectionRequestStatus.ACCEPTED] }
-    });
-    
-    const request2 = await this.findOne({
-        sender: user2Id,
-        recipient: user1Id,
-        status: { $in: [ConnectionRequestStatus.PENDING, ConnectionRequestStatus.ACCEPTED] }
-    });
-    
-    if (request1 && request1.status === ConnectionRequestStatus.ACCEPTED) {
-        return { status: 'connected', since: request1.acceptedAt };
-    }
-    
-    if (request2 && request2.status === ConnectionRequestStatus.ACCEPTED) {
-        return { status: 'connected', since: request2.acceptedAt };
-    }
-    
-    if (request1 && request1.status === ConnectionRequestStatus.PENDING) {
-        return { status: 'outgoing_request', since: request1.createdAt };
-    }
-    
-    if (request2 && request2.status === ConnectionRequestStatus.PENDING) {
-        return { status: 'incoming_request', since: request2.createdAt };
-    }
-    
-    return { status: 'not_connected' };
-};
+
 
 // Create model
 export const ConnectionRequest = mongoose.model<IConnectionRequest>('ConnectionRequest', connectionRequestSchema);

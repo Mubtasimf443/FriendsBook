@@ -22,13 +22,16 @@ import { MembershipRequest } from "../models/membershipRequest";
 import { MembershipRequestStatus } from "../lib/types/memberdship.types";
 import { RequestMobileNumberView } from "../models/RequestMobileNumberView";
 import { addDays } from "date-fns";
-
+import { validateUser } from "../lib/middlewares/auth.middleware";
+import connectionRequestSubRouter from '../sub_routes/connectionRequest'
 
 const router: Router = express.Router();
+router.use(validateUser)
 
 
 
 
+router.use('/connections' ,connectionRequestSubRouter )
 // Add to shortlist
 router.post('/users/short-list/add', async function (req: Request, res: Response): Promise<Response | any> {
     try {
