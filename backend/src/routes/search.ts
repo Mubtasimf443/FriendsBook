@@ -19,6 +19,7 @@ import { z } from "zod";
 import { SmsSendedProfile } from "../models/SmsSendedProfile";
 import { SendMailedProfile } from "../models/SendMailedProfile";
 import { LikedProfile } from "../models/LikedProfile";
+import { RequestMobileNumberView } from "../models/RequestMobileNumberView";
 
 const router: Router = Router();
 
@@ -1501,6 +1502,7 @@ router.get('/users/viewed-my-profile', async function (req: Request, res: Respon
         });
     }
 });
+
 // Implement /users/liked-by-me - Get profiles that the current user has liked
 router.get('/users/liked-by-me', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -1946,6 +1948,158 @@ router.get('/users/send-sms-to-me', async function (req: Request, res: Response)
     }
 });
 
+// Implement /users/send-sms-to-me - Get profiles who have sent SMS to current user
+router.get('/users/seen-phobe-details', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount } = validationResult.data;
+        const userData = req.authSession.value;
+
+        // Get IDs of users who sent SMS to current user
+        const requestedIds = await RequestMobileNumberView.distinct('requestedId', {
+            requesterId: userData.userId,
+        });
+
+        const baseQuery = {
+            _id: { 
+                $in: requestedIds
+            },
+            'suspension.isSuspended': false,
+        };
+
+        const skip = (page - 1) * limit;
+
+        let users = await User.find(baseQuery, userField)
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        res.set("cache-control", "max-age=60, public");
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+            }
+        });
+
+    } catch (error) {
+        console.error('[SMS sent to me API error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+router.get('/users/seen-my-phobe-details', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount } = validationResult.data;
+        
+        const skip = (page - 1) * limit;
+
+        // Get IDs of users who sent SMS to current user
+        let requesters = await RequestMobileNumberView.find({
+            requestedId: req.authSession.value.userId,
+        }, 'requesterId')
+            .skip(skip)
+            .limit(limit)
+            .lean();
+
+        let requestersIds = requesters.map(element => element.requesterId);
+
+        const baseQuery = {
+            _id: { 
+                $in: requestersIds
+            },
+            'suspension.isSuspended': false,
+        };
+
+
+        let users = await User.find(baseQuery, userField)
+            
+            .lean()
+            .maxTimeMS(20000);
+
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await RequestMobileNumberView.find({
+                requestedId: req.authSession.value.userId,
+            }, '')
+                .countDocuments(baseQuery)
+                .maxTimeMS(10000);
+        }
+
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        res.set("cache-control", "max-age=60, public");
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+            }
+        });
+
+    } catch (error) {
+        console.error('[SMS sent to me API error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
 router.get('/users/suggested-for-you' ,async function (req: Request, res: Response): Promise<Response | any> { 
     try {
         
@@ -2027,6 +2181,9 @@ router.get('/users/premium' ,async function (req: Request, res: Response): Promi
         });
     }
 });
+
+
+
 
 
 

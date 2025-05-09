@@ -602,7 +602,6 @@ const userSchema = new Schema<IUser>({
         required: true,
         default: Date.now
     },
-    settings: settingsSchema,
    
     password: {
         hashed: {
@@ -792,13 +791,6 @@ userSchema.methods.unsuspend = function() {
 userSchema.methods.getSuspensionHistory = function() {
     return this.suspension.suspensions;
 };
-// Add virtual for last suspension
-userSchema.virtual('lastSuspension').get(function() {
-    if (this.suspension.suspensions.length > 0) {
-        return this.suspension.suspensions[this.suspension.suspensions.length - 1];
-    }
-    return null;
-});
 
 userSchema.index({ gender: 1, country: 1 });
 userSchema.index({ age: 1 });
