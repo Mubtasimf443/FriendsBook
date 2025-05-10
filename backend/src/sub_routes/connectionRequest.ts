@@ -468,124 +468,17 @@ router.post('/request/:requestId/withdraw', async function (req: Request, res: R
     }
 });
 
-router.get('/', async function (req: Request, res: Response): Promise<any> {
-    try {
-        const userId = req.authSession.value.userId;
-        
-        // Get all connection requests (both incoming and outgoing)
-        const requests = await ConnectionRequest.find({
-            $or: [
-                { sender: userId },
-                { recipient: userId }
-            ]
-        })
-        .populate('sender recipient', 'name profileImage')
-        .sort({ createdAt: -1 });
 
-        return res.status(200).json({
-            success: true,
-            message: 'Connection requests retrieved successfully',
-            data: {
-                requests: requests.map(req => ({
-                    id: req._id,
-                    type: req.sender.toString() === userId ? 'outgoing' : 'incoming',
-                    status: req.status,
-                    createdAt: req.createdAt,
-                    user: req.sender.toString() === userId ? req.recipient : req.sender,
-                    initialMessage: req.initialMessage,
-                    acceptedAt: req.acceptedAt,
-                    rejectedAt: req.rejectedAt,
-                    withdrawnAt: req.withdrawnAt,
-                    rejectionReason: req.rejectionReason
-                }))
-            },
-            error: null
-        });
 
-    } catch (error) {
-        console.error('[Get All Connection Requests API error]', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            error: { code: 'INTERNAL_SERVER_ERROR' },
-            data: null
-        });
-    }
-});
+router.get('/incoming/pending/users', async function (req: Request, res: Response): Promise<any> {});
+router.get('/incoming/accepted/users', async function (req: Request, res: Response): Promise<any> {});
+router.get('/incoming/rejected/users', async function (req: Request, res: Response): Promise<any> {});
+router.get('/outgoing/pending/users', async function (req: Request, res: Response): Promise<any> {});
+router.get('/outgoing/accepted/users', async function (req: Request, res: Response): Promise<any> {});
+router.get('/outgoing/rejected/users', async function (req: Request, res: Response): Promise<any> {});
 
-router.get('/incoming', async function (req: Request, res: Response): Promise<any> {
-    try {
-        const userId = req.authSession.value.userId;
-        
-        // Get incoming connection requests
-        const requests = await ConnectionRequest.find({
-            recipient: userId,
-            status: ConnectionRequestStatus.PENDING
-        })
-        .populate('sender', 'name profileImage')
-        .sort({ createdAt: -1 });
 
-        return res.status(200).json({
-            success: true,
-            message: 'Incoming connection requests retrieved successfully',
-            data: {
-                requests: requests.map(req => ({
-                    id: req._id,
-                    sender: req.sender,
-                    createdAt: req.createdAt,
-                    initialMessage: req.initialMessage
-                }))
-            },
-            error: null
-        });
 
-    } catch (error) {
-        console.error('[Get Incoming Connection Requests API error]', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            error: { code: 'INTERNAL_SERVER_ERROR' },
-            data: null
-        });
-    }
-});
-
-router.get('/outgoing', async function (req: Request, res: Response): Promise<any> {
-    try {
-        const userId = req.authSession.value.userId;
-        
-        // Get outgoing connection requests
-        const requests = await ConnectionRequest.find({
-            sender: userId,
-            status: ConnectionRequestStatus.PENDING
-        })
-        .populate('recipient', 'name profileImage')
-        .sort({ createdAt: -1 });
-
-        return res.status(200).json({
-            success: true,
-            message: 'Outgoing connection requests retrieved successfully',
-            data: {
-                requests: requests.map(req => ({
-                    id: req._id,
-                    recipient: req.recipient,
-                    createdAt: req.createdAt,
-                    initialMessage: req.initialMessage
-                }))
-            },
-            error: null
-        });
-
-    } catch (error) {
-        console.error('[Get Outgoing Connection Requests API error]', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            error: { code: 'INTERNAL_SERVER_ERROR' },
-            data: null
-        });
-    }
-});
 
 export default router;
 

@@ -1321,6 +1321,80 @@ router.delete('/search-history/:id', async function(req: Request, res: Response)
     }
 });
 
+router.get('/users/premium' ,async function (req: Request, res: Response): Promise<Response | any> { 
+    try {
+        let userData = req.authSession.value;
+
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+  
+        const { page, limit, count :shouldCount } = validationResult.data;
+        
+        const baseQuery = {
+            'isSuspended': false,
+            '_id': { $ne: userData.userId }, // Exclude current user
+            'gender': { $ne: userData.gender },
+            religion: userData.religion,
+            'membership.currentMembership.requestId' :{  $exists: true} ,
+            'membership.currentMembership.membership_exipation_date' :{  $exists: true} 
+        };
+
+        const skip = (page - 1) * limit;
+        let users :any[] = await User.find(baseQuery, userField + ' membership')
+            .skip(skip)
+            .limit(limit)
+            .lean();
+
+
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.find(baseQuery).countDocuments().maxTimeMS(10000)
+        }
+
+
+        let pagination:object = {
+            currentPage : page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            }
+        }
+
+        res.set('Cache-Control', 'private, max-age=60');
+
+        res.status(200).json({
+            success : true,
+            data : {
+                users
+            },
+
+            error: null,
+            message: 'PREMIUM_USERS_FOUND'
+        })
+        return;
+        
+    } catch (error) {
+        console.error('[Premium Users Search Api error]', error);
+        return res.status(500).json({
+           success: false,
+           message: 'Internal server error',
+           data: null
+        });
+    }
+});
+
 
 router.get('/users/mutual', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -1342,6 +1416,8 @@ router.get('/users/viewed-not-contact', async function (req: Request, res: Respo
         });
     }
 });
+
+
 
 router.get('/users/viewed-profiles', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -2105,80 +2181,6 @@ router.get('/users/suggested-for-you' ,async function (req: Request, res: Respon
         
     } catch (error) {
         
-    }
-});
-
-router.get('/users/premium' ,async function (req: Request, res: Response): Promise<Response | any> { 
-    try {
-        let userData = req.authSession.value;
-
-        const validationResult = paginationSchema.safeParse(req.query);
-        if (!validationResult.success) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid query parameters",
-                error: validationResult.error.errors,
-                data: null
-            });
-        }
-  
-        const { page, limit, count :shouldCount } = validationResult.data;
-        
-        const baseQuery = {
-            'isSuspended': false,
-            '_id': { $ne: userData.userId }, // Exclude current user
-            'gender': { $ne: userData.gender },
-            religion: userData.religion,
-            'membership.currentMembership.requestId' :{  $exists: true} ,
-            'membership.currentMembership.membership_exipation_date' :{  $exists: true} 
-        };
-
-        const skip = (page - 1) * limit;
-        let users :any[] = await User.find(baseQuery, userField + ' membership')
-            .skip(skip)
-            .limit(limit)
-            .lean();
-
-
-        let totalCount: number | undefined = undefined;
-        if (shouldCount === 'yes') {
-            totalCount = await User.find(baseQuery).countDocuments().maxTimeMS(10000)
-        }
-
-
-        let pagination:object = {
-            currentPage : page,
-            pageSize: limit,
-        };
-
-        if (totalCount !== undefined) {
-            pagination = {
-                ...pagination,
-                totalPages: Math.ceil(totalCount / limit),
-                totalUsers: totalCount
-            }
-        }
-
-        res.set('Cache-Control', 'private, max-age=60');
-
-        res.status(200).json({
-            success : true,
-            data : {
-                users
-            },
-
-            error: null,
-            message: 'PREMIUM_USERS_FOUND'
-        })
-        return;
-        
-    } catch (error) {
-        console.error('[Premium Users Search Api error]', error);
-        return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
-        });
     }
 });
 
