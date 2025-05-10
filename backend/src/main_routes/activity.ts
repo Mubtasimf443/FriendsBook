@@ -1006,4 +1006,38 @@ router.post('/unblock/user/:id', async function (req: Request, res: Response): P
 });
 
 
+router.get('/match-rasult' , async function (req: Request, res: Response): Promise<any> {
+    try {
+        let _id = _idValidator.parse(req.body.profile_id);
+
+        if (_id === req.authSession.value.userId) {
+
+        }
+
+        let matchingUserProfile =await User.findById(_id) ;
+
+        if (!matchingUserProfile) {
+            res.status(400).json({
+                success: false,
+                message: 'Invalid request parameters',
+                
+                data: null
+            });
+            return;
+        }
+
+        // else I am Going check the match score of both of the users
+        // And I am going tell that the match score of both of you are 50 or 80 or 30 or any range
+    } catch (error) {
+     console.error('[match-rasult api error]', error);
+     return res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        data: null
+     });   
+    }
+})
+
+
+
 export default router;

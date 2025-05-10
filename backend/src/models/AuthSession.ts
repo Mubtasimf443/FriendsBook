@@ -168,21 +168,21 @@ const AuthSessionValue = {
     partnerPreferences: {
         type: {
             ageRange: {
-                min: { type: Number, required: true },
-                max: { type: Number, required: true }
+                min: { type: Number, },
+                max: { type: Number, }
             },
             heightRange: {
                 min: { type: Number,  },
                 max: { type: Number,  }
             },
             weightRange: {
-                min: { type: Number, required: true },
-                max: { type: Number, required: true }
+                min: { type: Number, },
+                max: { type: Number, }
             },
             maritalStatus: [{
                 type: String,
                 enum: Object.values(MaritalStatus),
-                required: true
+             
             }],
             education: {
                 minimumLevel: {
@@ -198,7 +198,7 @@ const AuthSessionValue = {
             religion: [{
                 type: String,
                 enum: Object.values(Religion),
-                required: true
+            
             }],
             occupation: [{
                 type: String,

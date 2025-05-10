@@ -330,7 +330,7 @@ export enum LoginEnum {
 // Base schema for common fields
 export const LoginSchema = z.object({
     password: passwordValidator,
-    email: emailValidatior,
+    email:z.optional(emailValidatior),
     phoneInfo: z.object({
         number: z.string({
             required_error: "Phone number is required",

@@ -276,12 +276,10 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
             },
             createdAt: new Date(),
             age: sessionData.age ,
-            enhancedSettings : {
-                blocked : [] ,
-                privacy : {
-
-                },
-                notifications :{}
+            enhancedSettings: {
+                blocked: [],
+                privacy: {},
+                notifications: {}
             }
         });
         
@@ -306,7 +304,7 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
         await AuthSession.create({
             key: authToken,
             value: giveAuthSessionValue(newUser)
-        })
+        });
 
         // Return success response
         return res.status(200).json({
@@ -337,11 +335,14 @@ router.post('/login', async function (req: Request, res: Response): Promise<Resp
             return res.status(400).json({
                 success: false,
                 message: "Invalid input data. Please check your email, phone, or password format.",
-                data: null
+                data: null,
+                error : loginValidationResult.error
             });
         }
 
         const loginData = loginValidationResult.data;
+        console.log(loginData);
+        
         let existingUser: null | IUser = null;
 
         // Check for user based on login type
