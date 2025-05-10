@@ -1,43 +1,95 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-import mongoose, { Document, Mongoose, ObjectId, Schema , } from 'mongoose';
-import {  EducationLevel, Gender, Height } from '../lib/types/user.types';
+import mongoose, { Document, Mongoose, ObjectId, Schema, } from 'mongoose';
+import { EducationLevel, Gender, Height, Language, MaritalStatus, Occupation, Religion } from '../lib/types/user.types';
 
 
 
 interface IAddress {
-    lat ?: number;
-    long  ?: number;
-    division ?: string;
-    district ?: string;
-    upazilla ?: string;
-    union ?: string;
-    country ?: string;
+    lat?: number;
+    long?: number;
+    division?: string;
+    district?: string;
+    upazilla?: string;
+    union?: string;
+    country?: string;
 }
 
 interface IPhone {
-    number ?: string;
-    code ?: string;
+    number?: string;
+    code?: string;
 }
 
 interface IPreference {
-    gender : Gender
+    gender: Gender
 }
 
 export interface IAuthSessionValue {
+    // Basic User Info
     email: string;
-    userId: ObjectId |any;
-    address : IAddress;
-    phone : IPhone;
-    gender : Gender ;
-    preference : IPreference;
-    languages : string[];
-    religion : string;
-    isEducated : boolean;
-    education? : Education[];
-    height : string;
-    weight : number;
-    blockedProfiles : mongoose.Types.ObjectId[]
+    userId: ObjectId | any;
+
+    // Location Info
+    address: {
+        country: string;
+        lat?: number;
+        long?: number;
+        division?: string;
+        district?: string;
+        upazila?: string;
+        union?: string;
+    };
+
+    // Contact Info
+    phone: {
+        number?: string;
+        code?: string;
+    };
+
+    // Personal Attributes
+    gender: Gender;
+    height: Height;
+    weight: number;
+    religion: Religion;
+    languages: Language[];
+    maritalStatus?: MaritalStatus;
+
+    // Education & Profession
+    isEducated: boolean;
+    education?: Education[];
+    occupation?: Occupation;
+
+    // Partner Preferences
+    partnerPreferences: {
+        ageRange: {
+            min: number;
+            max: number;
+        };
+        heightRange: {
+            min: Height;
+            max: Height;
+        };
+        weightRange: {
+            min: number;
+            max: number;
+        };
+        maritalStatus: MaritalStatus[];
+        education?: {
+            minimumLevel: EducationLevel;
+            mustBeEducated: boolean;
+            preferredLevels?: EducationLevel[];
+        };
+        religion: Religion[];
+        occupation?: Occupation[];
+        location?: {
+            preferredCountries: string[];
+            preferredRegions?: string[];
+            preferredCities?: string[];
+        };
+    };
+
+    // Security & Privacy
+    blockedProfiles: mongoose.Types.ObjectId[];
 }
 
 interface Education {
@@ -45,7 +97,7 @@ interface Education {
 }
 
 export interface IAuthSession extends Document {
-    name: "auth_session"; 
+    name: "auth_session";
     value: IAuthSessionValue;
     key?: string;
     expiration_date: Date;
@@ -54,7 +106,6 @@ export interface IAuthSession extends Document {
 }
 
 const AuthSessionValue = {
-    
     email: {
         type: String,
         required: true,
@@ -114,16 +165,52 @@ const AuthSessionValue = {
         enum: Object.values(Gender),
         required: true
     },
-    preference: {
+    partnerPreferences: {
         type: {
-            gender: {
+            ageRange: {
+                min: { type: Number, required: true },
+                max: { type: Number, required: true }
+            },
+            heightRange: {
+                min: { type: String, enum: Object.values(Height), required: true },
+                max: { type: String, enum: Object.values(Height), required: true }
+            },
+            weightRange: {
+                min: { type: Number, required: true },
+                max: { type: Number, required: true }
+            },
+            maritalStatus: [{
                 type: String,
-                enum: Object.values(Gender),
+                enum: Object.values(MaritalStatus),
                 required: true
+            }],
+            education: {
+                minimumLevel: {
+                    type: String,
+                    enum: Object.values(EducationLevel)
+                },
+                mustBeEducated: Boolean,
+                preferredLevels: [{
+                    type: String,
+                    enum: Object.values(EducationLevel)
+                }]
+            },
+            religion: [{
+                type: String,
+                enum: Object.values(Religion),
+                required: true
+            }],
+            occupation: [{
+                type: String,
+                enum: Object.values(Occupation)
+            }],
+            location: {
+                preferredCountries: [String],
+                preferredRegions: [String],
+                preferredCities: [String]
             }
         },
-        required: true,
-        _id: false
+        required: true
     },
     // New fields added
     languages: [{
@@ -162,9 +249,9 @@ const AuthSessionValue = {
                 type: mongoose.SchemaTypes.ObjectId
             }
         ],
-        default :[]
+        default: []
     }
-   
+
 
 }
 
@@ -179,12 +266,12 @@ const authSessionSchema = new Schema<IAuthSession>(
         key: {
             type: String,
             required: false,
-            unique : true ,
+            unique: true,
         },
         value: {
             type: AuthSessionValue,
             required: true,
-            _id: false 
+            _id: false
         },
         expiration_date: {
             type: Date,
@@ -194,7 +281,7 @@ const authSessionSchema = new Schema<IAuthSession>(
             }
         }
     },
-    {      
+    {
         timestamps: {
             createdAt: 'created_at',
             updatedAt: 'updated_at',

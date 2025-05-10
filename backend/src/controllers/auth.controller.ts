@@ -3,7 +3,7 @@
 */
 
 import crypto from "crypto"
-import { Gender, IUser } from "../lib/types/user.types"
+import { EducationLevel, Gender, Height, IUser } from "../lib/types/user.types"
 import { CountryNamesEnum } from "../lib/types/country_names.enum"
 import { IAuthSessionValue } from "../models/AuthSession"
 import mongoose from "mongoose"
@@ -77,35 +77,73 @@ export async function sendRegistrationOTP(email: string, otp: number): Promise<b
 export function generateAuthToken(): string {
   return crypto.randomBytes(32).toString('hex');
 }
-
-
 export function giveAuthSessionValue(user: IUser): IAuthSessionValue {
-  return ({
+  return {
+    // Basic Info
     email: user.email,
     userId: user._id,
+
+    // Location
     address: {
       country: user.address.country,
-      lat: user.address.country === CountryNamesEnum.BANGLADESH ? user.address.district?.lat : undefined,
-      long: user.address.country === CountryNamesEnum.BANGLADESH ? user.address.district?.long : undefined,
-      division: user.address.country === CountryNamesEnum.BANGLADESH ? user.address.division?.name : undefined,
-      district: user.address.country === CountryNamesEnum.BANGLADESH ? user.address.district?.name : undefined,
-      upazilla: user.address.country === CountryNamesEnum.BANGLADESH ? user.address.upazila?.name : undefined,
-      union: user.address.country === CountryNamesEnum.BANGLADESH ? user.address.union?.name : undefined,
+      lat: user.address.district?.lat,
+      long: user.address.district?.long,
+      division: user.address.division?.name,
+      district: user.address.district?.name,
+      upazila: user.address.upazila?.name,
+      union: user.address.union?.name
     },
+
+    // Contact
     phone: {
       number: user.phoneInfo.number,
       code: user.phoneInfo.country.phone_code,
     },
+
+    // Personal Attributes
     gender: user.gender,
-    preference: {
-      gender: user.gender === Gender.MALE ? Gender.FEMALE : Gender.MALE
+    height: user.height,
+    weight: user.weight,
+    religion: user.religion,
+    languages: user.languages,
+    maritalStatus: user.maritalStatus,
+
+    // Education & Profession
+    isEducated: user.isEducated,
+    education: user.education,
+    occupation: user.occupation,
+
+    // Partner Preferences from new schema
+    partnerPreferences: {
+      ageRange: {
+        min: user.partnerPreference.ageRange.min,
+        max: user.partnerPreference.ageRange.max
+      },
+      heightRange: {
+        min: Height[`FOOT_${user.partnerPreference.heightRange.min}_0`],
+        max: Height[`FOOT_${user.partnerPreference.heightRange.max}_0`]
+      },
+      weightRange: {
+        min: user.partnerPreference.weightRange.min,
+        max:  user.partnerPreference.weightRange.max
+      },
+      maritalStatus: [MaritalStatus.NEVER_MARRIED],
+      education: user.isEducated ? {
+        minimumLevel: user.education[0]?.level || EducationLevel.HSC,
+        mustBeEducated: user.isEducated,
+        preferredLevels: user.partnerPreference.education?.map(e => e.level)
+      } : undefined,
+      religion: [user.religion],
+      location: {
+        preferredCountries: [user.address.country],
+        preferredRegions: user.address.division ? [user.address.division.id] : undefined,
+        preferredCities: user.address.district ? [user.address.district.id] : undefined
+      }
     },
-    isEducated : user.isEducated,
-    education : user.education || undefined,
-    languages: user.languages || [], // Added languages field
-    religion: user.religion     ,
-    height : user.height,
-    weight : user.weight,
-    blockedProfiles: user.enhancedSettings.blocked.map(({ userId }) => new mongoose.Types.ObjectId(userId))
-  })
+
+    // Security
+    blockedProfiles: user.enhancedSettings.blocked.map(
+      ({ userId }) => new mongoose.Types.ObjectId(userId)
+    )
+  };
 }
