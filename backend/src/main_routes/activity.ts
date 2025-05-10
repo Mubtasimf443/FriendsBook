@@ -26,6 +26,7 @@ import { validateUser } from "../lib/middlewares/auth.middleware";
 import connectionRequestSubRouter from '../sub_routes/connectionRequest'
 import { IBlockedProfile } from "../lib/types/userProfile.types";
 import AuthSession from "../models/AuthSession";
+import { MatchScoreService } from "../lib/core/matchScore.service";
 
 const router: Router = express.Router();
 router.use(validateUser)
@@ -1005,39 +1006,89 @@ router.post('/unblock/user/:id', async function (req: Request, res: Response): P
     }
 });
 
-
-router.get('/match-rasult' , async function (req: Request, res: Response): Promise<any> {
+router.get('/match-result', async function (req: Request, res: Response): Promise<any> {
     try {
-        let _id = _idValidator.parse(req.body.profile_id);
+        const validationSchema = z.object({
+            profile_id: _idValidator
+        });
 
-        if (_id === req.authSession.value.userId) {
-
-        }
-
-        let matchingUserProfile =await User.findById(_id) ;
-
-        if (!matchingUserProfile) {
-            res.status(400).json({
+        const validationResult = validationSchema.safeParse(req.body);
+        if (!validationResult.success) {
+            return res.status(400).json({
                 success: false,
-                message: 'Invalid request parameters',
-                
+                message: "Invalid input parameters",
+                error: validationResult.error,
                 data: null
             });
-            return;
         }
 
-        // else I am Going check the match score of both of the users
-        // And I am going tell that the match score of both of you are 50 or 80 or 30 or any range
-    } catch (error) {
-     console.error('[match-rasult api error]', error);
-     return res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-        data: null
-     });   
-    }
-})
+        const { profile_id } = validationResult.data;
+        const currentUserId = req.authSession.value.userId;
 
+        // Prevent self-matching
+        if (profile_id.toString() === currentUserId.toString()) {
+            return res.status(400).json({
+                success: false,
+                message: "Cannot calculate match score with yourself",
+                data: null
+            });
+        }
+
+        // Fetch both user profiles
+        const [currentUser, matchingUser] = await Promise.all([
+            User.findById(currentUserId),
+            User.findById(profile_id)
+        ]);
+
+        if (!currentUser || !matchingUser) {
+            return res.status(404).json({
+                success: false,
+                message: "One or both users not found",
+                data: null
+            });
+        }
+
+        // Check if users have blocked each other
+        if (currentUser.enhancedSettings.blocked.some(b => b.userId.toString() === profile_id.toString()) ||
+            matchingUser.enhancedSettings.blocked.some(b => b.userId.toString() === currentUserId.toString())) {
+            return res.status(403).json({
+                success: false,
+                message: "Cannot calculate match score for blocked users",
+                data: null
+            });
+        }
+
+        // Calculate match score
+        const matchScore = MatchScoreService.calculateMatchScore(currentUser, matchingUser);
+
+        // Cache the result for 24 hours
+        res.set('Cache-Control', 'private, max-age=86400');
+
+        return res.status(200).json({
+            success: true,
+            message: "Match score calculated successfully",
+            data: {
+                overallScore: matchScore.totalScore,
+                compatibility: matchScore.compatibility,
+                categoryScores: matchScore.categoryScores,
+                details: matchScore.details
+            }
+        });
+
+    } catch (error) {
+        console.error('[match-result api error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString()
+        });
+
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
 
 
 export default router;
