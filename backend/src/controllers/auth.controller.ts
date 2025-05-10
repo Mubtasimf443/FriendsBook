@@ -3,7 +3,7 @@
 */
 
 import crypto from "crypto"
-import { EducationLevel, Gender, Height, IUser } from "../lib/types/user.types"
+import { EducationLevel, Gender, Height, IUser, MaritalStatus } from "../lib/types/user.types"
 import { CountryNamesEnum } from "../lib/types/country_names.enum"
 import { IAuthSessionValue } from "../models/AuthSession"
 import mongoose from "mongoose"
@@ -61,7 +61,6 @@ export function giveAuthSession(): string {
   return crypto.randomBytes(32).toString("hex").normalize();
 }
 
-
 export async function sendRegistrationOTP(email: string, otp: number): Promise<boolean> {
   try {
     // TODO: Implement email sending logic here
@@ -77,73 +76,88 @@ export async function sendRegistrationOTP(email: string, otp: number): Promise<b
 export function generateAuthToken(): string {
   return crypto.randomBytes(32).toString('hex');
 }
+
 export function giveAuthSessionValue(user: IUser): IAuthSessionValue {
-  return {
-    // Basic Info
-    email: user.email,
-    userId: user._id,
+    return {
+        // Basic Info
+        email: user.email,
+        userId: user._id,
 
-    // Location
-    address: {
-      country: user.address.country,
-      lat: user.address.district?.lat,
-      long: user.address.district?.long,
-      division: user.address.division?.name,
-      district: user.address.district?.name,
-      upazila: user.address.upazila?.name,
-      union: user.address.union?.name
-    },
+        // Location Info
+        address: {
+            country: user.address.country,
+            lat: user.address.district?.lat,
+            long: user.address.district?.long,
+            division: user.address.division?.name,
+            district: user.address.district?.name,
+            upazila: user.address.upazila?.name,
+            union: user.address.union?.name
+        },
 
-    // Contact
-    phone: {
-      number: user.phoneInfo.number,
-      code: user.phoneInfo.country.phone_code,
-    },
+        // Contact Info
+        phone: {
+            number: user.phoneInfo.number,
+            code: user.phoneInfo.country.phone_code,
+        },
 
-    // Personal Attributes
-    gender: user.gender,
-    height: user.height,
-    weight: user.weight,
-    religion: user.religion,
-    languages: user.languages,
-    maritalStatus: user.maritalStatus,
+        // Personal Attributes
+        gender: user.gender,
+        height: user.height,
+        weight: user.weight,
+        religion: user.religion,
+        languages: user.languages,
+        maritalStatus: user.maritalStatus,
+        
+        // Education & Professional Info
+        isEducated: user.isEducated,
+        education: user.education?.map(edu => ({
+            level: edu.level
+        })),
+        occupation: user.occupation,
 
-    // Education & Profession
-    isEducated: user.isEducated,
-    education: user.education,
-    occupation: user.occupation,
+        // Partner Preferences (Optimized for Search)
+        partnerPreferences: {
+            ageRange: {
+                min: user.partnerPreference?.ageRange?.min || 
+                    (user.gender === Gender.MALE ? 18 : 21),
+                max: user.partnerPreference?.ageRange?.max || 
+                    (user.gender === Gender.MALE ? 35 : 45)
+            },
+            heightRange: {
+                min: user.partnerPreference?.heightRange?.min || 
+                    (user.gender === Gender.MALE ? Height.FOOT_4_8 : Height.FOOT_5_0),
+                max: user.partnerPreference?.heightRange?.max || 
+                    (user.gender === Gender.MALE ? Height.FOOT_5_8 : Height.FOOT_6_2)
+            },
+            weightRange: {
+                min: user.partnerPreference?.weightRange?.min || 
+                    (user.gender === Gender.MALE ? 45 : 50),
+                max: user.partnerPreference?.weightRange?.max || 
+                    (user.gender === Gender.MALE ? 75 : 85)
+            },
+            maritalStatus: user.partnerPreference?.maritalStatus || [MaritalStatus.NEVER_MARRIED],
+            education: user.isEducated ? {
+                minimumLevel: user.partnerPreference?.education?.minimumLevel || 
+                    (user.education?.[0]?.level || EducationLevel.HSC),
+                mustBeEducated: user.partnerPreference?.education?.mustBeEducated ?? true,
+                preferredLevels: user.partnerPreference?.education?.preferredLevels || 
+                    [EducationLevel.HSC, EducationLevel.BACHELORS_DEGREE]
+            } : undefined,
+            religion: user.partnerPreference?.religion || [user.religion],
+            occupation: user.partnerPreference?.profession?.acceptedOccupations,
+            location: {
+                preferredCountries: user.partnerPreference?.locationPreference?.preferredCountries || 
+                    [user.address.country],
+                preferredRegions: user.partnerPreference?.locationPreference?.preferredRegions || 
+                    (user.address.division ? [user.address.division.id] : undefined),
+                preferredCities: user.partnerPreference?.locationPreference?.preferredCities || 
+                    (user.address.district ? [user.address.district.id] : undefined)
+            }
+        },
 
-    // Partner Preferences from new schema
-    partnerPreferences: {
-      ageRange: {
-        min: user.partnerPreference.ageRange.min,
-        max: user.partnerPreference.ageRange.max
-      },
-      heightRange: {
-        min: Height[`FOOT_${user.partnerPreference.heightRange.min}_0`],
-        max: Height[`FOOT_${user.partnerPreference.heightRange.max}_0`]
-      },
-      weightRange: {
-        min: user.partnerPreference.weightRange.min,
-        max:  user.partnerPreference.weightRange.max
-      },
-      maritalStatus: [MaritalStatus.NEVER_MARRIED],
-      education: user.isEducated ? {
-        minimumLevel: user.education[0]?.level || EducationLevel.HSC,
-        mustBeEducated: user.isEducated,
-        preferredLevels: user.partnerPreference.education?.map(e => e.level)
-      } : undefined,
-      religion: [user.religion],
-      location: {
-        preferredCountries: [user.address.country],
-        preferredRegions: user.address.division ? [user.address.division.id] : undefined,
-        preferredCities: user.address.district ? [user.address.district.id] : undefined
-      }
-    },
-
-    // Security
-    blockedProfiles: user.enhancedSettings.blocked.map(
-      ({ userId }) => new mongoose.Types.ObjectId(userId)
-    )
-  };
-}
+        // Security & Privacy
+        blockedProfiles: user.enhancedSettings.blocked.map(
+            ({ userId }) => new mongoose.Types.ObjectId(userId)
+        )
+    };
+};

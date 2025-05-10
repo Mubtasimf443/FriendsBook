@@ -976,6 +976,13 @@ userSchema.index({ 'annualIncome.amount': 1, 'annualIncome.currency': 1 });
 userSchema.index({ 'membership.currentMembership.isActive': 1 });
 userSchema.index({ 'membership.currentMembership.endDate': 1 });
 userSchema.index({ 'membership.currentMembership.tier': 1 });
+userSchema.index({ 'partnerPreference.ageRange': 1 });
+userSchema.index({ 'partnerPreference.heightRange': 1 });
+userSchema.index({ 'partnerPreference.religion': 1 });
+userSchema.index({ 'partnerPreference.locationPreference.preferredCountries': 1 });
+userSchema.index({ 'partnerPreference.education.minimumLevel': 1 });
+userSchema.index({ 'partnerPreference.profession.acceptedOccupations': 1 });
+
 
 export const User = mongoose.model<IUser>('User', userSchema);
 
