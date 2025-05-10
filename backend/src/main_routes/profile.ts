@@ -10,7 +10,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { array, object, z } from 'zod';
 import queryMiddleware from "../lib/middlewares/query.middleware";
 import { userDetailsQuerySchema } from "../lib/schema/profile.schema";
-import { updateUserSchema, UpdateUserInput } from '../lib/schema/updateUser.schema';
+import { updateUserSchema, UpdateUserInput, updateUserEducationSchema } from '../lib/schema/updateUser.schema';
 import { MembershipRequest } from "../models/membershipRequest";
 import { MembershipRequestStatus } from "../lib/types/memberdship.types";
 import { membershipRequestQuerySchema, membershipRequestSchema } from "../lib/schema/membership.schema";
@@ -97,7 +97,6 @@ router.get('/user-details', async function (req: Request, res: Response): Promis
         });
     }
 });
-
 router.put('/user-details', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // 1. Parse and validate request body
@@ -216,7 +215,101 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         });
     }
 });
+router.put('/user-details/education', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        // Get user ID from auth session
+        const userId = req.authSession.value.userId;
+        // Validate the request body using the schema
+        const updateData = await updateUserEducationSchema.parseAsync(req.body);
 
+        // Get current user data
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+                data: null
+            });
+        }
+
+        // Update education related fields
+        const updatesData: any = {
+            isEducated: updateData.isEducated
+        };
+
+        // Only include education array if it's provided and user is educated
+        if (updateData.isEducated && updateData.education) {
+            updatesData.education = updateData.education.map(edu => ({
+                level: edu.level,
+                certificate: edu.certificate,
+                institution: edu.institution,
+                yearOfCompletion: edu.yearOfCompletion,
+                grade: edu.grade,
+                additionalInfo: edu.additionalInfo
+            }));
+        }
+
+        // If user is marked as not educated, clear the education array
+        if (!updateData.isEducated) {
+            updatesData.education = [];
+        }
+
+        // Update user's education details
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: updatesData },
+            {
+                new: true, // Return the updated document
+                runValidators: true // Run model validators
+            }
+        ).select('isEducated education'); // Only select relevant fields
+
+        if (!updatedUser) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+                data: null
+            });
+        }
+
+        // Set cache control header to prevent caching of sensitive data
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+
+        return res.status(200).json({
+            success: true,
+            message: 'Education details updated successfully',
+            data: {
+                isEducated: updatedUser.isEducated,
+                education: updatedUser.education
+            }
+        });
+
+    } catch (error) {
+        console.error('[Education Update API Error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString(),
+            userId: req.authSession?.value?.userId
+        });
+
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation error',
+                error: error.errors,
+                data: null
+            });
+        }
+
+
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
 router.post('/membership-request', async function (req: Request, res: Response): Promise<any> {
     try {
         const userId = req.authSession.value.userId;
@@ -751,12 +844,6 @@ router.delete('/membership-request', validateUser, async function (req: Request,
         });
     }
 });
-
-
-
-
-
-
 
 
 export default router;

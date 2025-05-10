@@ -39,11 +39,11 @@ declare global {
 
 let userField = 'name _id address email age isEducated education address religion languages maritalStatus occupation annualIncome';
 
+
+
 router.get('/users/matching/location', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-      
         let userData = req.authSession.value;
-
         const validationResult = paginationSchema.safeParse(req.query);
         if (!validationResult.success) {
             return res.status(400).json({
@@ -429,8 +429,6 @@ router.get('/users/online' ,async function (req: Request, res: Response): Promis
         });
     }
 });
-
-
 router.get('/users/others-viewed-my-profile', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         const userData = req.authSession.value;
@@ -477,7 +475,6 @@ router.get('/users/others-viewed-my-profile', async function (req: Request, res:
         });
     }
 });
-
 // Complete the shortlist APIs in search.ts
 router.get('/users/my-shortlist', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -564,7 +561,6 @@ router.get('/users/my-shortlist', async function (req: Request, res: Response): 
         });
     }
 });
-
 router.get('/users/others-shortlisted-me', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // Validate query parameters
@@ -650,7 +646,6 @@ router.get('/users/others-shortlisted-me', async function (req: Request, res: Re
         });
     }
 });
-
 router.get('/users/preferred-occupation', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         Array.isArray(req.query.occupations) === false && (req.query.occupations = [req.query.occupations || Occupation.DOCTOR]);
@@ -748,6 +743,7 @@ router.get('/users/preferred-occupation', async function (req: Request, res: Res
     }
 });
 
+
 router.get('/users/preferred-education', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         Array.isArray(req.query.educationLevels) === false && (req.query.educationLevels = [req.query.educationLevels || EducationLevel.BACHELORS_DEGREE]);
@@ -832,6 +828,7 @@ router.get('/users/preferred-education', async function (req: Request, res: Resp
         });
     }
 });
+
 
 router.get('/users/preferred-location', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -926,6 +923,7 @@ router.get('/users/preferred-location', async function (req: Request, res: Respo
     }
 });
 
+
 router.get('/user', async function(req: Request, res: Response): Promise<Response | any> {
     try {
         const validationResult = getUserByMIDSchema.safeParse(req.query);
@@ -971,6 +969,7 @@ router.get('/user', async function(req: Request, res: Response): Promise<Respons
         });
     }
 });
+
 
 router.get('/users/filter', async function(req: Request, res: Response): Promise<Response | any> {
     try {
@@ -1263,6 +1262,7 @@ router.post('/search-history', async function (req: Request, res: Response): Pro
     }
 });
 
+
 router.delete('/search-history/:id', async function(req: Request, res: Response): Promise<Response | any> { 
     try {
         // Validate ID parameter
@@ -1321,6 +1321,7 @@ router.delete('/search-history/:id', async function(req: Request, res: Response)
         });
     }
 });
+
 
 router.get('/users/premium' ,async function (req: Request, res: Response): Promise<Response | any> { 
     try {
@@ -1395,6 +1396,7 @@ router.get('/users/premium' ,async function (req: Request, res: Response): Promi
         });
     }
 });
+
 
 // Get mutual connections - users who have accepted connection requests with current user
 router.get('/users/mutual', async function (req: Request, res: Response): Promise<Response | any> {
@@ -1490,6 +1492,7 @@ router.get('/users/mutual', async function (req: Request, res: Response): Promis
         });
     }
 });
+
 
 // Get users who viewed profile but haven't sent connection requests
 router.get('/users/viewed-not-contact', async function (req: Request, res: Response): Promise<Response | any> {

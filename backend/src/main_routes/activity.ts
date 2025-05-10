@@ -25,6 +25,7 @@ import { addDays } from "date-fns";
 import { validateUser } from "../lib/middlewares/auth.middleware";
 import connectionRequestSubRouter from '../sub_routes/connectionRequest'
 import { IBlockedProfile } from "../lib/types/userProfile.types";
+import AuthSession from "../models/AuthSession";
 
 const router: Router = express.Router();
 router.use(validateUser)
@@ -61,6 +62,15 @@ router.post('/users/short-list/add', async function (req: Request, res: Response
             });
         }
 
+        if (shortListedUser.enhancedSettings.blocked.map(el => el.userId).includes(userId)) {
+            res.status(402).json({
+                success: false,
+                message: 'The Requested User Has Blocked You',
+                data: null
+            });
+            return;
+        }
+
         // Prevent self-shortlisting
         if (userId === shortListedId) {
             return res.status(400).json({
@@ -89,6 +99,8 @@ router.post('/users/short-list/add', async function (req: Request, res: Response
         });
     }
 });
+
+
 
 router.delete('/users/short-list/remove', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -131,6 +143,8 @@ router.delete('/users/short-list/remove', async function (req: Request, res: Res
     }
 });
 
+
+
 // Mark user as online
 router.put('/users/online/active', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -155,6 +169,7 @@ router.put('/users/online/active', async function (req: Request, res: Response):
     }
 });
 
+
 // Mark user as offline
 router.put('/users/online/in-active', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -178,6 +193,7 @@ router.put('/users/online/in-active', async function (req: Request, res: Respons
         });
     }
 });
+
 
 // Record profile visit
 router.post('/users/visit-profile', async function (req: Request, res: Response): Promise<Response | any> {
@@ -763,11 +779,17 @@ router.post('/block/user/:id', async function (req: Request, res: Response): Pro
             { new: true }
         );
 
+
         // Handle any unexpected issues with the update
         if (!updatedUser) {
             throw new Error('Failed to update user blocked list');
         }
 
+        await AuthSession.findByIdAndUpdate(req.authSession._id , { 
+            $addToSet :{
+                'value.blockedProfiles' : blockEntry.userId
+            }
+        })
 
         return res.status(200).json({
             success: true,
@@ -820,10 +842,6 @@ router.post('/block/user/:id', async function (req: Request, res: Response): Pro
     }
 });
 
-/**
- * Unblock a user endpoint
- * Removes user from blocked list and restores interaction ability
- */
 router.post('/unblock/user/:id', async function (req: Request, res: Response): Promise<any> {
     try {
         // Validate user ID
@@ -880,13 +898,12 @@ router.post('/unblock/user/:id', async function (req: Request, res: Response): P
             throw new Error('Failed to update user blocked list');
         }
 
-        // Add audit log if implemented
-        // await AuditLog.create({
-        //     action: 'UNBLOCK_USER',
-        //     performedBy: currentUserId,
-        //     targetUser: targetUserId,
-        //     timestamp: new Date()
-        // });
+        await AuthSession.findByIdAndUpdate(req.authSession._id, {
+            $pull: {
+                'value.blockedProfiles': targetUserId
+            }
+        })
+
 
         return res.status(200).json({
             success: true,

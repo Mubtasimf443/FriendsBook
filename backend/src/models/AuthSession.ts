@@ -37,6 +37,7 @@ export interface IAuthSessionValue {
     education? : Education[];
     height : string;
     weight : number;
+    blockedProfiles : mongoose.Types.ObjectId[]
 }
 
 interface Education {
@@ -153,7 +154,17 @@ const AuthSessionValue = {
         required: true,
         min: 30,
         max: 200
+    },
+    blockedProfiles: {
+        type: [
+            {
+                type: mongoose.SchemaTypes.ObjectId
+            }
+        ],
+        default :[]
     }
+   
+
 }
 
 const authSessionSchema = new Schema<IAuthSession>(

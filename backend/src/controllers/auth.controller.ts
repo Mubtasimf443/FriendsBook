@@ -6,6 +6,7 @@ import crypto from "crypto"
 import { Gender, IUser } from "../lib/types/user.types"
 import { CountryNamesEnum } from "../lib/types/country_names.enum"
 import { IAuthSessionValue } from "../models/AuthSession"
+import mongoose from "mongoose"
 
 export function hashPassword(password: string, salt: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -104,6 +105,7 @@ export function giveAuthSessionValue(user: IUser): IAuthSessionValue {
     languages: user.languages || [], // Added languages field
     religion: user.religion     ,
     height : user.height,
-    weight : user.weight
+    weight : user.weight,
+    blockedProfiles: user.enhancedSettings.blocked.map(({ userId }) => new mongoose.Types.ObjectId(userId))
   })
 }
