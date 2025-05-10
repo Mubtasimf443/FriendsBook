@@ -63,7 +63,7 @@ router.post('/users/short-list/add', async function (req: Request, res: Response
         }
 
         if (shortListedUser.enhancedSettings.blocked.map(el => el.userId).includes(userId)) {
-            res.status(402).json({
+            res.status(403).json({
                 success: false,
                 message: 'The Requested User Has Blocked You',
                 data: null
@@ -227,6 +227,8 @@ router.post('/users/visit-profile', async function (req: Request, res: Response)
             });
         }
 
+
+
         // Prevent self-view recording
         if (viewerId === visitedId) {
             return res.status(400).json({
@@ -235,6 +237,13 @@ router.post('/users/visit-profile', async function (req: Request, res: Response)
             });
         }
 
+        if (visitedUser.enhancedSettings?.blocked?.some(block => block.userId.toString() === viewerId)) {
+            return res.status(403).json({
+                success: false,
+                message: 'You cannot view this profile as you have been blocked',
+                error: 'ACCESS_DENIED_BLOCKED'
+            });
+        }
         // Find existing profile view or create new one
         const existingView = await ProfileView.findOne({ viewerId, viewedId: visitedId });
 
@@ -359,6 +368,15 @@ router.post('/users/send-mail', async function (req: Request, res: Response): Pr
             });
         }
 
+          if (receiverUser.enhancedSettings?.blocked?.some(block => block.userId.toString() === senderId)) {
+            return res.status(403).json({
+                success: false,
+                message: 'Cannot send email as you have been blocked by this user',
+                error: { code: 'ACCESS_DENIED_BLOCKED' },
+                data: null
+            });
+        }
+
         // Prevent sending mail to self
         if (senderId === receiverId) {
             return res.status(400).json({
@@ -429,6 +447,16 @@ router.post('/users/send-sms', async function (req: Request, res: Response): Pro
                 message: "User not found or is suspended"
             });
         }
+
+        if (receiverUser.enhancedSettings?.blocked?.some(block => block.userId.toString() === senderId)) {
+            return res.status(403).json({
+                success: false,
+                message: 'Cannot send SMS as you have been blocked by this user',
+                error: { code: 'ACCESS_DENIED_BLOCKED' },
+                data: null
+            });
+        }
+
 
         // Prevent sending SMS to self
         if (senderId === receiverId) {
@@ -602,6 +630,28 @@ router.post('/request-phone-view', async function (req: Request, res: Response):
         const { requestedUserId } = validationResult.data;
         const requesterId = req.authSession.value.userId;
 
+
+        const requestedUser = await User.findById(requestedUserId);
+        
+        if (!requestedUser) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+                data: null
+            });
+        }
+
+        // Add blocking check
+        if (requestedUser.enhancedSettings?.blocked?.some(block => block.userId.toString() === requesterId)) {
+            return res.status(403).json({
+                success: false,
+                message: 'Cannot view phone number as you have been blocked by this user',
+                error: { code: 'ACCESS_DENIED_BLOCKED' },
+                data: null
+            });
+        }
+
+        
         // Check if users exist and are not the same person
         if (requesterId.toString() === requestedUserId.toString()) {
             return res.status(400).json({

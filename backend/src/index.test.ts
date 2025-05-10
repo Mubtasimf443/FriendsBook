@@ -9,9 +9,10 @@ import { User } from "./models/user";
 async function main() {
     try {
         await connectDB() ;
-        await Awaiter(1000);
-        let usersnames = await User.distinct('name', { gender: 'male' }).lean();
-        console.log(usersnames.slice(0, 10))
+       
+        let usersnames = await User.findOne({} , 'enhancedSettings.blocked')
+        console.log(usersnames);
+        
     } catch (error) {
         console.error(error);
 

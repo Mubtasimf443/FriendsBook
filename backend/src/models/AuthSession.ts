@@ -54,6 +54,7 @@ export interface IAuthSession extends Document {
 }
 
 const AuthSessionValue = {
+    
     email: {
         type: String,
         required: true,

@@ -37,7 +37,14 @@ router.post('/request', async function (req: Request, res: Response): Promise<an
                 data: null
             });
         }
-
+        if (recipient.enhancedSettings?.blocked?.some(block => block.userId.toString() === senderId)) {
+            return res.status(403).json({
+                success: false,
+                message: 'Cannot send connection request as you have been blocked by this user',
+                error: { code: 'ACCESS_DENIED_BLOCKED' },
+                data: null
+            });
+        }
         if (!sender) {
             return res.status(404).json({
                 success: false,
@@ -46,6 +53,8 @@ router.post('/request', async function (req: Request, res: Response): Promise<an
                 data: null
             });
         }
+
+
 
         // Prevent self-connection
         if (senderId.toString() === recipientId.toString()) {
