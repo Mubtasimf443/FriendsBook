@@ -221,3 +221,28 @@ export const religionValidator = z
     })
     .optional()
     .describe('User\'s religious affiliation for matrimony matching');
+
+export const text100Validation = z.string().min(1).max(100).trim().refine(
+            (message) => {
+                // Basic content moderation - prevent just whitespace or special characters
+                return /^(?=.*[a-zA-Z0-9]).+$/.test(message);
+            },
+            "Message must contain valid content"
+        );
+
+export const text1000Validation = z.string().min(1).max(1000).trim().refine(
+            (message) => {
+                // Basic content moderation - prevent just whitespace or special characters
+                return /^(?=.*[a-zA-Z0-9]).+$/.test(message);
+            },
+            "Message must contain valid content"
+        );
+
+
+export const text500Validation = z.string().min(1).max(500).trim().refine(
+            (message) => {
+                // Basic content moderation - prevent just whitespace or special characters
+                return /^(?=.*[a-zA-Z0-9]).+$/.test(message);
+            },
+            "Message must contain valid content"
+        );

@@ -8,9 +8,12 @@ import { ConnectionRequest, ConnectionRequestStatus } from "../models/Connection
 import mongoose from "mongoose";
 import { sendNotification } from "../lib/core/notification.service";
 import { User } from "../models/user";
+import { paginationSchema } from "../lib/schema/search.schema";
+import { IUserConnectionResponse } from "../lib/types/connectionRequest.types";
 
 
 const router : Router = Router();
+let userField = 'name _id address email age isEducated education address religion languages maritalStatus occupation annualIncome';
 
 router.use(validateUser);
 
@@ -470,12 +473,380 @@ router.post('/request/:requestId/withdraw', async function (req: Request, res: R
 
 
 
-router.get('/incoming/pending/users', async function (req: Request, res: Response): Promise<any> {});
-router.get('/incoming/accepted/users', async function (req: Request, res: Response): Promise<any> {});
-router.get('/incoming/rejected/users', async function (req: Request, res: Response): Promise<any> {});
-router.get('/outgoing/pending/users', async function (req: Request, res: Response): Promise<any> {});
-router.get('/outgoing/accepted/users', async function (req: Request, res: Response): Promise<any> {});
-router.get('/outgoing/rejected/users', async function (req: Request, res: Response): Promise<any> {});
+router.get('/incoming/accepted/users', async function (req: Request, res: Response): Promise<any> {
+    try {
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount } = validationResult.data;
+        const userId = req.authSession.value.userId;
+
+        // Get accepted incoming requests
+        const acceptedRequests = await ConnectionRequest.find({
+            recipient: userId,
+            status: ConnectionRequestStatus.ACCEPTED
+        })
+            .sort({ acceptedAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .lean();
+
+        const senderIds = acceptedRequests.map(request => request.sender);
+
+        const users = await User.find(
+            {
+                _id: { $in: senderIds },
+                'suspension.isSuspended': false
+            },
+            userField
+        ).lean();
+
+        const usersWithRequestInfo = users.map(user => {
+            const request = acceptedRequests.find(
+                req => req.sender.toString() === user._id.toString()
+            );
+            return {
+                ...user,
+                requestDetails: {
+                    requestId: request?._id,
+                    acceptedAt: request?.acceptedAt,
+                    initialMessage: request?.initialMessage
+                }
+            };
+        });
+
+        let totalCount: number | undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await ConnectionRequest.countDocuments({
+                recipient: userId,
+                status: ConnectionRequestStatus.ACCEPTED
+            });
+        }
+
+        const pagination = {
+            currentPage: page,
+            pageSize: limit,
+            ...(totalCount !== undefined && {
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            })
+        };
+
+        const responseData: IUserConnectionResponse = {
+            users: usersWithRequestInfo,
+            pagination,
+            requestDetails: {
+                status: ConnectionRequestStatus.ACCEPTED,
+                timestamp: new Date()
+            }
+        };
+
+        res.set('Cache-Control', 'private, max-age=60');
+
+        return res.status(200).json({
+            success: true,
+            data: responseData
+        });
+
+    } catch (error) {
+        console.error('[Get Accepted Incoming Requests Error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: { code: 'INTERNAL_SERVER_ERROR' },
+            data: null
+        });
+    }
+});
+
+router.get('/incoming/pending/users', async function (req: Request, res: Response): Promise<any> {
+    try {
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount } = validationResult.data;
+        const userId = req.authSession.value.userId;
+
+        // Get accepted incoming requests
+        const acceptedRequests = await ConnectionRequest.find({
+            recipient: userId,
+            status: ConnectionRequestStatus.PENDING, 
+        })
+            .sort({ acceptedAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .lean();
+
+        const senderIds = acceptedRequests.map(request => request.sender);
+
+        const users = await User.find(
+            {
+                _id: { $in: senderIds },
+                'suspension.isSuspended': false,
+                
+            },
+            userField
+        ).lean();
+
+        const usersWithRequestInfo = users.map(user => {
+            const request = acceptedRequests.find(
+                req => req.sender.toString() === user._id.toString()
+            );
+            return {
+                ...user,
+                requestDetails: {
+                    requestId: request?._id,
+                    requestedAt:request?.createdAt ,
+                    initialMessage: request?.initialMessage
+                }
+            };
+        });
+
+        let totalCount: number | undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await ConnectionRequest.countDocuments({
+                recipient: userId,
+                status: ConnectionRequestStatus.ACCEPTED
+            });
+        }
+
+        const pagination = {
+            currentPage: page,
+            pageSize: limit,
+            ...(totalCount !== undefined && {
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            })
+        };
+
+        const responseData: IUserConnectionResponse = {
+            users: usersWithRequestInfo,
+            pagination,
+            requestDetails: {
+                status: ConnectionRequestStatus.ACCEPTED,
+                timestamp: new Date()
+            }
+        };
+
+        res.set('Cache-Control', 'private, max-age=60');
+
+        return res.status(200).json({
+            success: true,
+            data: responseData
+        });
+
+    } catch (error) {
+        console.error('[Get Accepted Incoming Requests Error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: { code: 'INTERNAL_SERVER_ERROR' },
+            data: null
+        });
+    }
+});
+
+
+// Get users who have rejected incoming connection requests
+router.get('/incoming/rejected/users', async function (req: Request, res: Response): Promise<any> {
+    try {
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount } = validationResult.data;
+        const userId = req.authSession.value.userId;
+
+        const rejectedRequests = await ConnectionRequest.find({
+            recipient: userId,
+            status: ConnectionRequestStatus.REJECTED
+        })
+        .sort({ rejectedAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean();
+
+        const senderIds = rejectedRequests.map(request => request.sender);
+
+        const users = await User.find(
+            {
+                _id: { $in: senderIds },
+                'suspension.isSuspended': false
+            },
+            userField
+        ).lean();
+
+        const usersWithRequestInfo = users.map(user => {
+            const request = rejectedRequests.find(
+                req => req.sender.toString() === user._id.toString()
+            );
+            return {
+                ...user,
+                requestDetails: {
+                    requestId: request?._id,
+                    rejectedAt: request?.rejectedAt,
+                    rejectionReason: request?.rejectionReason,
+                    initialMessage: request?.initialMessage
+                }
+            };
+        });
+
+        let totalCount: number | undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await ConnectionRequest.countDocuments({
+                recipient: userId,
+                status: ConnectionRequestStatus.REJECTED
+            });
+        }
+
+        const pagination = {
+            currentPage: page,
+            pageSize: limit,
+            ...(totalCount !== undefined && {
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            })
+        };
+
+        const responseData: IUserConnectionResponse = {
+            users: usersWithRequestInfo,
+            pagination,
+            requestDetails: {
+                status: ConnectionRequestStatus.REJECTED,
+                timestamp: new Date()
+            }
+        };
+
+        res.set('Cache-Control', 'private, max-age=60');
+
+        return res.status(200).json({
+            success: true,
+            data: responseData
+        });
+
+    } catch (error) {
+        console.error('[Get Rejected Incoming Requests Error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: { code: 'INTERNAL_SERVER_ERROR' },
+            data: null
+        });
+    }
+});
+
+// Outgoing requests follow the same pattern but swap sender and recipient
+router.get('/outgoing/pending/users', async function (req: Request, res: Response): Promise<any> {
+    try {
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount } = validationResult.data;
+        const userId = req.authSession.value.userId;
+
+        const pendingRequests = await ConnectionRequest.find({
+            sender: userId,
+            status: ConnectionRequestStatus.PENDING
+        })
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean();
+
+        const recipientIds = pendingRequests.map(request => request.recipient);
+
+        const users = await User.find(
+            {
+                _id: { $in: recipientIds },
+                'suspension.isSuspended': false
+            },
+            userField
+        ).lean();
+
+        const usersWithRequestInfo = users.map(user => {
+            const request = pendingRequests.find(
+                req => req.recipient.toString() === user._id.toString()
+            );
+            return {
+                ...user,
+                requestDetails: {
+                    requestId: request?._id,
+                    timestamp: request?.createdAt,
+                    initialMessage: request?.initialMessage
+                }
+            };
+        });
+
+        let totalCount: number | undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await ConnectionRequest.countDocuments({
+                sender: userId,
+                status: ConnectionRequestStatus.PENDING
+            });
+        }
+
+        const pagination = {
+            currentPage: page,
+            pageSize: limit,
+            ...(totalCount !== undefined && {
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            })
+        };
+
+        const responseData: IUserConnectionResponse = {
+            users: usersWithRequestInfo,
+            pagination,
+            requestDetails: {
+                status: ConnectionRequestStatus.PENDING,
+                timestamp: new Date()
+            }
+        };
+
+        res.set('Cache-Control', 'private, max-age=30');
+
+        return res.status(200).json({
+            success: true,
+            data: responseData
+        });
+
+    } catch (error) {
+        console.error('[Get Pending Outgoing Requests Error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: { code: 'INTERNAL_SERVER_ERROR' },
+            data: null
+        });
+    }
+});
 
 
 

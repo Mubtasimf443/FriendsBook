@@ -23,6 +23,7 @@ import {
 import { EducationLevel } from '../types/userEducation.types';
 import { countryCodes } from '../data/countryCodes';
 import countryNames from '../data/countryNames';
+import { educationSchema } from './auth.schema';
 
 
 
@@ -89,14 +90,7 @@ const preferencesSchema = z.object({
     lastUpdated: z.date().optional()
 }).optional();
 
-const educationSchema = z.object({
-    level: z.nativeEnum(EducationLevel),
-    certificate: z.string(),
-    institution: z.string(),
-    yearOfCompletion: z.number(),
-    grade: z.string().optional(),
-    additionalInfo: z.string().optional()
-});
+
 
 const addressSchema = z.object({
     country: z.enum([countryNames[0] , ...countryNames.filter((el , index) => (index > 0 && el))]),
@@ -198,8 +192,7 @@ export const updateUserSchema = z.object({
     weight: z.number().min(30).max(200).optional(),
 
     // Education & Career
-    isEducated: z.boolean().optional(),
-    education: z.array(educationSchema).optional(),
+
     occupation: z.nativeEnum(Occupation).optional(),
     annualIncome: annualIncomeSchema,
 
@@ -237,5 +230,43 @@ export const updateUserSchema = z.object({
             message: "Age must match the provided date of birth"
         }
     );
+
+    
+export const updateUserEducationSchema = z.object({
+    isEducated: z.boolean(),
+    education: z.array(educationSchema).optional().default([]),
+})
+.refine(
+    function ({isEducated , education}) {
+        if (isEducated) {
+            if (education.length ===0) {
+                return false;
+            }
+            let {certificate ,level ,yearOfCompletion } = education[0];
+            if(!level || !certificate ||!yearOfCompletion) return false;
+        }
+
+        return true;
+    }, 
+    {
+        message :'If User is educated Than education details is required',
+        path: ['isEducated', 'education[0].level', 'education[0].certificate', 'education[0].yearOfCompletion']
+    }
+)
+.refine(
+    function ({isEducated , education}) {
+        if (!isEducated && education.length !==0) {
+            return false;
+        }
+        return true;
+    }, 
+    {
+        message :'If User is not educated Than education details is not required',
+        path: ['isEducated', 'education[0].level', 'education[0].certificate', 'education[0].yearOfCompletion']
+    })
+
+;
+
+
 
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;

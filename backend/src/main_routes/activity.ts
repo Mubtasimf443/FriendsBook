@@ -4,8 +4,8 @@ import express, { Router, Request, Response } from "express";
 import { User } from "../models/user";
 import { ShortList } from "../models/ShortListedProfiles";
 import { ProfileView } from "../models/ProfileView";
-import { z } from "zod";
-import { _idValidator } from "../lib/schema/schemaComponents";
+import { z, ZodError } from "zod";
+import { _idValidator, text100Validation } from "../lib/schema/schemaComponents";
 import { 
     shortListSchema ,
     likeProfileSchema ,
@@ -24,6 +24,7 @@ import { RequestMobileNumberView } from "../models/RequestMobileNumberView";
 import { addDays } from "date-fns";
 import { validateUser } from "../lib/middlewares/auth.middleware";
 import connectionRequestSubRouter from '../sub_routes/connectionRequest'
+import { IBlockedProfile } from "../lib/types/userProfile.types";
 
 const router: Router = express.Router();
 router.use(validateUser)
@@ -690,7 +691,252 @@ router.post('/request-phone-view', async function (req: Request, res: Response):
 });
 
 
+router.post('/block/user/:id', async function (req: Request, res: Response): Promise<any> {
+    try {
+        // Validate user ID
+        const targetUserId = await _idValidator.parseAsync(req.params.id);
+        const currentUserId = req.authSession.value.userId;
 
+        // Prevent self-blocking
+        if (targetUserId.toString() === currentUserId.toString()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot block yourself',
+                error: {
+                    code: 'SELF_BLOCK_ATTEMPTED',
+                    details: 'Users cannot block their own accounts'
+                },
+                data: null
+            });
+        }
+
+        // Check if target user exists
+        const targetUser = await User.findById(targetUserId, 'name');
+        if (!targetUser) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+                error: {
+                    code: 'USER_NOT_FOUND',
+                    details: 'The specified user does not exist'
+                },
+                data: null
+            });
+        }
+
+        // Check if already blocked
+        const currentUser = await User.findById(currentUserId, 'enhancedSettings.blocked');
+        const isAlreadyBlocked = currentUser?.enhancedSettings?.blocked?.some(
+            block => block.userId.toString() === targetUserId.toString()
+        );
+
+        if (isAlreadyBlocked) {
+            return res.status(409).json({
+                success: false,
+                message: 'User is already blocked',
+                error: {
+                    code: 'ALREADY_BLOCKED',
+                    details: 'This user is already in your blocked list'
+                },
+                data: null
+            });
+        }
+
+        // Optional: Get block reason from request body
+        const reason  = (z.optional(text100Validation)).parse(req.body.reason);
+
+        // Create block entry
+        const blockEntry: Partial<IBlockedProfile> = {
+            userId: targetUserId,
+            blockedAt: new Date(),
+            ...(reason ? { reason: reason }  : {})
+        };
+
+        // Update user's blocked list
+        const updatedUser = await User.findByIdAndUpdate(
+            currentUserId,
+            {
+                $addToSet: {
+                    'enhancedSettings.blocked': blockEntry
+                }
+            },
+            { new: true }
+        );
+
+        // Handle any unexpected issues with the update
+        if (!updatedUser) {
+            throw new Error('Failed to update user blocked list');
+        }
+
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                blockedUser: {
+                    id: targetUserId,
+                    name: targetUser.name
+                },
+                blockedAt: blockEntry.blockedAt,
+                reason: blockEntry.reason
+            },
+            error: null,
+            message: 'User blocked successfully'
+        });
+
+    } catch (error) {
+        // Handle validation errors
+        if (error instanceof ZodError) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid user ID format',
+                error: {
+                    code: 'INVALID_ID_FORMAT',
+                    details: error.errors
+                },
+                data: null
+            });
+        }
+
+        // Log the error with context
+        console.error('[Block User API Error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            userId: req.authSession.value.userId,
+            targetId: req.params.id,
+            timestamp: new Date().toISOString()
+        });
+
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to block user',
+            error: {
+                code: 'INTERNAL_SERVER_ERROR',
+                details: process.env.NODE_ENV === 'development' ? 
+                    error instanceof Error ? error.message : 'Unknown error' 
+                    : undefined
+            },
+            data: null
+        });
+    }
+});
+
+/**
+ * Unblock a user endpoint
+ * Removes user from blocked list and restores interaction ability
+ */
+router.post('/unblock/user/:id', async function (req: Request, res: Response): Promise<any> {
+    try {
+        // Validate user ID
+        const targetUserId = await _idValidator.parseAsync(req.params.id);
+        const currentUserId = req.authSession.value.userId;
+
+        // Check if target user exists
+        const targetUser = await User.findById(targetUserId, 'name');
+        if (!targetUser) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found',
+                error: {
+                    code: 'USER_NOT_FOUND',
+                    details: 'The specified user does not exist'
+                },
+                data: null
+            });
+        }
+
+        // Check if actually blocked
+        const currentUser = await User.findById(currentUserId, 'enhancedSettings.blocked');
+        const isBlocked = currentUser?.enhancedSettings?.blocked?.some(
+            block => block.userId.toString() === targetUserId.toString()
+        );
+
+        if (!isBlocked) {
+            return res.status(404).json({
+                success: false,
+                message: 'User is not blocked',
+                error: {
+                    code: 'NOT_BLOCKED',
+                    details: 'This user is not in your blocked list'
+                },
+                data: null
+            });
+        }
+
+        // Remove from blocked list
+        const updatedUser = await User.findByIdAndUpdate(
+            currentUserId,
+            {
+                $pull: {
+                    'enhancedSettings.blocked': {
+                        userId: targetUserId
+                    }
+                }
+            },
+            { new: true }
+        );
+
+        // Handle any unexpected issues with the update
+        if (!updatedUser) {
+            throw new Error('Failed to update user blocked list');
+        }
+
+        // Add audit log if implemented
+        // await AuditLog.create({
+        //     action: 'UNBLOCK_USER',
+        //     performedBy: currentUserId,
+        //     targetUser: targetUserId,
+        //     timestamp: new Date()
+        // });
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                unBlockedUser: {
+                    id: targetUserId,
+                    name: targetUser.name
+                },
+                unBlockedAt: new Date()
+            },
+            error: null,
+            message: 'User unblocked successfully'
+        });
+
+    } catch (error) {
+        // Handle validation errors
+        if (error instanceof ZodError) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid user ID format',
+                error: {
+                    code: 'INVALID_ID_FORMAT',
+                    details: error.errors
+                },
+                data: null
+            });
+        }
+
+        // Log the error with context
+        console.error('[Unblock User API Error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            userId: req.authSession.value.userId,
+            targetId: req.params.id,
+            timestamp: new Date().toISOString()
+        });
+
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to unblock user',
+            error: {
+                code: 'INTERNAL_SERVER_ERROR',
+                details: process.env.NODE_ENV === 'development' ? 
+                    error instanceof Error ? error.message : 'Unknown error' 
+                    : undefined
+            },
+            data: null
+        });
+    }
+});
 
 
 export default router;

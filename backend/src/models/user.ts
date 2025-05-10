@@ -110,10 +110,8 @@ const blockedProfileSchema = new Schema({
         ref: 'User',
         required: false
     },
-    blockedAt: {
-        type: Date,
-        default: Date.now
-    },
+    blockedAt:  Date,
+    
     reason: String
 });
 

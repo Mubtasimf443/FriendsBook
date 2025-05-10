@@ -126,8 +126,6 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         if (updateData.languages) updatesData['languages'] = updateData.languages;
 
         // Education & Career
-        if (updateData.isEducated !== undefined) updatesData['isEducated'] = updateData.isEducated;
-        if (updateData.education) updatesData['education'] = updateData.education;
         if (updateData.occupation) updatesData['occupation'] = updateData.occupation;
         if (updateData.annualIncome) updatesData['annualIncome'] = updateData.annualIncome;
 

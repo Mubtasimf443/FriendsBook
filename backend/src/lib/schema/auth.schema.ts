@@ -25,6 +25,17 @@ const CountryNameEnum = z.enum([countryNames[0], ...countryNames]);
 const CountryPhoneCodeEnum = z.enum([phoneCountryCodes[0], ...phoneCountryCodes]);
 
 
+export const educationSchema =  z.object({
+            level: z.nativeEnum(EducationLevel),
+            certificate: z.string().min(2, "Certificate name is too short").max(100),
+            institution: z.string().min(2, "Institution name is too short").max(100),
+            yearOfCompletion: z.number()
+                .min(1950, "Year must be after 1950")
+                .max(new Date().getFullYear(), "Year cannot be in the future"),
+            grade: z.string().max(25).optional(),
+            additionalInfo: z.string().max(100).optional()
+        })
+
 const AddressSchema = z.object({
     country: z.enum(
         [
@@ -193,16 +204,7 @@ export const registrationUserSchema = z.object({
     isEducated: z.boolean(),
 
     education: z.array(
-        z.object({
-            level: z.nativeEnum(EducationLevel),
-            certificate: z.string().min(2, "Certificate name is too short"),
-            institution: z.string().min(2, "Institution name is too short"),
-            yearOfCompletion: z.number()
-                .min(1950, "Year must be after 1950")
-                .max(new Date().getFullYear(), "Year cannot be in the future"),
-            grade: z.string().optional(),
-            additionalInfo: z.string().optional()
-        })
+       educationSchema
     )
         .optional()
         .default([]),
