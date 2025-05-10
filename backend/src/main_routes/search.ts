@@ -8,7 +8,7 @@ import { CountryNamesEnum } from "../lib/types/country_names.enum";
 import { findNearestDistricts, searchHeightGenerator } from "../controllers/search.controller";
 import { User } from "../models/user";
 import { FilterUsersQueryParams, filterUsersSchema, getUserByMIDSchema, justJoinedSchema, preferredEducationSearchSchema, preferredLocationSearchSchema, preferredOccupationSearchSchema, paginationSchema, todaysMatchSchema, searchHistorySchema } from "../lib/schema/search.schema";
-import { ProfileView } from "../models/ProfileView";
+import { IProfileView, ProfileView } from "../models/ProfileView";
 import queryMiddleware from "../lib/middlewares/query.middleware";
 import { EducationLevel } from "../lib/types/userEducation.types";
 import { IUser, Occupation } from "../lib/types/user.types";
@@ -20,6 +20,7 @@ import { SmsSendedProfile } from "../models/SmsSendedProfile";
 import { SendMailedProfile } from "../models/SendMailedProfile";
 import { LikedProfile } from "../models/LikedProfile";
 import { RequestMobileNumberView } from "../models/RequestMobileNumberView";
+import { ConnectionRequest } from "../models/ConnectionRequest";
 
 const router: Router = Router();
 
@@ -1395,28 +1396,222 @@ router.get('/users/premium' ,async function (req: Request, res: Response): Promi
     }
 });
 
-
+// Get mutual connections - users who have accepted connection requests with current user
 router.get('/users/mutual', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        
-    } catch (error) {
-        
-    }
-});
+        // Validate query parameters
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
 
-router.get('/users/viewed-not-contact', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
+        const { page, limit, count: shouldCount } = validationResult.data;
+        const userId = req.authSession.value.userId;
+
+        // Get the current user's connections
+        const currentUser = await User.findById(userId, 'connections')
+            .lean();
+
+        if (!currentUser) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+                error: { code: 'USER_NOT_FOUND' },
+                data: null
+            });
+        }
+
+        const baseQuery = {
+            _id: { 
+                $in: currentUser.connections 
+            },
+            'suspension.isSuspended': false
+        };
+
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+
+        // Find connected users with pagination
+        let users = await User.find(baseQuery, userField)
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        // Get total count if requested
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery)
+                .maxTimeMS(10000);
+        }
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        // Set cache control headers
+        res.set('Cache-Control', 'private, max-age=60'); // Cache for 1 minute, private because it's user-specific
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination
+            }
+        });
 
     } catch (error) {
-        console.error(`premium profile listing api error:`, error);
+        console.error('[Mutual Connections API Error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString()
+        });
+        
         return res.status(500).json({
             success: false,
             message: 'Internal server error',
+            error: { code: 'INTERNAL_SERVER_ERROR' },
             data: null
         });
     }
 });
 
+// Get users who viewed profile but haven't sent connection requests
+router.get('/users/viewed-not-contact', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        // Validate query parameters
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount } = validationResult.data;
+        const userId = req.authSession.value.userId;
+
+        // Get IDs of users who viewed the profile
+        const viewerIds = await ProfileView.distinct('viewerId', {
+            viewedId: userId
+        });
+
+        // Get IDs of users who sent connection requests
+        const connectionRequestSenderIds = await ConnectionRequest.distinct('sender', {
+            recipient: userId,
+           
+        });
+
+        // Find viewers who haven't sent connection requests
+        const baseQuery = {
+            _id: { 
+                $in: viewerIds,
+                $nin: [...connectionRequestSenderIds, userId] // Exclude users who sent requests and self
+            },
+            'suspension.isSuspended': false
+        };
+
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+
+        // Find users with pagination
+        let users = await User.find(baseQuery, userField)
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        // Get total count if requested
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery)
+                .maxTimeMS(10000);
+        }
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        // Add viewer details with timestamps
+        let viewerDetails :IProfileView[]= await ProfileView.find(
+            {
+                viewerId: { $in: users.map(u => u._id) },
+                viewedId: userId
+            },
+            'viewerId viewedAt'
+        )
+            .sort({ viewedAt: -1 })
+            .lean();
+
+        // Enhance user objects with view timestamps
+
+        let notContactedUsers = viewerDetails.map(function (element) {
+            let viewInfo :any= users.find(user => user._id.toString() === element.viewerId.toString())
+            if (viewInfo) {
+                viewInfo = {
+                    ...viewInfo,
+                    viewedAt: viewInfo.viewedAt[0]
+                }
+                return viewInfo;
+            }
+            else return undefined;
+        }).filter(user => !!user && user);
+
+
+
+        // Set cache headers
+        res.set('Cache-Control', 'private, max-age=60'); // Cache for 1 minute, private because it's user-specific
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                users: notContactedUsers,
+                pagination
+            }
+        });
+
+    } catch (error) {
+        console.error('[Viewed Not Connected API Error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString()
+        });
+
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: { code: 'INTERNAL_SERVER_ERROR' },
+            data: null
+        });
+    }
+});
 
 
 router.get('/users/viewed-profiles', async function (req: Request, res: Response): Promise<Response | any> {
