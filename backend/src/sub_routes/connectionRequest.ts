@@ -2,7 +2,6 @@
 
 import { Router , Request , Response} from "express";
 import { validateUser } from "../lib/middlewares/auth.middleware";
-import { ConnectionRequestService } from "../controllers/connectionRequest.controller";
 import { createInitialMessageSchema } from "../lib/schema/connectionRequest.schema";
 import { ZodError } from "zod";
 import { ConnectionRequest, ConnectionRequestStatus } from "../models/ConnectionRequest";
@@ -226,29 +225,367 @@ router.post('/request', async function (req: Request, res: Response): Promise<an
         });
     }
 });
-
 router.post('/request/:requestId/accept', async function (req: Request, res: Response): Promise<any> {
-   
+    try {
+        const { requestId } = req.params;
+        const userId = req.authSession.value.userId;
+
+        // Find the connection request and validate it
+        const connectionRequest = await ConnectionRequest.findById(requestId);
+        if (!connectionRequest) {
+            return res.status(404).json({
+                success: false,
+                message: 'Connection request not found',
+                error: { code: 'REQUEST_NOT_FOUND' },
+                data: null
+            });
+        }
+
+        // Verify the user is the recipient of the request
+        if (connectionRequest.recipient.toString() !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: 'Not authorized to accept this request',
+                error: { code: 'UNAUTHORIZED_ACTION' },
+                data: null
+            });
+        }
+
+        // Check if request is in pending state
+        if (connectionRequest.status !== ConnectionRequestStatus.PENDING) {
+            return res.status(400).json({
+                success: false,
+                message: `Request cannot be accepted as it is ${connectionRequest.status}`,
+                error: { code: 'INVALID_REQUEST_STATE' },
+                data: null
+            });
+        }
+
+        // Accept the request
+        const updatedRequest = await connectionRequest.accept();
+
+        // Update both users' connections arrays and remove from pending requests
+        await Promise.all([
+            User.findByIdAndUpdate(userId, {
+                $push: { connections: connectionRequest.sender },
+                $pull: { pendingIncomingRequests: requestId }
+            }),
+            User.findByIdAndUpdate(connectionRequest.sender, {
+                $push: { connections: userId },
+                $pull: { pendingOutgoingRequests: requestId }
+            })
+        ]);
+
+        // Send notification to sender
+        const sender = await User.findById(connectionRequest.sender);
+        if (sender?.fcmToken) {
+            await sendNotification(sender.fcmToken, {
+                title: 'Connection Request Accepted',
+                body: 'Your connection request has been accepted',
+                data: {
+                    type: 'CONNECTION_REQUEST_ACCEPTED',
+                    userId: userId
+                }
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Connection request accepted successfully',
+            data: {
+                connectionId: updatedRequest._id,
+                status: updatedRequest.status,
+                acceptedAt: updatedRequest.acceptedAt
+            },
+            error: null
+        });
+
+    } catch (error) {
+        console.error('[Accept Connection Request API error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: { code: 'INTERNAL_SERVER_ERROR' },
+            data: null
+        });
+    }
 });
 
 router.post('/request/:requestId/reject', async function (req: Request, res: Response): Promise<any> {
-    
+    try {
+        const { requestId } = req.params;
+        const { reason } = req.body;
+        const userId = req.authSession.value.userId;
+
+        // Find and validate the connection request
+        const connectionRequest = await ConnectionRequest.findById(requestId);
+        if (!connectionRequest) {
+            return res.status(404).json({
+                success: false,
+                message: 'Connection request not found',
+                error: { code: 'REQUEST_NOT_FOUND' },
+                data: null
+            });
+        }
+
+        // Verify the user is the recipient
+        if (connectionRequest.recipient.toString() !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: 'Not authorized to reject this request',
+                error: { code: 'UNAUTHORIZED_ACTION' },
+                data: null
+            });
+        }
+
+        // Check if request is in pending state
+        if (connectionRequest.status !== ConnectionRequestStatus.PENDING) {
+            return res.status(400).json({
+                success: false,
+                message: `Request cannot be rejected as it is ${connectionRequest.status}`,
+                error: { code: 'INVALID_REQUEST_STATE' },
+                data: null
+            });
+        }
+
+        // Reject the request
+        const updatedRequest = await connectionRequest.reject(reason);
+
+        // Remove from pending requests
+        await Promise.all([
+            User.findByIdAndUpdate(userId, {
+                $pull: { pendingIncomingRequests: requestId }
+            }),
+            User.findByIdAndUpdate(connectionRequest.sender, {
+                $pull: { pendingOutgoingRequests: requestId }
+            })
+        ]);
+
+        // Notify sender
+        const sender = await User.findById(connectionRequest.sender);
+        if (sender?.fcmToken) {
+            await sendNotification(sender.fcmToken, {
+                title: 'Connection Request Rejected',
+                body: 'Your connection request has been rejected',
+                data: {
+                    type: 'CONNECTION_REQUEST_REJECTED',
+                    userId: userId
+                }
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Connection request rejected successfully',
+            data: {
+                requestId: updatedRequest._id,
+                status: updatedRequest.status,
+                rejectedAt: updatedRequest.rejectedAt,
+                reason: updatedRequest.rejectionReason
+            },
+            error: null
+        });
+
+    } catch (error) {
+        console.error('[Reject Connection Request API error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: { code: 'INTERNAL_SERVER_ERROR' },
+            data: null
+        });
+    }
 });
 
 router.post('/request/:requestId/withdraw', async function (req: Request, res: Response): Promise<any> {
-    
+    try {
+        const { requestId } = req.params;
+        const userId = req.authSession.value.userId;
+
+        // Find and validate the connection request
+        const connectionRequest = await ConnectionRequest.findById(requestId);
+        if (!connectionRequest) {
+            return res.status(404).json({
+                success: false,
+                message: 'Connection request not found',
+                error: { code: 'REQUEST_NOT_FOUND' },
+                data: null
+            });
+        }
+
+        // Verify the user is the sender
+        if (connectionRequest.sender.toString() !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: 'Not authorized to withdraw this request',
+                error: { code: 'UNAUTHORIZED_ACTION' },
+                data: null
+            });
+        }
+
+        // Check if request is in pending state
+        if (connectionRequest.status !== ConnectionRequestStatus.PENDING) {
+            return res.status(400).json({
+                success: false,
+                message: `Request cannot be withdrawn as it is ${connectionRequest.status}`,
+                error: { code: 'INVALID_REQUEST_STATE' },
+                data: null
+            });
+        }
+
+        // Withdraw the request
+        const updatedRequest = await connectionRequest.withdraw();
+
+        // Remove from pending requests
+        await Promise.all([
+            User.findByIdAndUpdate(connectionRequest.recipient, {
+                $pull: { pendingIncomingRequests: requestId }
+            }),
+            User.findByIdAndUpdate(userId, {
+                $pull: { pendingOutgoingRequests: requestId }
+            })
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Connection request withdrawn successfully',
+            data: {
+                requestId: updatedRequest._id,
+                status: updatedRequest.status,
+                withdrawnAt: updatedRequest.withdrawnAt
+            },
+            error: null
+        });
+
+    } catch (error) {
+        console.error('[Withdraw Connection Request API error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: { code: 'INTERNAL_SERVER_ERROR' },
+            data: null
+        });
+    }
 });
 
-router.get('/',async function (req: Request, res: Response): Promise<any> {
-   
+router.get('/', async function (req: Request, res: Response): Promise<any> {
+    try {
+        const userId = req.authSession.value.userId;
+        
+        // Get all connection requests (both incoming and outgoing)
+        const requests = await ConnectionRequest.find({
+            $or: [
+                { sender: userId },
+                { recipient: userId }
+            ]
+        })
+        .populate('sender recipient', 'name profileImage')
+        .sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Connection requests retrieved successfully',
+            data: {
+                requests: requests.map(req => ({
+                    id: req._id,
+                    type: req.sender.toString() === userId ? 'outgoing' : 'incoming',
+                    status: req.status,
+                    createdAt: req.createdAt,
+                    user: req.sender.toString() === userId ? req.recipient : req.sender,
+                    initialMessage: req.initialMessage,
+                    acceptedAt: req.acceptedAt,
+                    rejectedAt: req.rejectedAt,
+                    withdrawnAt: req.withdrawnAt,
+                    rejectionReason: req.rejectionReason
+                }))
+            },
+            error: null
+        });
+
+    } catch (error) {
+        console.error('[Get All Connection Requests API error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: { code: 'INTERNAL_SERVER_ERROR' },
+            data: null
+        });
+    }
 });
 
 router.get('/incoming', async function (req: Request, res: Response): Promise<any> {
- 
+    try {
+        const userId = req.authSession.value.userId;
+        
+        // Get incoming connection requests
+        const requests = await ConnectionRequest.find({
+            recipient: userId,
+            status: ConnectionRequestStatus.PENDING
+        })
+        .populate('sender', 'name profileImage')
+        .sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Incoming connection requests retrieved successfully',
+            data: {
+                requests: requests.map(req => ({
+                    id: req._id,
+                    sender: req.sender,
+                    createdAt: req.createdAt,
+                    initialMessage: req.initialMessage
+                }))
+            },
+            error: null
+        });
+
+    } catch (error) {
+        console.error('[Get Incoming Connection Requests API error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: { code: 'INTERNAL_SERVER_ERROR' },
+            data: null
+        });
+    }
 });
 
 router.get('/outgoing', async function (req: Request, res: Response): Promise<any> {
- 
+    try {
+        const userId = req.authSession.value.userId;
+        
+        // Get outgoing connection requests
+        const requests = await ConnectionRequest.find({
+            sender: userId,
+            status: ConnectionRequestStatus.PENDING
+        })
+        .populate('recipient', 'name profileImage')
+        .sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Outgoing connection requests retrieved successfully',
+            data: {
+                requests: requests.map(req => ({
+                    id: req._id,
+                    recipient: req.recipient,
+                    createdAt: req.createdAt,
+                    initialMessage: req.initialMessage
+                }))
+            },
+            error: null
+        });
+
+    } catch (error) {
+        console.error('[Get Outgoing Connection Requests API error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: { code: 'INTERNAL_SERVER_ERROR' },
+            data: null
+        });
+    }
 });
 
 export default router;
+
