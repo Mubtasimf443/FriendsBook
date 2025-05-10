@@ -1,3 +1,4 @@
+/* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 function calculateProfileCompleteness(user: any): number {
     const requiredFields = [

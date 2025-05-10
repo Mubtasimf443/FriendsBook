@@ -955,6 +955,42 @@ router.get('/user', async function (req: Request, res: Response): Promise<Respon
     }
 });
 
+router.get('/user/:id', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        let _id = await _idValidator.parseAsync(req.params.id);
+        
+        const user = await User.findById(
+            _id,
+            userField
+        ).lean();
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+                data: null
+            });
+        }
+
+        // Cache response for 5 minutes
+        res.set('Cache-Control', 'public, max-age=600');
+
+        return res.status(200).json({
+            success: true,
+            data: { user }
+        });
+
+    } catch (error) {
+        console.error('Get user by MID error:', error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            data: null
+        });
+    }
+});
+
+
 
 router.get('/users/filter', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -1675,6 +1711,7 @@ router.get('/users/viewed-profiles', async function (req: Request, res: Response
         });
     }
 });
+
 router.get('/users/viewed-my-profile', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         const validationResult = paginationSchema.safeParse(req.query);
@@ -2271,6 +2308,8 @@ router.get('/users/seen-phobe-details', async function (req: Request, res: Respo
         });
     }
 });
+
+
 router.get('/users/seen-my-phobe-details', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         const validationResult = paginationSchema.safeParse(req.query);

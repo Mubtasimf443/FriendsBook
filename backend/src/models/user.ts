@@ -1,24 +1,31 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 import mongoose, { Schema } from 'mongoose';
-import { IUser, ProfileCreatedBy, Gender, Height, Religion, Language, EducationLevel, SettingsType, MaritalStatus, Occupation, IUserMembership } from '../lib/types/user.types';
+import { IUser, ProfileCreatedBy, Gender, Height, Religion, Language, EducationLevel, SettingsType, MaritalStatus, Occupation, IUserMembership, Education } from '../lib/types/user.types';
 import { countryCodes } from '../lib/data/countryCodes';
 import countryNames from '../lib/data/countryNames';
 import generateMatrimonyId from '../lib/core/mid-geneator';
 import { CurrencyCode } from '../lib/types/currencyCodes.enum';
-import { 
-    PhysicalStatus, 
-    ReligiousBranch, 
-    BadHabits, 
-    Sports, 
-    Hobbies, 
-    MusicTypes, 
+import {
+    PhysicalStatus,
+    ReligiousBranch,
+    BadHabits,
+    Sports,
+    Hobbies,
+    MusicTypes,
     FoodTypes,
-    SettingsPermissionType 
+    SettingsPermissionType
 } from '../lib/types/userProfile.types';
-import { MembershipDuration, MembershipTier } from '../lib/types/memberdship.types';
+import {
 
-
+    EmploymentSector,
+    PreferredLocation,
+    FamilyValues,
+    ComplexionPreference
+} from '../lib/types/partnerPreference';
+import { partnerPreferenceSchema } from '../lib/db_schema/partnerPreference.schema';
+import { CountryNamesEnum } from '../lib/types/country_names.enum';
+import { findNearestDistricts } from '../controllers/search.controller';
 
 
 
@@ -85,7 +92,7 @@ const familyInfoSchema = new Schema({
         min: 0,
         default: 0,
         validate: {
-            validator: function(this: any, val: number) {
+            validator: function (this: any, val: number) {
                 return val <= this.numberOfBrothers;
             },
             message: 'Number of married brothers cannot exceed total brothers'
@@ -96,7 +103,7 @@ const familyInfoSchema = new Schema({
         min: 0,
         default: 0,
         validate: {
-            validator: function(this: any, val: number) {
+            validator: function (this: any, val: number) {
                 return val <= this.numberOfSisters;
             },
             message: 'Number of married sisters cannot exceed total sisters'
@@ -110,19 +117,19 @@ const blockedProfileSchema = new Schema({
         ref: 'User',
         required: false
     },
-    blockedAt:  Date,
-    
+    blockedAt: Date,
+
     reason: String
 });
 
-const userMembershipSchema = new Schema<IUserMembership >({
+const userMembershipSchema = new Schema<IUserMembership>({
     currentMembership: {
         requestId: {
             type: Schema.Types.ObjectId,
             ref: 'MembershipRequest',
             required: false
         },
-        membership_exipation_date : Date
+        membership_exipation_date: Date
     }
 });
 
@@ -170,7 +177,7 @@ const settingsSchema = new Schema({
     }
 })
 
-const onlineStatusSchema = new Schema( {
+const onlineStatusSchema = new Schema({
     isOnline: {
         type: Boolean,
         default: false,
@@ -236,130 +243,130 @@ const enhancedSettingsSchema = new Schema({
 });
 
 const addressSchema = new Schema({
- 
-        country: {
+
+    country: {
+        type: String,
+        required: true,
+        minlength: 2,
+        maxlength: 100,
+        default: "Bangladesh",
+        enum: countryNames
+    },
+    state: {
+        name: {
             type: String,
-            required: true,
-            minlength: 2,
-            maxlength: 100,
-            default : "Bangladesh",
-            enum : countryNames
+            trim: true
         },
-        state: {
-            name: {
-                type: String,
-                trim: true
-            },
-            id : {
-                type : String
-            },
-            country_name : {
-                type : String
+        id: {
+            type: String
+        },
+        country_name: {
+            type: String
+        }
+    },
+    division: {
+        id: {
+            type: String,
+            required: function (this: any) {
+                return this.country === "Bangladesh";
             }
         },
-        division: {
-            id: {
-                type: String,
-                required: function (this: any) {
-                    return this.country === "Bangladesh";
-                }
-            },
-            name: {
-                type: String,
-                required: function (this: any) {
-                    return this.country === "Bangladesh";
-                }
-            },
-            bd_name: {
-                type: String,
-                required: function (this: any) {
-                    return this.country === "Bangladesh";
-                }
+        name: {
+            type: String,
+            required: function (this: any) {
+                return this.country === "Bangladesh";
             }
         },
-        district: {
-            id: {
-                type: String,
-                required: function (this: any) {
-                    return this.country === "Bangladesh";
-                }
-            },
-            division_id: {
-                type: String,
-                required: function (this: any) {
-                    return this.country === "Bangladesh";
-                },
-                
-            },
-            name: {
-                type: String,
-                required: function (this: any) {
-                    return this.country === "Bangladesh";
-                }
-            },
-            bn_name: {
-                type: String,
-                required: function (this: any) {
-                    return this.country === "Bangladesh";
-                }
-            },
-            lat: Number,
-            long: Number
-        },
-        upazila: {
-            id: {
-                type: String,
-                required: function (this: any) {
-                    return this.country === "Bangladesh";
-                }
-            },
-            district_id: {
-                type: String,
-                required: function (this: any) {
-                    return this.country === "Bangladesh";
-                },
-            
-            },
-            name: {
-                type: String,
-                required: function (this: any) {
-                    return this.country === "Bangladesh";
-                }
-            },
-            bn_name: {
-                type: String,
-             
-            }
-        },
-        union: {
-            id: {
-                type: String,
-                required: function (this: any) {
-                    return this.country === "Bangladesh";
-                }
-            },
-            upazilla_id: {
-                type: String,
-                required: function (this: any) {
-                    return this.country === "Bangladesh";
-                },
-           
-            },
-            name: {
-                type: String,
-                required: function (this: any) {
-                    return this.country === "Bangladesh";
-                }
-            },
-            bn_name: {
-                type: String,
-                required: function (this: any) {
-                    return this.country === "Bangladesh";
-                }
+        bd_name: {
+            type: String,
+            required: function (this: any) {
+                return this.country === "Bangladesh";
             }
         }
-    
-    
+    },
+    district: {
+        id: {
+            type: String,
+            required: function (this: any) {
+                return this.country === "Bangladesh";
+            }
+        },
+        division_id: {
+            type: String,
+            required: function (this: any) {
+                return this.country === "Bangladesh";
+            },
+
+        },
+        name: {
+            type: String,
+            required: function (this: any) {
+                return this.country === "Bangladesh";
+            }
+        },
+        bn_name: {
+            type: String,
+            required: function (this: any) {
+                return this.country === "Bangladesh";
+            }
+        },
+        lat: Number,
+        long: Number
+    },
+    upazila: {
+        id: {
+            type: String,
+            required: function (this: any) {
+                return this.country === "Bangladesh";
+            }
+        },
+        district_id: {
+            type: String,
+            required: function (this: any) {
+                return this.country === "Bangladesh";
+            },
+
+        },
+        name: {
+            type: String,
+            required: function (this: any) {
+                return this.country === "Bangladesh";
+            }
+        },
+        bn_name: {
+            type: String,
+
+        }
+    },
+    union: {
+        id: {
+            type: String,
+            required: function (this: any) {
+                return this.country === "Bangladesh";
+            }
+        },
+        upazilla_id: {
+            type: String,
+            required: function (this: any) {
+                return this.country === "Bangladesh";
+            },
+
+        },
+        name: {
+            type: String,
+            required: function (this: any) {
+                return this.country === "Bangladesh";
+            }
+        },
+        bn_name: {
+            type: String,
+            required: function (this: any) {
+                return this.country === "Bangladesh";
+            }
+        }
+    }
+
+
 });
 
 const phoneInfoSchema = new Schema({
@@ -497,20 +504,20 @@ const userSchema = new Schema<IUser>({
     education: [{
         level: {
             type: String,
-            required: function() { return this.isEducated; },
+            required: function () { return this.isEducated; },
             enum: Object.values(EducationLevel)
         },
         certificate: {
             type: String,
-            required: function() { return this.isEducated; }
+            required: function () { return this.isEducated; }
         },
         institution: {
             type: String,
-            required: function() { return this.isEducated; }
+            required: function () { return this.isEducated; }
         },
         yearOfCompletion: {
             type: Number,
-            required: function() { return this.isEducated; }
+            required: function () { return this.isEducated; }
         },
         grade: {
             type: String,
@@ -591,30 +598,12 @@ const userSchema = new Schema<IUser>({
      * -----------------
      * User's preferences for potential matches
      */
-    preferences: {
-        isEducated: { type: Boolean },
-        education: [{
-            type: {
-                level: {
-                    type: String,
-                    enum: Object.values(EducationLevel)
-                }
-            }
-        }],
-        location: [{ type: String }],
-        weight: {
-            minWeight: { type: Number, min: 30, max: 200 },
-            maxWeight: { type: Number, min: 30, max: 200 }
-        },
-        height: {
-            minHeight: { type: Number, min: 3, max: 9 }, // Height in feet
-            maxHeight: { type: Number, min: 3, max: 9 }
-        },
-        age: {
-            minAge: { type: Number },
-            maxAge: { type: Number }
-        },
-        lastUpdated: Date,
+    partnerPreference: {
+        type: partnerPreferenceSchema,
+        required: true,
+        default: function () {
+            return ({});
+        }
     },
 
     /**
@@ -666,13 +655,13 @@ const userSchema = new Schema<IUser>({
 
 
 
-userSchema.methods.hasActiveMembership = function() {
-    if ( !this.currentMembership.requestId  || !this.currentMembership.membership_exipation_date ) return false ;
-    else if (Date.now() > this.currentMembership.membership_exipation_date.getTime() ) return true;
+userSchema.methods.hasActiveMembership = function () {
+    if (!this.currentMembership.requestId || !this.currentMembership.membership_exipation_date) return false;
+    else if (Date.now() > this.currentMembership.membership_exipation_date.getTime()) return true;
     else return false;
 };
 
-userSchema.methods.getActiveMembershipID =  function() {
+userSchema.methods.getActiveMembershipID = function () {
     if (!this.hasActiveMembership()) throw new Error("This member does not have a any active membership");
     return this.currentMembership.requestId;
 }
@@ -684,125 +673,279 @@ userSchema.methods.addFCMToken = async function (token: string) {
 }
 
 
-userSchema.methods.removeFCMToken = async function() {
+userSchema.methods.removeFCMToken = async function () {
     this.fcmToken = undefined;
     await this.save()
 };
 
 
-userSchema.methods.hasProfileHighlighter = function() {
+userSchema.methods.hasProfileHighlighter = function () {
     return this.hasActiveMembership() && this.membership.hasProfileHighlighter;
 };
 
-userSchema.methods.createPreference = function() {
-    // Age preferences based on gender and cultural norms
-    const agePreferences = (() => {
-        // Age constraints for men
-        const MIN_ALLOWED_AGE_MEN: number = 21;
-        const MAX_ALLOWED_AGE_MEN: number = 70;
-
-        // Age constraints for women
-        const MIN_ALLOWED_AGE_WOMEN: number = 18;
-        const MAX_ALLOWED_AGE_WOMEN: number = 70;
-        if (this.gender === Gender.MALE) {
-            return {
-                minAge: Math.max(Math.floor(this.age - 10), MIN_ALLOWED_AGE_WOMEN), // More flexible range
-                maxAge: Math.max(this.age - 1, MIN_ALLOWED_AGE_WOMEN)
-            };
-        } else if (this.gender === Gender.FEMALE) {
-            return {
-                minAge: Math.max(this.age, MIN_ALLOWED_AGE_MEN ),
-                maxAge: Math.min(this.age + 10, MAX_ALLOWED_AGE_MEN - this.age) // More flexible range
-            };
-        }
-        else return { minAge: 21, maxAge: 30 }; // Default values
-    })();
-
-    // Height preferences based on cultural norms
+userSchema.methods.createPreference = function () {
+    // IIFE for generating height range using existing utility
     const heightPreferences = (() => {
-        const userHeightInFeet = parseFloat(this.height.at(0));
-        const minAcceptableHeight = 4; // Minimum acceptable height
-        const maxAcceptableHeight = 7; // Maximum acceptable height
+        const userHeightInFeet = parseInt(this.height.split(' ')[0]);
+        const generateHeightRange = (minFoot: number, maxFoot: number) => {
+            return {
+                min: `${minFoot} foot 0 inch` as Height,
+                max: `${maxFoot} foot 0 inch` as Height
+            };
+        };
 
+        // Cultural considerations for Bengali marriages
         if (this.gender === Gender.MALE) {
-            return {
-                minHeight: Math.max(userHeightInFeet - 1, minAcceptableHeight),
-                maxHeight: userHeightInFeet 
-            };
-        } else if (this.gender === Gender.FEMALE) {
-            return {
-                minHeight:userHeightInFeet, // Slightly more than user's height
-                maxHeight: Math.min(userHeightInFeet + 1, maxAcceptableHeight)
-            };
+            // Men typically prefer women slightly shorter
+            return generateHeightRange(
+                Math.max(4, userHeightInFeet - 1),
+                Math.min(userHeightInFeet, 6)
+            );
+        } else {
+            // Women typically prefer men slightly taller
+            return generateHeightRange(
+                Math.max(5, userHeightInFeet),
+                Math.min(userHeightInFeet + 2, 7)
+            );
         }
-     
     })();
 
-    // Weight preferences with cultural considerations
+    // IIFE for age preferences with Bengali cultural norms
+    const agePreferences = (() => {
+        // Constants based on Bengali marriage customs and legal requirements
+        const LEGAL_MIN_AGE_WOMEN = 18;
+        const LEGAL_MIN_AGE_MEN = 21;
+        const CULTURAL_MAX_AGE_MEN = 45;
+        const CULTURAL_MAX_AGE_WOMEN = 35;
+        const MAX_AGE_DIFFERENCE = 12;
+
+        if (this.gender === Gender.MALE) {
+            // For male users
+            const minAge = Math.max(
+                LEGAL_MIN_AGE_WOMEN,
+                this.age - MAX_AGE_DIFFERENCE,
+                Math.floor(this.age * 0.75) // Cultural norm: bride shouldn't be less than 3/4th of groom's age
+            );
+            const maxAge = Math.min(
+                this.age - 2, // Cultural norm: bride usually younger
+                CULTURAL_MAX_AGE_WOMEN,
+                this.age + 3 // Rare but acceptable case
+            );
+            return { min: minAge, max: maxAge };
+        } else {
+            // For female users
+            const minAge = Math.max(
+                LEGAL_MIN_AGE_MEN,
+                this.age, // Cultural norm: groom should not be younger
+                Math.floor(this.age * 1.1) // Cultural norm: groom usually slightly older
+            );
+            const maxAge = Math.min(
+                CULTURAL_MAX_AGE_MEN,
+                this.age + MAX_AGE_DIFFERENCE,
+                Math.ceil(this.age * 1.3) // Cultural norm: groom shouldn't be too old
+            );
+            return { min: minAge, max: maxAge };
+        }
+    })();
+
+    // IIFE for location preferences with district-based matching
+    const locationPreferences = (() => {
+        const isBangladeshi = this.address.country === CountryNamesEnum.BANGLADESH;
+
+        if (isBangladeshi && this.address.district?.lat && this.address.district?.long) {
+            const nearestDistricts = findNearestDistricts(
+                this.address.district.lat,
+                this.address.district.long,
+                7
+            );
+
+            return {
+                preferredCountries: [CountryNamesEnum.BANGLADESH],
+                preferredRegions: [this.address.division?.id],
+                preferredCities: nearestDistricts.map(d => d.id),
+                locationType: PreferredLocation.SAME_STATE,
+                willingToRelocate: this.gender === Gender.FEMALE
+            };
+        }
+
+        return {
+            preferredCountries: [this.address.country as CountryNamesEnum],
+            locationType: PreferredLocation.SAME_COUNTRY,
+            willingToRelocate: this.gender === Gender.FEMALE
+        };
+    })();
+
+    // IIFE for education and profession preferences with proper typing and cultural norms
+    const educationAndProfessionPreferences = (() => {
+        // Get user's highest education level with proper type checking
+        const getUserHighestEducation = (): Education | null => {
+            if (!this.isEducated || !this.education.length) return null;
+
+            return this.education.reduce((highest: Education, current: Education) => {
+                const educationLevels = Object.values(EducationLevel);
+                const currentIndex = educationLevels.indexOf(current.level);
+                const highestIndex = educationLevels.indexOf(highest.level);
+                return currentIndex > highestIndex ? current : highest;
+            });
+        };
+
+        // Get culturally appropriate occupations based on gender and education
+        const getCulturallyAppropriateOccupations = (): Occupation[] => {
+            const allOccupations = Object.values(Occupation);
+            const userHighestEdu = getUserHighestEducation();
+
+            // Base occupations that are always acceptable
+            const baseAcceptableOccupations = [
+                Occupation.GOVERNMENT_EMPLOYEE,
+                Occupation.TEACHER,
+                Occupation.DOCTOR,
+                Occupation.ENGINEER,
+                Occupation.BUSINESS_OWNER,
+                Occupation.BANKER
+            ];
+
+            // Occupations to exclude based on cultural norms
+            const culturallyExcludedOccupations = [
+                Occupation.UNEMPLOYED,
+                Occupation.DAILY_LABORER,
+                ...(this.gender === Gender.FEMALE ? [
+                    Occupation.CONSTRUCTION_WORKER,
+                    Occupation.SECURITY_GUARD
+                ] : [])
+            ];
+
+            if (this.gender === Gender.FEMALE) {
+                // For female users seeking male partners
+                return allOccupations.filter(occ =>
+                    !culturallyExcludedOccupations.includes(occ) &&
+                    (baseAcceptableOccupations.includes(occ) ||
+                        occ.includes('MANAGER') ||
+                        occ.includes('OFFICER') ||
+                        occ.includes('PROFESSIONAL'))
+                );
+            } else {
+                // For male users seeking female partners
+                // More flexible with occupations but prioritize certain professions
+                return allOccupations.filter(occ =>
+                    !culturallyExcludedOccupations.includes(occ)
+                );
+            }
+        };
+
+        // Get education preferences based on cultural norms
+        const getEducationPreferences = () => {
+            const userHighestEdu = getUserHighestEducation();
+            const educationLevels = Object.values(EducationLevel);
+            const userLevelIndex = userHighestEdu
+                ? educationLevels.indexOf(userHighestEdu.level)
+                : educationLevels.indexOf(EducationLevel.HSC);
+
+            if (this.gender === Gender.FEMALE) {
+                // For female users: prefer equal or higher education
+                return {
+                    minimumLevel: userHighestEdu?.level || EducationLevel.BACHELORS_DEGREE,
+                    mustBeEducated: true,
+                    preferredLevels: educationLevels.slice(userLevelIndex)
+                };
+            } else {
+                // For male users: prefer equal or lower education with some flexibility
+                return {
+                    minimumLevel: EducationLevel.HSC,
+                    mustBeEducated: this.isEducated,
+                    preferredLevels: educationLevels.slice(
+                        0,
+                        Math.min(userLevelIndex + 2, educationLevels.length)
+                    )
+                };
+            }
+        };
+
+        // Calculate minimum annual income based on user's income
+        const getMinimumIncomePreference = () => {
+            if (!this.annualIncome?.amount) return undefined;
+
+            return {
+                min: this.gender === Gender.FEMALE
+                    ? Math.floor(this.annualIncome.amount * 1.2) // Expect higher income from male partner
+                    : Math.floor(this.annualIncome.amount * 0.7), // More flexible for female partner
+                max: Math.floor(this.annualIncome.amount * 3),
+                currency: this.annualIncome.currency
+            };
+        };
+
+        return {
+            education: getEducationPreferences(),
+            profession: {
+                acceptedOccupations: getCulturallyAppropriateOccupations(),
+                preferredSectors: [
+                    EmploymentSector.GOVERNMENT,
+                    EmploymentSector.PRIVATE,
+                    EmploymentSector.BUSINESS,
+                    ...(this.gender === Gender.FEMALE ? [EmploymentSector.DEFENSE] : [])
+                ],
+                minimumAnnualIncome: getMinimumIncomePreference()
+            }
+        };
+    })();
+
+    // Calculate BMI-based weight preferences
     const weightPreferences = (() => {
-        const userWeight = this.weight;
-        const minHealthyWeight = 40; // Minimum healthy weight
-        const maxHealthyWeight = 120; // Maximum considered weight
+        const heightInMeters = parseInt(this.height.split(' ')[0]) * 0.3048;
+        const calculateBMI = (weight: number) => weight / (heightInMeters * heightInMeters);
+        const HEALTHY_BMI_MIN = 18.5;
+        const HEALTHY_BMI_MAX = 25;
 
-        if (this.gender === Gender.MALE) {
-            return {
-                minWeight: Math.max(minHealthyWeight, userWeight - 25),
-                maxWeight: Math.min(userWeight - 2, maxHealthyWeight) // Ensuring partner is lighter
-            };
-        } else {
-            return {
-                minWeight: Math.max(minHealthyWeight, userWeight + 2), // Ensuring partner is heavier
-                maxWeight: Math.min(userWeight + 30, maxHealthyWeight)
-            };
-        }
+        const minWeight = Math.max(40, Math.floor(HEALTHY_BMI_MIN * heightInMeters * heightInMeters));
+        const maxWeight = Math.min(90, Math.ceil(HEALTHY_BMI_MAX * heightInMeters * heightInMeters));
+
+        return {
+            min: this.gender === Gender.MALE ? minWeight : Math.max(40, this.weight - 10),
+            max: this.gender === Gender.MALE ? Math.min(this.weight + 5, maxWeight) : Math.min(this.weight + 15, maxWeight)
+        };
     })();
 
-    // Enhanced education preferences
-    const educationPreferences = (() => {
-        if (!this.isEducated) return [];
-        
-        const userHighestEducation = this.education.reduce((highest:any, current:any) => {
-            const currentLevel = Object.values(EducationLevel).indexOf(current.level);
-            const highestLevel = highest ? Object.values(EducationLevel).indexOf(highest.level) : -1;
-            return currentLevel > highestLevel ? current : highest;
-        }, null);
-
-        if (!userHighestEducation) return [];
-
-        // For females, accept same or higher education
-        // For males, accept same or lower education
-        const educationLevels = Object.values(EducationLevel);
-        const userLevelIndex = educationLevels.indexOf(userHighestEducation.level);
-
-        if (this.gender === Gender.FEMALE) {
-            return educationLevels
-                .slice(userLevelIndex)
-                .map(level => ({ level }));
-        } else {
-            return educationLevels
-                .slice(0, userLevelIndex + 1)
-                .map(level => ({ level }));
-        }
-    })();
-
-  
-    // Update preferences with all calculated values
-    this.preferences = {
-        ...this.preferences,
-        isEducated: this.isEducated,
-        education: educationPreferences,
-        age: agePreferences,
-        height: heightPreferences,
-        weight: weightPreferences,
-        lastUpdated: new Date() // Adding timestamp for preference updates
+    this.partnerPreferences = {
+        ageRange: agePreferences,
+        heightRange: heightPreferences,
+        weightRange: weightPreferences,
+        maritalStatus: [
+            MaritalStatus.NEVER_MARRIED,
+            ...(this.maritalStatus !== MaritalStatus.NEVER_MARRIED ?
+                [this.maritalStatus] : [])
+        ],
+        complexion: Object.values(ComplexionPreference).filter(c => c !== ComplexionPreference.ANY),
+        physicalStatus: [PhysicalStatus.NORMAL],
+        religiousBranch: this.aboutMe?.religiousBranch ? [this.aboutMe.religiousBranch] : undefined,
+        dealBreakers: [BadHabits.SMOKING, BadHabits.DRINKING],
+        locationPreference: locationPreferences,
+        ...educationAndProfessionPreferences,
+        religion: [this.religion],
+        motherTongue: this.languages.slice(0, 2),
+        familyValues: [FamilyValues.TRADITIONAL, FamilyValues.MODERATE],
+        familyBackground: this.familyInfo ? {
+            maxSiblings: Math.max(
+                (this.familyInfo.numberOfBrothers || 0) + 2,
+                (this.familyInfo.numberOfSisters || 0) + 2
+            ),
+            preferredFamilyType: ['joint', 'nuclear'],
+            preferredFamilyStatus: ['middle_class', 'upper_middle_class']
+        } : undefined,
+        strictPreferences: this.gender === Gender.FEMALE,
+        priority: {
+            education: this.isEducated ? 5 : 3,
+            profession: this.occupation ? 4 : 3,
+            location: 3,
+            religion: 5,
+            age: 4
+        },
+        lastUpdated: new Date()
     };
 
-    return this;
 };
-userSchema.methods.createMID = function() {
+userSchema.methods.createMID = function () {
     return generateMatrimonyId(this.address.country);
 };
-userSchema.methods.suspend = function(reason: string) {
+userSchema.methods.suspend = function (reason: string) {
     this.suspension.isSuspended = true;
     this.suspension.suspensions.push({
         reason,
@@ -811,12 +954,12 @@ userSchema.methods.suspend = function(reason: string) {
     return this;
 };
 
-userSchema.methods.unsuspend = function() {
+userSchema.methods.unsuspend = function () {
     this.suspension.isSuspended = false;
     return this;
 };
 
-userSchema.methods.getSuspensionHistory = function() {
+userSchema.methods.getSuspensionHistory = function () {
     return this.suspension.suspensions;
 };
 
@@ -826,7 +969,7 @@ userSchema.index({ createdAt: -1 });
 userSchema.index({ 'education.level': 1 });
 userSchema.index({ dateOfBirth: 1 });
 userSchema.index({ 'address.country': 1, 'address.district.id': 1, 'isSuspended': 1 });
-userSchema.index({ 'onlineStatus.lastActive': -1});
+userSchema.index({ 'onlineStatus.lastActive': -1 });
 userSchema.index({ maritalStatus: 1 });
 userSchema.index({ occupation: 1 });
 userSchema.index({ 'annualIncome.amount': 1, 'annualIncome.currency': 1 });

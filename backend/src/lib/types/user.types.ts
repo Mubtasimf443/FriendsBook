@@ -6,6 +6,7 @@ import { ICity, IDistrict, IDivision, IState, IUpazila } from './location.types'
 import { CountryNamesEnum } from './country_names.enum';
 import { IAboutMe  , IFamilyInfo , IEnhancedPrivacySettings, IEnhancedUserSettings } from './userProfile.types';
 import {  MembershipTier , MembershipDuration} from './memberdship.types';
+import { IPartnerPreference } from './partnerPreference';
 
 export enum ProfileCreatedBy {
     SELF = 'self',
@@ -475,7 +476,7 @@ export interface IUser extends Document {
     familyInfo?: IFamilyInfo;             // Family background
     
     // Preferences & Settings
-    preferences: IUserPreferences;         // Partner preferences
+    partnerPreference: IPartnerPreference;         // Partner preferences
     enhancedSettings: IEnhancedUserSettings; // Advanced settings
     
     // Status Tracking
@@ -495,7 +496,7 @@ export interface IUser extends Document {
     pendingOutgoingRequests: mongoose.Types.ObjectId[];
 
     // Instance Methods
-    createPreference(): void;              // Generate partner preferences
+    createPreference(): void;          // Generate partner preferences
     createMID(): string;                   // Generate matrimony ID
     hasActiveMembership(): boolean;        // Check membership status
     addFCMToken(token: string, device: string): Promise<void>;    // Add notification token

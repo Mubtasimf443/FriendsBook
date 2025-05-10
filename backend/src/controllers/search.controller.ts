@@ -1,7 +1,5 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-import fs from 'fs';
-import path from 'path';
 import { IDistrict } from '../lib/types/location.types';
 import { Districts } from '../lib/data/districts';
 import { IAuthSession } from '../models/AuthSession';
@@ -44,8 +42,6 @@ export function searchHeightGenerator(min: number, max: number): string[] {
   }
   return heights;
 }
-
-
 // Add this at the top of search.ts
 export function getBaseSearchQuery(userData: IAuthSession['value']) {
   return {
@@ -56,4 +52,3 @@ export function getBaseSearchQuery(userData: IAuthSession['value']) {
     religion: userData.religion
   };
 }
-
