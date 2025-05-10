@@ -37,7 +37,7 @@ declare global {
     }
 }
 
-let userField = 'name _id address email age isEducated education address religion languages maritalStatus occupation annualIncome';
+let userField = 'name _id address email age isEducated education address religion languages maritalStatus occupation annualIncome enhancedSettings.blocked';
 
 
 
@@ -104,6 +104,11 @@ router.get('/users/matching/location', async function (req: Request, res: Respon
                 totalUsers: totalCount
             }
         } 
+
+        users = users.filter((user: IUser) => {
+            if (!user.enhancedSettings.blocked.some((u) => u.userId === req.authSession.value.userId)) return user;
+        });
+
 
         return res.status(200).json({
             success : false ,
