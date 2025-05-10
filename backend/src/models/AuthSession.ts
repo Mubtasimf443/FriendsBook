@@ -289,8 +289,5 @@ const authSessionSchema = new Schema<IAuthSession>(
     }
 );
 
-
-
-
 const AuthSession = mongoose.model<IAuthSession>('AuthSession', authSessionSchema);
 export default AuthSession;
