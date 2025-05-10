@@ -25,7 +25,7 @@ const paymentInfoSchema = new Schema(
         transactionId: {
             type: String,
             required: true,
-            unique: true,
+
             trim: true
         },
         amount: {
@@ -155,7 +155,7 @@ const membershipRequestSchema = new Schema<IMembershipRequest>({
 
 // Indexes for efficient querying
 membershipRequestSchema.index({ requestStatus: 1, requestDate: -1 });
-membershipRequestSchema.index({ 'paymentInfo.transactionId': 1 }, { unique: true });
+membershipRequestSchema.index({ 'paymentInfo.transactionId': 1 });
 membershipRequestSchema.index({ requesterID: 1, requestStatus: 1 });
 membershipRequestSchema.index({ endDate: 1 }, { sparse: true });
 
