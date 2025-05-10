@@ -271,11 +271,18 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
             languages: sessionData.languages,
             religion: sessionData.religion,
             password: {
-                hashed: passwordHash, // Ensure password is hashed before saving
-                salt: passwordSalt// Generate a random salt
+                hashed: passwordHash, 
+                salt: passwordSalt
             },
             createdAt: new Date(),
-            age: sessionData.age
+            age: sessionData.age ,
+            enhancedSettings : {
+                blocked : [] ,
+                privacy : {
+
+                },
+                notifications :{}
+            }
         });
         
         newUser.createPreference();

@@ -475,7 +475,7 @@ export interface IUser extends Document {
     pendingOutgoingRequests: mongoose.Types.ObjectId[];
 
     // Instance Methods
-    createPreference(): void;          // Generate partner preferences
+    createPreference(): IUser;          // Generate partner preferences
     createMID(): string;                   // Generate matrimony ID
     hasActiveMembership(): boolean;        // Check membership status
     addFCMToken(token: string, device: string): Promise<void>;    // Add notification token

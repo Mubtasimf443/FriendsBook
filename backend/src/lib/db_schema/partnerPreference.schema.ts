@@ -17,21 +17,21 @@ import {
 
 export const partnerPreferenceSchema = new Schema<IPartnerPreference>({
     ageRange: {
-        min: { type: Number, required: true, min: 18, max: 70 },
-        max: { type: Number, required: true, min: 18, max: 70 }
+        min: { type: Number, required: false, min: 18, max: 70 },
+        max: { type: Number, required: false, min: 18, max: 70 }
     },
     heightRange:{
-        min: { type: Number, required: true, min: 4, max: 8 },
-        max: { type: Number, required: true, min: 5, max: 9 }
+        min: { type: Number, required: false, min: 4, max: 8 },
+        max: { type: Number, required: false, min: 5, max: 9 }
     },
     weightRange: {
-        min: { type: Number, required: true, min: 30, max: 200 },
-        max: { type: Number, required: true, min: 30, max: 200 }
+        min: { type: Number, required: false, min: 30, max: 200 },
+        max: { type: Number, required: false, min: 30, max: 200 }
     },
     maritalStatus: [{
         type: String,
         enum: Object.values(MaritalStatus),
-        required: true
+        required: false
     }],
     complexion: [{
         type: String,
@@ -40,7 +40,7 @@ export const partnerPreferenceSchema = new Schema<IPartnerPreference>({
     physicalStatus: [{
         type: String,
         enum: Object.values(PhysicalStatus),
-        required: true
+        required: false
     }],
     religiousBranch: [{
         type: String,
@@ -54,14 +54,14 @@ export const partnerPreferenceSchema = new Schema<IPartnerPreference>({
         preferredCountries: [{
             type: String,
             enum: Object.values(CountryNamesEnum),
-            required: true
+            required: false
         }],
         preferredRegions: [String],
         preferredCities: [String],
         locationType: {
             type: String,
             enum: Object.values(PreferredLocation),
-            required: true
+            required: false
         },
         willingToRelocate: Boolean
     },
@@ -69,7 +69,7 @@ export const partnerPreferenceSchema = new Schema<IPartnerPreference>({
         minimumLevel: {
             type: String,
             enum: Object.values(EducationLevel),
-            required: true
+            required: false
         },
         preferredLevels: [{
             type: String,
@@ -77,7 +77,7 @@ export const partnerPreferenceSchema = new Schema<IPartnerPreference>({
         }],
         mustBeEducated: {
             type: Boolean,
-            required: true,
+            required: false,
             default: true
         },
         preferredInstitutions: [String]
@@ -103,7 +103,7 @@ export const partnerPreferenceSchema = new Schema<IPartnerPreference>({
     religion: [{
         type: String,
         enum: Object.values(Religion),
-        required: true
+        required: false
     }],
     motherTongue: [{
         type: String,
@@ -120,7 +120,7 @@ export const partnerPreferenceSchema = new Schema<IPartnerPreference>({
     },
     lastUpdated: {
         type: Date,
-        required: true,
+        required: false,
         default: Date.now
     },
     strictPreferences: {

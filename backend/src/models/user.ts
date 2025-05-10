@@ -192,7 +192,7 @@ const onlineStatusSchema = new Schema({
         default: Date.now,
     }
 });
-const enhancedSettingsSchema = new Schema({
+const enhancedSettingsSchema = {
     blocked: [blockedProfileSchema],
     privacy: {
         whoCanViewProfile: {
@@ -240,7 +240,7 @@ const enhancedSettingsSchema = new Schema({
             default: true
         }
     }
-});
+};
 
 const addressSchema = new Schema({
 
@@ -614,7 +614,10 @@ const userSchema = new Schema<IUser>({
     onlineStatus: onlineStatusSchema,
     aboutMe: aboutMeSchema,
     familyInfo: familyInfoSchema,
-    enhancedSettings: enhancedSettingsSchema,
+    enhancedSettings: {
+        type : enhancedSettingsSchema,
+        required : true ,
+    },
     membership: userMembershipSchema,
     fcmToken: {
         type: String,
@@ -687,26 +690,22 @@ userSchema.methods.createPreference = function () {
     // IIFE for generating height range using existing utility
     const heightPreferences = (() => {
         const userHeightInFeet = parseInt(this.height.split(' ')[0]);
-        const generateHeightRange = (minFoot: number, maxFoot: number) => {
-            return {
-                min: `${minFoot} foot 0 inch` as Height,
-                max: `${maxFoot} foot 0 inch` as Height
-            };
-        };
+      
 
         // Cultural considerations for Bengali marriages
         if (this.gender === Gender.MALE) {
             // Men typically prefer women slightly shorter
-            return generateHeightRange(
-                Math.max(4, userHeightInFeet - 1),
-                Math.min(userHeightInFeet, 6)
-            );
+            return {
+                min :Math.max(4, userHeightInFeet - 1),
+                max :Math.min(userHeightInFeet, 6)
+            }
+    
         } else {
             // Women typically prefer men slightly taller
-            return generateHeightRange(
-                Math.max(5, userHeightInFeet),
-                Math.min(userHeightInFeet + 2, 7)
-            );
+            return {
+                min :  Math.max(5, userHeightInFeet),
+                max : Math.min(userHeightInFeet + 2, 7)
+            }
         }
     })();
 
@@ -904,7 +903,7 @@ userSchema.methods.createPreference = function () {
         };
     })();
 
-    this.partnerPreferences = {
+    this.partnerPreference= {
         ageRange: agePreferences,
         heightRange: heightPreferences,
         weightRange: weightPreferences,
@@ -920,7 +919,7 @@ userSchema.methods.createPreference = function () {
         locationPreference: locationPreferences,
         ...educationAndProfessionPreferences,
         religion: [this.religion],
-        motherTongue: this.languages.slice(0, 2),
+        motherTongue: this.languages.slice(0, 1),
         familyValues: [FamilyValues.TRADITIONAL, FamilyValues.MODERATE],
         familyBackground: this.familyInfo ? {
             maxSiblings: Math.max(
@@ -940,7 +939,7 @@ userSchema.methods.createPreference = function () {
         },
         lastUpdated: new Date()
     };
-
+    return this;
 };
 userSchema.methods.createMID = function () {
     return generateMatrimonyId(this.address.country);
