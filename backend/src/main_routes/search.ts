@@ -5,7 +5,7 @@ import rateLimiter from "../config/rateRimiter";
 import { validateUser } from "../lib/middlewares/auth.middleware";
 import { IAuthSession } from "../models/AuthSession";
 import { CountryNamesEnum } from "../lib/types/country_names.enum";
-import { findNearestDistricts, searchHeightGenerator } from "../controllers/search.controller";
+import { findNearestDistricts, getBaseSearchQuery, searchHeightGenerator } from "../controllers/search.controller";
 import { User } from "../models/user";
 import { FilterUsersQueryParams, filterUsersSchema, getUserByMIDSchema, justJoinedSchema, preferredEducationSearchSchema, preferredLocationSearchSchema, preferredOccupationSearchSchema, paginationSchema, todaysMatchSchema, searchHistorySchema } from "../lib/schema/search.schema";
 import { IProfileView, ProfileView } from "../models/ProfileView";
@@ -37,8 +37,7 @@ declare global {
     }
 }
 
-let userField = 'name _id address email age isEducated education address religion languages maritalStatus occupation annualIncome enhancedSettings.blocked';
-
+let userField = 'name _id address email age isEducated education address religion languages maritalStatus occupation annualIncome enhancedSettings.blocked profileImage coverImage';
 
 
 router.get('/users/matching/location', async function (req: Request, res: Response): Promise<Response | any> {
@@ -53,9 +52,9 @@ router.get('/users/matching/location', async function (req: Request, res: Respon
                 data: null
             });
         }
-  
-        const { page, limit, count :shouldCount } = validationResult.data;
-        
+
+        const { page, limit, count: shouldCount } = validationResult.data;
+
 
         if (userData.address.country !== CountryNamesEnum.BANGLADESH || !userData.address.lat || !userData.address.long) {
             return res.status(400).json({
@@ -68,16 +67,13 @@ router.get('/users/matching/location', async function (req: Request, res: Respon
         let lat = userData.address.lat, long = userData.address.long;
         let nearestDistricts = findNearestDistricts(lat, long, 7);
 
-       
+
         const skip = (page - 1) * limit;
 
         const baseQuery = {
+             ...getBaseSearchQuery(userData), 
             'address.country': CountryNamesEnum.BANGLADESH,
             'address.district.id': { $in: nearestDistricts.map(district => district.id) },
-            'isSuspended': false,
-            '_id': { $ne: userData.userId }, // Exclude current user
-            'gender': { $ne: userData.gender },
-            religion: userData.religion
         };
 
 
@@ -92,8 +88,8 @@ router.get('/users/matching/location', async function (req: Request, res: Respon
             totalCount = await User.find(baseQuery).countDocuments().maxTimeMS(10000)
         }
 
-        let pagination:object = {
-            currentPage : page,
+        let pagination: object = {
+            currentPage: page,
             pageSize: limit,
         };
 
@@ -103,7 +99,7 @@ router.get('/users/matching/location', async function (req: Request, res: Respon
                 totalPages: Math.ceil(totalCount / limit),
                 totalUsers: totalCount
             }
-        } 
+        }
 
         users = users.filter((user: IUser) => {
             if (!user.enhancedSettings.blocked.some((u) => u.userId === req.authSession.value.userId)) return user;
@@ -111,8 +107,8 @@ router.get('/users/matching/location', async function (req: Request, res: Respon
 
 
         return res.status(200).json({
-            success : false ,
-            data : {
+            success: false,
+            data: {
                 districts: nearestDistricts.map(({ name, bn_name }) => ({ name, bn_name })),
                 pagination,
                 users,
@@ -129,6 +125,9 @@ router.get('/users/matching/location', async function (req: Request, res: Respon
     }
 });
 
+
+
+
 router.get('/users/matching/daily', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         const validationResult = todaysMatchSchema.safeParse(req.query);
@@ -140,7 +139,7 @@ router.get('/users/matching/daily', async function (req: Request, res: Response)
                 data: null
             });
         }
-  
+
         const { limit } = validationResult.data;
 
         let userData = req.authSession.value;
@@ -157,25 +156,22 @@ router.get('/users/matching/daily', async function (req: Request, res: Response)
         const baseQuery = {
             'address.country': CountryNamesEnum.BANGLADESH,
             'address.district.id': { $in: nearestDistricts.map(district => district.id) },
-            'suspension.isSuspended': false,
-            '_id': { $ne: userData.userId }, // Exclude current user
-            religion: userData.religion,
-            'gender': { $ne: userData.gender }, // Basic preference matching
+            ...getBaseSearchQuery(req.authSession.value),
         };
 
-        let totalCount = await User.find(baseQuery ).countDocuments().maxTimeMS(5000);
-        
-        let skip = Math.floor(Math.random() * (totalCount - limit));
-    
-       
+        let totalCount = await User.find(baseQuery).countDocuments().maxTimeMS(5000);
 
-        let users = await User.find(baseQuery,userField)
+        let skip = Math.floor(Math.random() * (totalCount - limit));
+
+
+
+        let users = await User.find(baseQuery, userField)
             .skip(skip)
             .limit(limit)
             .lean();
 
         return res.status(200).json({
-            success : true ,
+            success: true,
             data: { users }
         })
 
@@ -205,7 +201,7 @@ router.get('/users/just-joined', async function (req: Request, res: Response): P
         const userData = req.authSession.value;
 
         // Calculate the date range
-     
+
         const daysAgo = parseInt(timeRange);
         const startDate = new Date(Date.now() - (daysAgo * 24 * 60 * 60 * 1000));
 
@@ -214,12 +210,9 @@ router.get('/users/just-joined', async function (req: Request, res: Response): P
 
         // Base query for finding users
         const baseQuery = {
-            'address.country':userData.address.country,
+            'address.country': userData.address.country,
             createdAt: { $gte: startDate },
-            'isSuspended': false,
-            '_id': { $ne: userData.userId }, // Exclude current user
-            'gender': { $ne: userData.gender }, // Basic preference matching
-            religion: userData.religion
+            ...getBaseSearchQuery(req.authSession.value),
         };
 
         // Find users
@@ -261,7 +254,7 @@ router.get('/users/just-joined', async function (req: Request, res: Response): P
             }
         });
 
-    }catch (error) {
+    } catch (error) {
         console.error(`recent profile listing api error:`, error);
         return res.status(500).json({
             success: false,
@@ -291,15 +284,13 @@ router.get('/users/not-viewed', async function (req: Request, res: Response): Pr
         const viewedProfileIds = await ProfileView.distinct('viewedId', {
             viewerId: userData.userId
         });
-        const baseQuery :any= {
-            'address.country':userData.address.country,
-            _id: { 
-                $ne: userData.userId,  // Exclude current user
-                $nin: viewedProfileIds // Exclude viewed profiles
+        const baseQuery: any = {
+               ...getBaseSearchQuery(req.authSession.value),
+            'address.country': userData.address.country,
+            _id: {
+                $nin: [...viewedProfileIds , userData.userId ] 
             },
-            'suspension.isSuspended': false,
-            gender: { $ne: userData.gender }, // Match opposite gender
-            religion: userData.religion
+            
         };
 
         // Calculate pagination
@@ -337,7 +328,7 @@ router.get('/users/not-viewed', async function (req: Request, res: Response): Pr
             data: {
                 users,
                 pagination,
-              
+
             }
         });
 
@@ -353,7 +344,7 @@ router.get('/users/not-viewed', async function (req: Request, res: Response): Pr
     }
 });
 
-router.get('/users/online' ,async function (req: Request, res: Response): Promise<Response | any> {
+router.get('/users/online', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // Validate query parameters
         const validationResult = paginationSchema.safeParse(req.query);
@@ -371,16 +362,14 @@ router.get('/users/online' ,async function (req: Request, res: Response): Promis
         const userData = req.authSession.value;
 
         // Calculate the active time threshold
-       
+
 
         // Base query for finding online users
         const baseQuery = {
             'address.country': userData.address.country,
-           'suspension.isSuspended': false,
-            '_id': { $ne: userData.userId },
-            'gender': { $ne: userData.gender },
+          
             'onlineStatus.isOnline': true,
-            religion: userData.religion
+            ...getBaseSearchQuery(req.authSession.value),
         };
 
         // Calculate pagination
@@ -448,21 +437,21 @@ router.get('/users/others-viewed-my-profile', async function (req: Request, res:
             .map(el => el.viewerId);
 
 
-        const baseQuery :any= {
-            _id: { 
+        const baseQuery: any = {
+            _id: {
                 $in: viewedMyProfileIds // Exclude viewed profiles
             },
             'suspension.isSuspended': false,
         };
 
-        
+
 
         // Find users with pagination
         let users = await User.find(baseQuery, userField)
             .lean()
             .maxTimeMS(20000);
 
-      
+
         res.set("cache-control", "max-age=60, public");
         return res.status(200).json({
             success: true,
@@ -498,8 +487,8 @@ router.get('/users/my-shortlist', async function (req: Request, res: Response): 
         const userId = req.authSession.value.userId;
 
         // Get shortlisted user IDs
-        let shortlistedIds = await ShortList.distinct('shortListedId', { 
-            shortListerId: userId 
+        let shortlistedIds = await ShortList.distinct('shortListedId', {
+            shortListerId: userId
         });
 
         // Base query
@@ -558,7 +547,7 @@ router.get('/users/my-shortlist', async function (req: Request, res: Response): 
             stack: error instanceof Error ? error.stack : undefined,
             timestamp: new Date().toISOString()
         });
-        
+
         return res.status(500).json({
             success: false,
             message: 'Internal server error',
@@ -583,8 +572,8 @@ router.get('/users/others-shortlisted-me', async function (req: Request, res: Re
         const userId = req.authSession.value.userId;
 
         // Get IDs of users who shortlisted the current user
-        let shortlistedByIds = await ShortList.distinct('shortListerId', { 
-            shortListedId: userId 
+        let shortlistedByIds = await ShortList.distinct('shortListerId', {
+            shortListedId: userId
         });
 
         // Base query for finding users
@@ -643,7 +632,7 @@ router.get('/users/others-shortlisted-me', async function (req: Request, res: Re
             stack: error instanceof Error ? error.stack : undefined,
             timestamp: new Date().toISOString()
         });
-        
+
         return res.status(500).json({
             success: false,
             message: 'Internal server error',
@@ -654,7 +643,7 @@ router.get('/users/others-shortlisted-me', async function (req: Request, res: Re
 router.get('/users/preferred-occupation', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         Array.isArray(req.query.occupations) === false && (req.query.occupations = [req.query.occupations || Occupation.DOCTOR]);
-       
+
         // Validate query parameters
         const validationResult = preferredOccupationSearchSchema.safeParse(req.query);
         if (!validationResult.success) {
@@ -666,13 +655,13 @@ router.get('/users/preferred-occupation', async function (req: Request, res: Res
             });
         }
 
-        const { 
-            page, 
-            limit, 
+        const {
+            page,
+            limit,
             count: shouldCount,
-            occupations 
+            occupations
         } = validationResult.data;
-        
+
         const userData = req.authSession.value;
 
         // Calculate pagination
@@ -680,14 +669,11 @@ router.get('/users/preferred-occupation', async function (req: Request, res: Res
 
         // Construct base query with occupation filter
         const baseQuery = {
-            'suspension.isSuspended': false,
-            '_id': { $ne: userData.userId },
-            gender: { $ne: userData.gender },
-            religion: userData.religion,
+             ...getBaseSearchQuery(req.authSession.value),
             occupation: { $in: occupations }
         };
 
-      
+
 
         // Find matching users with occupation details
         const users = await User.find(baseQuery, userField)
@@ -703,7 +689,7 @@ router.get('/users/preferred-occupation', async function (req: Request, res: Res
         }
 
         // Get occupation distribution for analytics
-        const occupationDistribution = await User.find(baseQuery , userField);
+        const occupationDistribution = await User.find(baseQuery, userField);
 
         // Prepare pagination info
         let pagination: object = {
@@ -728,7 +714,7 @@ router.get('/users/preferred-occupation', async function (req: Request, res: Res
             data: {
                 users,
                 pagination,
-               
+
             }
         });
 
@@ -762,13 +748,13 @@ router.get('/users/preferred-education', async function (req: Request, res: Resp
             });
         }
 
-        const { 
-            page, 
-            limit, 
+        const {
+            page,
+            limit,
             count: shouldCount,
-            educationLevels  
+            educationLevels
         } = validationResult.data;
-        
+
         const userData = req.authSession.value;
 
         // Calculate pagination
@@ -776,12 +762,9 @@ router.get('/users/preferred-education', async function (req: Request, res: Resp
 
         // Base query for finding users
         const baseQuery = {
-            'suspension.isSuspended': false,
-            '_id': { $ne: userData.userId },
-            gender: { $ne: userData.gender },
-            religion: userData.religion,
+              ...getBaseSearchQuery(req.authSession.value),
             isEducated: true,
-            "education.level":{ $in: educationLevels } 
+            "education.level": { $in: educationLevels }
         };
 
         // Find users with aggregation to get highest matching education level
@@ -837,8 +820,8 @@ router.get('/users/preferred-education', async function (req: Request, res: Resp
 
 router.get('/users/preferred-location', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        (typeof req.query.countries === "string" ) && (req.query.countries = [req.query.countries]);
-        (typeof req.query.division_ids === "string" ) && (req.query.division_ids = [req.query.division_ids]);
+        (typeof req.query.countries === "string") && (req.query.countries = [req.query.countries]);
+        (typeof req.query.division_ids === "string") && (req.query.division_ids = [req.query.division_ids]);
         const validationResult = preferredLocationSearchSchema.safeParse(req.query);
         if (!validationResult.success) {
             return res.status(400).json({
@@ -849,14 +832,14 @@ router.get('/users/preferred-location', async function (req: Request, res: Respo
             });
         }
 
-        const { 
-            page, 
-            limit, 
+        const {
+            page,
+            limit,
             count: shouldCount,
             countries,
-            division_ids 
+            division_ids
         } = validationResult.data;
-        
+
         const userData = req.authSession.value;
 
         // Calculate pagination
@@ -864,15 +847,12 @@ router.get('/users/preferred-location', async function (req: Request, res: Respo
 
         // Base query for finding users
         const baseQuery: any = {
-           'suspension.isSuspended': false,
-            '_id': { $ne: userData.userId },
-            gender: { $ne: userData.gender },
-            religion: userData.religion,
+             ...getBaseSearchQuery(req.authSession.value),
             'address.country': { $in: countries }
         };
 
         // Add division filter if country includes Bangladesh
-        if (countries.includes(CountryNamesEnum.BANGLADESH) &&division_ids.length > 0 ) {
+        if (countries.includes(CountryNamesEnum.BANGLADESH) && division_ids.length > 0) {
             baseQuery['address.division.id'] = { $in: division_ids };
         }
 
@@ -913,7 +893,7 @@ router.get('/users/preferred-location', async function (req: Request, res: Respo
                 pagination,
                 searchCriteria: {
                     countries,
-                    divisions_ids : division_ids || []
+                    divisions_ids: division_ids || []
                 }
             }
         });
@@ -929,10 +909,10 @@ router.get('/users/preferred-location', async function (req: Request, res: Respo
 });
 
 
-router.get('/user', async function(req: Request, res: Response): Promise<Response | any> {
+router.get('/user', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         const validationResult = getUserByMIDSchema.safeParse(req.query);
-        
+
         if (!validationResult.success) {
             return res.status(400).json({
                 success: false,
@@ -976,7 +956,7 @@ router.get('/user', async function(req: Request, res: Response): Promise<Respons
 });
 
 
-router.get('/users/filter', async function(req: Request, res: Response): Promise<Response | any> {
+router.get('/users/filter', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // Handle array parameters that might come as strings
         (typeof req.query.languages === "string") && (req.query.languages = [req.query.languages]);
@@ -1022,11 +1002,7 @@ router.get('/users/filter', async function(req: Request, res: Response): Promise
         } = validatedQuery;
 
         // Build the base query
-        const baseQuery: any = {
-            'suspension.isSuspended': false,
-            '_id': { $ne: userData.userId }, // Exclude current user
-            'gender': { $ne: userData.gender }, // Match opposite gender
-        };
+        const baseQuery: any = getBaseSearchQuery(req.authSession.value);
 
         // Add optional filters
         if (religion) baseQuery.religion = religion;
@@ -1140,7 +1116,7 @@ router.get('/users/filter', async function(req: Request, res: Response): Promise
 });
 
 
-router.get('/search-history', async function(req: Request, res: Response): Promise<Response | any> {
+router.get('/search-history', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         const validationResult = paginationSchema.safeParse(req.query);
         if (!validationResult.success) {
@@ -1156,12 +1132,12 @@ router.get('/search-history', async function(req: Request, res: Response): Promi
 
 
         // Get search history
-        const searchHistory = await SearchHistory.find({ userId , } , 'title query savedAt userId')
+        const searchHistory = await SearchHistory.find({ userId, }, 'title query savedAt userId')
             .sort({ savedAt: -1 })
             .lean()
             .maxTimeMS(10000);
 
-        
+
 
         if (searchHistory.length > 50) {
             for (let i = 0; i < searchHistory.length; i++) {
@@ -1177,7 +1153,7 @@ router.get('/search-history', async function(req: Request, res: Response): Promi
             success: true,
             data: {
                 searchHistory,
-            
+
             }
         });
 
@@ -1201,7 +1177,7 @@ router.post('/search-history', async function (req: Request, res: Response): Pro
     try {
         // Validate request body
         const validationResult = searchHistorySchema.safeParse(req.body);
-    
+
         if (!validationResult.success) {
             return res.status(400).json({
                 success: false,
@@ -1268,7 +1244,7 @@ router.post('/search-history', async function (req: Request, res: Response): Pro
 });
 
 
-router.delete('/search-history/:id', async function(req: Request, res: Response): Promise<Response | any> { 
+router.delete('/search-history/:id', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // Validate ID parameter
         const historyId = _idValidator.parse(req.params.id);
@@ -1328,7 +1304,7 @@ router.delete('/search-history/:id', async function(req: Request, res: Response)
 });
 
 
-router.get('/users/premium' ,async function (req: Request, res: Response): Promise<Response | any> { 
+router.get('/users/premium', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         let userData = req.authSession.value;
 
@@ -1341,20 +1317,17 @@ router.get('/users/premium' ,async function (req: Request, res: Response): Promi
                 data: null
             });
         }
-  
-        const { page, limit, count :shouldCount } = validationResult.data;
-        
+
+        const { page, limit, count: shouldCount } = validationResult.data;
+
         const baseQuery = {
-            'isSuspended': false,
-            '_id': { $ne: userData.userId }, // Exclude current user
-            'gender': { $ne: userData.gender },
-            religion: userData.religion,
-            'membership.currentMembership.requestId' :{  $exists: true} ,
-            'membership.currentMembership.membership_exipation_date' :{  $exists: true} 
+              ...getBaseSearchQuery(req.authSession.value),
+            'membership.currentMembership.requestId': { $exists: true },
+            'membership.currentMembership.membership_exipation_date': { $exists: true }
         };
 
         const skip = (page - 1) * limit;
-        let users :any[] = await User.find(baseQuery, userField + ' membership')
+        let users: any[] = await User.find(baseQuery, userField + ' membership')
             .skip(skip)
             .limit(limit)
             .lean();
@@ -1366,8 +1339,8 @@ router.get('/users/premium' ,async function (req: Request, res: Response): Promi
         }
 
 
-        let pagination:object = {
-            currentPage : page,
+        let pagination: object = {
+            currentPage: page,
             pageSize: limit,
         };
 
@@ -1382,8 +1355,8 @@ router.get('/users/premium' ,async function (req: Request, res: Response): Promi
         res.set('Cache-Control', 'private, max-age=60');
 
         res.status(200).json({
-            success : true,
-            data : {
+            success: true,
+            data: {
                 users
             },
 
@@ -1391,13 +1364,13 @@ router.get('/users/premium' ,async function (req: Request, res: Response): Promi
             message: 'PREMIUM_USERS_FOUND'
         })
         return;
-        
+
     } catch (error) {
         console.error('[Premium Users Search Api error]', error);
         return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
+            success: false,
+            message: 'Internal server error',
+            data: null
         });
     }
 });
@@ -1434,8 +1407,8 @@ router.get('/users/mutual', async function (req: Request, res: Response): Promis
         }
 
         const baseQuery = {
-            _id: { 
-                $in: currentUser.connections 
+            _id: {
+                $in: currentUser.connections
             },
             'suspension.isSuspended': false
         };
@@ -1488,7 +1461,7 @@ router.get('/users/mutual', async function (req: Request, res: Response): Promis
             stack: error instanceof Error ? error.stack : undefined,
             timestamp: new Date().toISOString()
         });
-        
+
         return res.status(500).json({
             success: false,
             message: 'Internal server error',
@@ -1524,12 +1497,12 @@ router.get('/users/viewed-not-contact', async function (req: Request, res: Respo
         // Get IDs of users who sent connection requests
         const connectionRequestSenderIds = await ConnectionRequest.distinct('sender', {
             recipient: userId,
-           
+
         });
 
         // Find viewers who haven't sent connection requests
         const baseQuery = {
-            _id: { 
+            _id: {
                 $in: viewerIds,
                 $nin: [...connectionRequestSenderIds, userId] // Exclude users who sent requests and self
             },
@@ -1568,7 +1541,7 @@ router.get('/users/viewed-not-contact', async function (req: Request, res: Respo
         }
 
         // Add viewer details with timestamps
-        let viewerDetails :IProfileView[]= await ProfileView.find(
+        let viewerDetails: IProfileView[] = await ProfileView.find(
             {
                 viewerId: { $in: users.map(u => u._id) },
                 viewedId: userId
@@ -1581,7 +1554,7 @@ router.get('/users/viewed-not-contact', async function (req: Request, res: Respo
         // Enhance user objects with view timestamps
 
         let notContactedUsers = viewerDetails.map(function (element) {
-            let viewInfo :any= users.find(user => user._id.toString() === element.viewerId.toString())
+            let viewInfo: any = users.find(user => user._id.toString() === element.viewerId.toString())
             if (viewInfo) {
                 viewInfo = {
                     ...viewInfo,
@@ -1644,14 +1617,14 @@ router.get('/users/viewed-profiles', async function (req: Request, res: Response
         });
 
 
-        const baseQuery :any= {
-       
-            _id: { 
+        const baseQuery: any = {
+
+            _id: {
                 $ne: userData.userId,  // Exclude current user
                 $in: viewedProfileIds // Exclude viewed profiles
             },
             'suspension.isSuspended': false,
-       
+
         };
 
         // Calculate pagination
@@ -1689,16 +1662,16 @@ router.get('/users/viewed-profiles', async function (req: Request, res: Response
             data: {
                 users,
                 pagination,
-              
+
             }
         });
 
     } catch (error) {
         console.error('[Viewed Profile search api error]', error);
         return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
+            success: false,
+            message: 'Internal server error',
+            data: null
         });
     }
 });
@@ -1722,15 +1695,14 @@ router.get('/users/viewed-my-profile', async function (req: Request, res: Respon
         const viewedProfileIds = await ProfileView.distinct('viewerId', {
             viewedId: userData.userId
         });
-        const baseQuery :any= {
-            'address.country':userData.address.country,
-            _id: { 
+        const baseQuery: any = {
+               ...getBaseSearchQuery(req.authSession.value),
+            'address.country': userData.address.country,
+            _id: {
                 $ne: userData.userId,  // Exclude current user
                 $in: viewedProfileIds // Exclude viewed profiles
             },
-            'suspension.isSuspended': false,
-            gender: { $ne: userData.gender }, // Match opposite gender
-            religion: userData.religion
+           
         };
 
         // Calculate pagination
@@ -1768,16 +1740,16 @@ router.get('/users/viewed-my-profile', async function (req: Request, res: Respon
             data: {
                 users,
                 pagination,
-              
+
             }
         });
 
     } catch (error) {
         console.error('[Viewed My Profiles]', error);
         return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
+            success: false,
+            message: 'Internal server error',
+            data: null
         });
     }
 });
@@ -1804,7 +1776,7 @@ router.get('/users/liked-by-me', async function (req: Request, res: Response): P
         });
 
         const baseQuery = {
-            _id: { 
+            _id: {
                 $in: likedProfileIds
             },
             'suspension.isSuspended': false,
@@ -1880,7 +1852,7 @@ router.get('/users/liked-me', async function (req: Request, res: Response): Prom
         });
 
         const baseQuery = {
-            _id: { 
+            _id: {
                 $in: likedByIds
             },
             'suspension.isSuspended': false,
@@ -1954,7 +1926,7 @@ router.get('/users/send-mails-by-me', async function (req: Request, res: Respons
         });
 
         const baseQuery = {
-            _id: { 
+            _id: {
                 $in: emailedProfileIds
             },
             'suspension.isSuspended': false,
@@ -2028,7 +2000,7 @@ router.get('/users/send-mails-to-me', async function (req: Request, res: Respons
         });
 
         const baseQuery = {
-            _id: { 
+            _id: {
                 $in: emailSenderIds
             },
             'suspension.isSuspended': false,
@@ -2102,7 +2074,7 @@ router.get('/users/send-sms-by-me', async function (req: Request, res: Response)
         });
 
         const baseQuery = {
-            _id: { 
+            _id: {
                 $in: smsReceiverIds
             },
             'suspension.isSuspended': false,
@@ -2176,7 +2148,7 @@ router.get('/users/send-sms-to-me', async function (req: Request, res: Response)
         });
 
         const baseQuery = {
-            _id: { 
+            _id: {
                 $in: smsSenderIds
             },
             'suspension.isSuspended': false,
@@ -2249,7 +2221,7 @@ router.get('/users/seen-phobe-details', async function (req: Request, res: Respo
         });
 
         const baseQuery = {
-            _id: { 
+            _id: {
                 $in: requestedIds
             },
             'suspension.isSuspended': false,
@@ -2312,7 +2284,7 @@ router.get('/users/seen-my-phobe-details', async function (req: Request, res: Re
         }
 
         const { page, limit, count: shouldCount } = validationResult.data;
-        
+
         const skip = (page - 1) * limit;
 
         // Get IDs of users who sent SMS to current user
@@ -2326,7 +2298,7 @@ router.get('/users/seen-my-phobe-details', async function (req: Request, res: Re
         let requestersIds = requesters.map(element => element.requesterId);
 
         const baseQuery = {
-            _id: { 
+            _id: {
                 $in: requestersIds
             },
             'suspension.isSuspended': false,
@@ -2334,7 +2306,7 @@ router.get('/users/seen-my-phobe-details', async function (req: Request, res: Re
 
 
         let users = await User.find(baseQuery, userField)
-            
+
             .lean()
             .maxTimeMS(20000);
 
@@ -2379,11 +2351,11 @@ router.get('/users/seen-my-phobe-details', async function (req: Request, res: Re
     }
 });
 
-router.get('/users/suggested-for-you' ,async function (req: Request, res: Response): Promise<Response | any> { 
+router.get('/users/suggested-for-you', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        
+
     } catch (error) {
-        
+
     }
 });
 

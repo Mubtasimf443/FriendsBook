@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { IDistrict } from '../lib/types/location.types';
 import { Districts } from '../lib/data/districts';
+import { IAuthSession } from '../models/AuthSession';
 
 
 // Haversine formula
@@ -43,3 +44,16 @@ export function searchHeightGenerator(min: number, max: number): string[] {
   }
   return heights;
 }
+
+
+// Add this at the top of search.ts
+export function getBaseSearchQuery(userData: IAuthSession['value']) {
+  return {
+    'suspension.isSuspended': false,
+    '_id': { $ne: userData.userId },
+    'enhancedSettings.blocked.userId': { $ne: userData.userId },
+    'gender': { $ne: userData.gender },
+    religion: userData.religion
+  };
+}
+
