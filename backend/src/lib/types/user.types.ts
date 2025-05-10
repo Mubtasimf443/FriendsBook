@@ -1,11 +1,10 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 import mongoose, { Document } from 'mongoose';
-import { EducationLevel, Education ,EducationPreference , CertificateType } from './userEducation.types';
+import { EducationLevel, Education ,EducationPreference  } from './userEducation.types';
 import { ICity, IDistrict, IDivision, IState, IUpazila } from './location.types';
 import { CountryNamesEnum } from './country_names.enum';
-import { IAboutMe  , IFamilyInfo , IEnhancedPrivacySettings, IEnhancedUserSettings } from './userProfile.types';
-import {  MembershipTier , MembershipDuration} from './memberdship.types';
+import { IAboutMe  , IFamilyInfo , IEnhancedUserSettings } from './userProfile.types';
 import { IPartnerPreference } from './partnerPreference';
 
 export enum ProfileCreatedBy {
@@ -21,8 +20,6 @@ interface IUserImage {
     id : String 
 }
 
-
-
 export interface IAddress {
     country: string;
     state ?: IState;
@@ -31,7 +28,6 @@ export interface IAddress {
     upazila ?: IUpazila ;
     union ?: ICity
 }
-
 
 /*-------------- Gender -------------*/
 export enum Gender {
@@ -126,19 +122,7 @@ export enum Height {
     FOOT_9_11 = "9 foot 11 inch"
 }
 
-export interface IUserPreferences {
-    isEducated : boolean;
-    education?: EducationPreference[];
-    location?: string[];
-    weight?: {
-        min: number;
-        max: number;
-    };
-}
-
-
 /*-------------- Religion -------------*/
-
 export enum Religion {
     CHRISTIANITY = "Christianity",
     ISLAM = "Islam",
@@ -159,17 +143,12 @@ export enum Religion {
     PAGANISM = "Paganism"
 }
 
-
 /*-------------- Language -------------*/
-
-// Add these interfaces
 interface IOnlineStatus {
     isOnline: boolean;
     lastSeen: Date;
     lastActive: Date;
 }
-
-
 
 export enum Language {
     MANDARIN_CHINESE = "Mandarin Chinese",

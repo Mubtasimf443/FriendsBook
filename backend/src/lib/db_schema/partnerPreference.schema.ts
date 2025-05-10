@@ -20,9 +20,9 @@ export const partnerPreferenceSchema = new Schema<IPartnerPreference>({
         min: { type: Number, required: true, min: 18, max: 70 },
         max: { type: Number, required: true, min: 18, max: 70 }
     },
-    heightRange: {
-        min: { type: String, enum: Object.values(Height), required: true },
-        max: { type: String, enum: Object.values(Height), required: true }
+    heightRange:{
+        min: { type: Number, required: true, min: 4, max: 8 },
+        max: { type: Number, required: true, min: 5, max: 9 }
     },
     weightRange: {
         min: { type: Number, required: true, min: 30, max: 200 },
@@ -166,15 +166,9 @@ partnerPreferenceSchema.pre('save', function (next) {
     if (this.ageRange.min > this.ageRange.max) {
         next(new Error('Minimum age cannot be greater than maximum age'));
     }
-    next();
-});
-
-// Add validation for height range
-partnerPreferenceSchema.pre('save', function (next) {
-    const minHeight = parseInt(this.heightRange.min.split(' ')[0]);
-    const maxHeight = parseInt(this.heightRange.max.split(' ')[0]);
-    if (minHeight > maxHeight) {
+    if (this.heightRange.min > this.heightRange.max) {
         next(new Error('Minimum height cannot be greater than maximum height'));
     }
     next();
 });
+

@@ -124,10 +124,8 @@ export function giveAuthSessionValue(user: IUser): IAuthSessionValue {
                     (user.gender === Gender.MALE ? 35 : 45)
             },
             heightRange: {
-                min: user.partnerPreference?.heightRange?.min || 
-                    (user.gender === Gender.MALE ? Height.FOOT_4_8 : Height.FOOT_5_0),
-                max: user.partnerPreference?.heightRange?.max || 
-                    (user.gender === Gender.MALE ? Height.FOOT_5_8 : Height.FOOT_6_2)
+                min: user.partnerPreference?.heightRange?.min || 4,
+                max: user.partnerPreference?.heightRange?.max || 7
             },
             weightRange: {
                 min: user.partnerPreference?.weightRange?.min || 

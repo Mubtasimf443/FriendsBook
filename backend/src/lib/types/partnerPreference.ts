@@ -51,8 +51,8 @@ export interface IPartnerPreference {
         max: number;
     };
     heightRange: {
-        min: Height;
-        max: Height;
+        min: number;
+        max: number;
     };
     weightRange: {
         min: number;

@@ -66,8 +66,8 @@ export interface IAuthSessionValue {
             max: number;
         };
         heightRange: {
-            min: Height;
-            max: Height;
+            min: number;
+            max: number;
         };
         weightRange: {
             min: number;
@@ -172,8 +172,8 @@ const AuthSessionValue = {
                 max: { type: Number, required: true }
             },
             heightRange: {
-                min: { type: String, enum: Object.values(Height), required: true },
-                max: { type: String, enum: Object.values(Height), required: true }
+                min: { type: Number,  },
+                max: { type: Number,  }
             },
             weightRange: {
                 min: { type: Number, required: true },
