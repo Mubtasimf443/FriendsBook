@@ -33,7 +33,9 @@
   },
   "scripts": {
     "dev": "nodemon src/index.ts --ignore *",
-    "test": "nodemon src/index.test.ts --ignore *"
+    "test": "nodemon src/index.test.ts --ignore *",
+    "build": "tsc",
+     "start": "node dist/index.js"
   },
   "keywords": [],
   "author": "",

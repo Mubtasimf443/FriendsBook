@@ -215,6 +215,7 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         });
     }
 });
+
 router.put('/user-details/education', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // Get user ID from auth session
@@ -310,6 +311,7 @@ router.put('/user-details/education', async function (req: Request, res: Respons
         });
     }
 });
+
 router.post('/membership-request', async function (req: Request, res: Response): Promise<any> {
     try {
         const userId = req.authSession.value.userId;
@@ -669,7 +671,7 @@ router.delete('/user-image', async function (req: Request, res: Response): Promi
         });
     }
 });
-// // GET /membership-request - Get membership request history
+
 router.get('/membership-request', validateUser, async function (req: Request, res: Response): Promise<Response | any> {
     try {
         const userId = req.authSession.value.userId;
@@ -762,7 +764,6 @@ router.get('/membership-request', validateUser, async function (req: Request, re
     }
 });
 
-// PUT /membership-request/cancel - Cancel pending membership request
 router.put('/membership-request/cancel', validateUser, async function (req: Request, res: Response): Promise<any> {
     try {
         const userId = req.authSession.value.userId;
@@ -804,7 +805,6 @@ router.put('/membership-request/cancel', validateUser, async function (req: Requ
     }
 });
 
-// DELETE /membership-request - Delete cancelled membership request
 router.delete('/membership-request', validateUser, async function (req: Request, res: Response): Promise<any> {
     try {
         const userId = req.authSession.value.userId;

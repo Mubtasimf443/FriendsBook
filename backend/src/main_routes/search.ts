@@ -2238,7 +2238,7 @@ router.get('/users/send-sms-to-me', async function (req: Request, res: Response)
 });
 
 // Implement /users/send-sms-to-me - Get profiles who have sent SMS to current user
-router.get('/users/seen-phobe-details', async function (req: Request, res: Response): Promise<Response | any> {
+router.get('/users/seen-phone-details', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         const validationResult = paginationSchema.safeParse(req.query);
         if (!validationResult.success) {
@@ -2311,7 +2311,7 @@ router.get('/users/seen-phobe-details', async function (req: Request, res: Respo
 });
 
 
-router.get('/users/seen-my-phobe-details', async function (req: Request, res: Response): Promise<Response | any> {
+router.get('/users/seen-my-phone-details', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         const validationResult = paginationSchema.safeParse(req.query);
         if (!validationResult.success) {
