@@ -308,3 +308,226 @@ These API documentation files provide comprehensive details about the authentica
 - Data validation rules
 
 Would you like me to explain any specific part in more detail or make any adjustments to the documentation?
+
+
+
+### 6. Save Search Query
+Save a user's search criteria for future use.
+
+**Endpoint:** `POST /save-search`
+
+**Request Body:**
+```typescript
+{
+  title: string;  // 3-80 characters, required
+  searchQuery: {
+    // All filter parameters from filter-users endpoint
+    religion?: string;
+    languages?: string[];
+    countries?: string[];
+    division_ids?: string[];
+    isEducated?: boolean;
+    maritalStatuses?: string[];
+    occupations?: string[];
+    minWeight?: number;
+    maxWeight?: number;
+    minHeight?: number;
+    maxHeight?: number;
+    minAge?: number;
+    maxAge?: number;
+    minAnnualIncome?: number;
+    maxAnnualIncome?: number;
+    incomeCurrency?: string;
+  }
+}
+```
+
+**Headers:**
+```
+Authorization: Bearer <auth-token>
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "Search query saved successfully",
+  "data": {
+    "id": "search_history_id",
+    "title": "My Saved Search",
+    "searchQuery": { /* saved search parameters */ },
+    "savedAt": "2025-05-11T06:28:25Z"
+  }
+}
+```
+
+### 7. Get Saved Searches
+Retrieve user's saved search queries.
+
+**Endpoint:** `GET /saved-searches`
+
+**Query Parameters:**
+```typescript
+{
+  page?: number;
+  limit?: number;
+}
+```
+
+**Headers:**
+```
+Authorization: Bearer <auth-token>
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Saved searches retrieved successfully",
+  "data": {
+    "searches": [
+      {
+        "id": "search_history_id",
+        "title": "My Saved Search",
+        "searchQuery": { /* saved search parameters */ },
+        "savedAt": "2025-05-11T06:28:25Z"
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 1,
+      "totalCount": 1
+    }
+  }
+}
+```
+
+### 8. Delete Saved Search
+Remove a saved search query.
+
+**Endpoint:** `DELETE /saved-search/:id`
+
+**Parameters:**
+- `id`: Search history ID (string)
+
+**Headers:**
+```
+Authorization: Bearer <auth-token>
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Search query deleted successfully"
+}
+```
+
+### 9. Search Near Me
+Find profiles in nearby districts based on user's current location.
+
+**Endpoint:** `GET /near-me`
+
+**Query Parameters:**
+```typescript
+{
+  radius?: number;  // Search radius in kilometers (default: 50)
+  page?: number;
+  limit?: number;
+  count?: boolean;
+}
+```
+
+**Headers:**
+```
+Authorization: Bearer <auth-token>
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Nearby profiles retrieved successfully",
+  "data": {
+    "users": [
+      {
+        "mid": "BD123456",
+        "name": "User Name",
+        "distance": 15.5, // Distance in kilometers
+        // ... other user details
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 5,
+      "totalCount": 50,
+      "hasMore": true
+    }
+  }
+}
+```
+
+### Common Error Responses
+
+**400 Bad Request:**
+```json
+{
+  "success": false,
+  "message": "Invalid request parameters",
+  "errors": [
+    {
+      "field": "parameter_name",
+      "message": "Validation error message"
+    }
+  ]
+}
+```
+
+**401 Unauthorized:**
+```json
+{
+  "success": false,
+  "message": "Authentication required",
+  "data": null
+}
+```
+
+**403 Forbidden:**
+```json
+{
+  "success": false,
+  "message": "Insufficient permissions to perform this search",
+  "data": null
+}
+```
+
+**404 Not Found:**
+```json
+{
+  "success": false,
+  "message": "Resource not found",
+  "data": null
+}
+```
+
+### API Rate Limiting
+
+- Basic users: 100 requests per hour
+- Premium users: 500 requests per hour
+- Search results are cached for 5 minutes
+
+### Search Result Ordering
+
+Results are ordered based on the following criteria:
+1. Online status (online users first)
+2. Premium membership status
+3. Profile completion percentage
+4. Last active timestamp
+5. Match percentage with search criteria
+
+### Note on Location-Based Searches
+
+For Bangladesh-specific searches:
+- Division IDs are required when country is set to Bangladesh
+- District-level matching is supported with coordinates
+- Upazila-level filtering is available for premium users
