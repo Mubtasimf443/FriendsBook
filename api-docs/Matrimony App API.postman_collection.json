@@ -1,0 +1,2245 @@
+{
+	"info": {
+		"_postman_id": "a6e5af01-2fe5-4e0a-ba3c-ca1b87d2a01a",
+		"name": "Matrimony App API",
+		"description": "API collection for the Matrimony App backend services",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "39146118"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "registration",
+					"item": [
+						{
+							"name": "create-session",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"profileCreatedBy\": \"self\", // Enum: ProfileCreatedBy - Who is creating the profile. Possible values: \"self\", \"parent\", \"siblings\", \"relative\", \"friend\".\r\n  \"gender\": \"male\", // Enum: Gender - The gender of the user. Possible values: \"male\", \"female\".\r\n  \"name\": \"John Doe\", // String: Name of the user. Must be between 2 and 50 characters.\r\n  \"dateOfBirth\": \"2004-01-01\", // String (Date): The user's date of birth in \"YYYY-MM-DD\" format. Must ensure the user meets the required age constraints.\r\n  \"email\": \"mubtasimf443@gmail.com\", // String: The user's email address. Must be a valid email format.\r\n  \"height\": \"5 foot 10 inch\", // Enum: Height - The user's height. Possible values range from \"4 foot 0 inch\" to \"9 foot 11 inch\".\r\n  \"weight\": 70, // Number: The user's weight in kilograms. Must be between 30 and 200.\r\n  \"isEducated\": true, // Boolean: Indicates whether the user is educated.\r\n  \"education\": [ // Array: A list of educational qualifications. Required if isEducated is true else optional .\r\n    {\r\n      \"level\": \"Bachelor's Degree\", // Enum: EducationLevel - Level of education. Possible values: \"Primary Education (PSC)\", \"Junior Secondary (JSC)\", \"SSC\", \"HSC\", \"Diploma\", \"Bachelor's Degree\", \"Master's Degree\", \"Doctorate\", \"Religious Education\" , \"Technical/Vocational\" , \"Certificate Course\", \"Other\".\r\n      \"certificate\": \"BSc in Computer Science\", // String: Name of the certificate or degree. Must be at least 2 characters.\r\n      \"institution\": \"XYZ University\", // String: Name of the institution. Must be at least 2 characters.\r\n      \"yearOfCompletion\": 2020, // Number: Year the education was completed. Must be between 1950 and the current year.\r\n      \"grade\": \"A\", // String (Optional): Grade achieved in the course.\r\n      \"additionalInfo\": \"Graduated with honors\" // String (Optional): Additional details about the education.\r\n    }\r\n  ],\r\n  \"address\":{\r\n    \"country\" : \"Bangladesh\",\r\n    \"division\" :{\r\n        \"id\" : 1\r\n    },\r\n    \"district\" :{\r\n        \"id\" : 1\r\n    },\r\n    \"upazila\" : {\r\n        \"id\" : 1\r\n    },\r\n    \"union\" : {\r\n        \"id\" : 1\r\n    }\r\n  }, // String: The user's address. Must be between 30 and 120 characters.\r\n  \"phoneInfo\": { // Object: Information about the user's phone number.\r\n    \"number\": \"01750147694\", // String: The phone number. Must be between 10 and 15 digits.\r\n    \"country\": {\r\n      \"name\": \"Bangladesh\", // Enum: CountryNameEnum - Country name. Must match the provided list of countries.\r\n      \"phone_code\": \"+88\" // Enum: CountryPhoneCodeEnum - Country phone code. Must match the provided list of phone codes.\r\n    }\r\n  },\r\n  \"languages\": [\"English\", \"Spanish\"], // Array: A list of languages spoken by the user. Must include at least one language. Possible values are from the Language enum.\r\n  \"religion\": \"Christianity\", // Enum: Religion - User's religion. Possible values: \"Christianity\", \"Islam\", \"Hinduism\", \"Buddhism\", \"Judaism\", \"Sikhism\", \"Bahá'í Faith\", \"Jainism\", \"Shinto\", \"Taoism\", \"Confucianism\", \"Zoroastrianism\", \"Traditional African Religions\", \"Native American Religions\", \"Rastafarianism\", \"Wicca\", \"Paganism\".\r\n  \"password\": \"Password@123\", // String: Password for the user account. Must be between 8 and 100 characters, and contain at least one uppercase letter, one lowercase letter, one number, and one special character.\r\n  \"confirmPassword\": \"Password@123\", // String: Confirmation of the password. Must match the password field.\r\n  \"age\": 21 // The user's calculated age. This will be derived from the dateOfBirth field and validated for constraints (Male: 21-70 years, Female: 18-70 years).\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:4000/api/auth/create-registration-session",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "4000",
+									"path": [
+										"api",
+										"auth",
+										"create-registration-session"
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "other Country",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n  \"profileCreatedBy\": \"self\", // Enum: ProfileCreatedBy - Who is creating the profile. Possible values: \"self\", \"parent\", \"siblings\", \"relative\", \"friend\".\r\n  \"gender\": \"male\", // Enum: Gender - The gender of the user. Possible values: \"male\", \"female\".\r\n  \"name\": \"John Doe\", // String: Name of the user. Must be between 2 and 50 characters.\r\n  \"dateOfBirth\": \"2004-01-01\", // String (Date): The user's date of birth in \"YYYY-MM-DD\" format. Must ensure the user meets the required age constraints.\r\n  \"email\": \"mubtasimf443@gmail.com\", // String: The user's email address. Must be a valid email format.\r\n  \"height\": \"5 foot 10 inch\", // Enum: Height - The user's height. Possible values range from \"4 foot 0 inch\" to \"9 foot 11 inch\".\r\n  \"weight\": 70, // Number: The user's weight in kilograms. Must be between 30 and 200.\r\n  \"isEducated\": true, // Boolean: Indicates whether the user is educated.\r\n  \"education\": [ // Array: A list of educational qualifications. Required if isEducated is true else optional .\r\n    {\r\n      \"level\": \"Bachelor's Degree\", // Enum: EducationLevel - Level of education. Possible values: \"Primary Education (PSC)\", \"Junior Secondary (JSC)\", \"SSC\", \"HSC\", \"Diploma\", \"Bachelor's Degree\", \"Master's Degree\", \"Doctorate\", \"Religious Education\" , \"Technical/Vocational\" , \"Certificate Course\", \"Other\".\r\n      \"certificate\": \"BSc in Computer Science\", // String: Name of the certificate or degree. Must be at least 2 characters.\r\n      \"institution\": \"XYZ University\", // String: Name of the institution. Must be at least 2 characters.\r\n      \"yearOfCompletion\": 2020, // Number: Year the education was completed. Must be between 1950 and the current year.\r\n      \"grade\": \"A\", // String (Optional): Grade achieved in the course.\r\n      \"additionalInfo\": \"Graduated with honors\" // String (Optional): Additional details about the education.\r\n    }\r\n  ],\r\n  \"country\": \"United States\", // String: The user's country. Must be between 2 and 100 characters.\r\n  \"address\": {\r\n    \"state\": {\r\n        \"name\":\"String\"// Optional , but only in non-Bangladesh country \r\n    } // Optional , but only in non-Bangladesh country \r\n  }, \r\n  \r\n  \"phoneInfo\": { // Object: Information about the user's phone number.\r\n    \"number\": \"01750147694\", // String: The phone number. Must be between 10 and 15 digits.\r\n    \"country\": {\r\n      \"name\": \"Bangladesh\", // Enum: CountryNameEnum - Country name. Must match the provided list of countries.\r\n      \"phone_code\": \"+88\" // Enum: CountryPhoneCodeEnum - Country phone code. Must match the provided list of phone codes.\r\n    }\r\n  },\r\n  \"languages\": [\"English\", \"Spanish\"], // Array: A list of languages spoken by the user. Must include at least one language. Possible values are from the Language enum.\r\n  \"religion\": \"Christianity\", // Enum: Religion - User's religion. Possible values: \"Christianity\", \"Islam\", \"Hinduism\", \"Buddhism\", \"Judaism\", \"Sikhism\", \"Bahá'í Faith\", \"Jainism\", \"Shinto\", \"Taoism\", \"Confucianism\", \"Zoroastrianism\", \"Traditional African Religions\", \"Native American Religions\", \"Rastafarianism\", \"Wicca\", \"Paganism\".\r\n  \"password\": \"Password@123\", // String: Password for the user account. Must be between 8 and 100 characters, and contain at least one uppercase letter, one lowercase letter, one number, and one special character.\r\n  \"confirmPassword\": \"Password@123\", // String: Confirmation of the password. Must match the password field.\r\n  \"age\": 21 // The user's calculated age. This will be derived from the dateOfBirth field and validated for constraints (Male: 21-70 years, Female: 18-70 years).\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "http://localhost:4000/api/auth/create-registration-session",
+											"protocol": "http",
+											"host": [
+												"localhost"
+											],
+											"port": "4000",
+											"path": [
+												"api",
+												"auth",
+												"create-registration-session"
+											]
+										}
+									},
+									"_postman_previewlanguage": null,
+									"header": null,
+									"cookie": [],
+									"body": null
+								},
+								{
+									"name": "Bangladesh Location",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n  \"profileCreatedBy\": \"self\", // Enum: ProfileCreatedBy - Who is creating the profile. Possible values: \"self\", \"parent\", \"siblings\", \"relative\", \"friend\".\r\n  \"gender\": \"male\", // Enum: Gender - The gender of the user. Possible values: \"male\", \"female\".\r\n  \"name\": \"John Doe\", // String: Name of the user. Must be between 2 and 50 characters.\r\n  \"dateOfBirth\": \"2004-01-01\", // String (Date): The user's date of birth in \"YYYY-MM-DD\" format. Must ensure the user meets the required age constraints.\r\n  \"email\": \"mubtasimf443@gmail.com\", // String: The user's email address. Must be a valid email format.\r\n  \"height\": \"5 foot 10 inch\", // Enum: Height - The user's height. Possible values range from \"4 foot 0 inch\" to \"9 foot 11 inch\".\r\n  \"weight\": 70, // Number: The user's weight in kilograms. Must be between 30 and 200.\r\n  \"isEducated\": true, // Boolean: Indicates whether the user is educated.\r\n  \"education\": [ // Array: A list of educational qualifications. Required if isEducated is true else optional .\r\n    {\r\n      \"level\": \"Bachelor's Degree\", // Enum: EducationLevel - Level of education. Possible values: \"Primary Education (PSC)\", \"Junior Secondary (JSC)\", \"SSC\", \"HSC\", \"Diploma\", \"Bachelor's Degree\", \"Master's Degree\", \"Doctorate\", \"Religious Education\" , \"Technical/Vocational\" , \"Certificate Course\", \"Other\".\r\n      \"certificate\": \"BSc in Computer Science\", // String: Name of the certificate or degree. Must be at least 2 characters.\r\n      \"institution\": \"XYZ University\", // String: Name of the institution. Must be at least 2 characters.\r\n      \"yearOfCompletion\": 2020, // Number: Year the education was completed. Must be between 1950 and the current year.\r\n      \"grade\": \"A\", // String (Optional): Grade achieved in the course.\r\n      \"additionalInfo\": \"Graduated with honors\" // String (Optional): Additional details about the education.\r\n    }\r\n  ],\r\n  \"address\":{\r\n    \"country\" : \"Bangladesh\",\r\n    \"division\" :{\r\n        \"id\" : 1\r\n    },\r\n    \"district\" :{\r\n        \"id\" : 1\r\n    },\r\n    \"upazila\" : {\r\n        \"id\" : 1\r\n    },\r\n    \"union\" : {\r\n        \"id\" : 1\r\n    }\r\n  }, // String: The user's address. Must be between 30 and 120 characters.\r\n  \"phoneInfo\": { // Object: Information about the user's phone number.\r\n    \"number\": \"01750147694\", // String: The phone number. Must be between 10 and 15 digits.\r\n    \"country\": {\r\n      \"name\": \"Bangladesh\", // Enum: CountryNameEnum - Country name. Must match the provided list of countries.\r\n      \"phone_code\": \"+88\" // Enum: CountryPhoneCodeEnum - Country phone code. Must match the provided list of phone codes.\r\n    }\r\n  },\r\n  \"languages\": [\"English\", \"Spanish\"], // Array: A list of languages spoken by the user. Must include at least one language. Possible values are from the Language enum.\r\n  \"religion\": \"Christianity\", // Enum: Religion - User's religion. Possible values: \"Christianity\", \"Islam\", \"Hinduism\", \"Buddhism\", \"Judaism\", \"Sikhism\", \"Bahá'í Faith\", \"Jainism\", \"Shinto\", \"Taoism\", \"Confucianism\", \"Zoroastrianism\", \"Traditional African Religions\", \"Native American Religions\", \"Rastafarianism\", \"Wicca\", \"Paganism\".\r\n  \"password\": \"Password@123\", // String: Password for the user account. Must be between 8 and 100 characters, and contain at least one uppercase letter, one lowercase letter, one number, and one special character.\r\n  \"confirmPassword\": \"Password@123\", // String: Confirmation of the password. Must match the password field.\r\n  \"age\": 21 // The user's calculated age. This will be derived from the dateOfBirth field and validated for constraints (Male: 21-70 years, Female: 18-70 years).\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "http://localhost:4000/api/auth/create-registration-session",
+											"protocol": "http",
+											"host": [
+												"localhost"
+											],
+											"port": "4000",
+											"path": [
+												"api",
+												"auth",
+												"create-registration-session"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Access-Control-Allow-Origin",
+											"value": "http://localhost:3000"
+										},
+										{
+											"key": "Access-Control-Allow-Methods",
+											"value": "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+										},
+										{
+											"key": "Access-Control-Allow-Headers",
+											"value": "Content-Type, Authorization"
+										},
+										{
+											"key": "Access-Control-Allow-Credentials",
+											"value": "true"
+										},
+										{
+											"key": "RateLimit-Policy",
+											"value": "\"100-in-1min\"; q=100; w=60; pk=:ZWZmOGU3Y2E1MDY2:"
+										},
+										{
+											"key": "RateLimit",
+											"value": "\"100-in-1min\"; r=98; t=50"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "159"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"9f-4QslpthMkl62TlHsEs4O7wZlAxI\""
+										},
+										{
+											"key": "Date",
+											"value": "Mon, 05 May 2025 11:01:00 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"success\": true,\n    \"message\": \"Registration session created successfully\",\n    \"data\": {\n        \"sessionKey\": \"36ef8069bcc147d88fcd36549d4ec9ff0876aea43592c77270a674c5ac7637b8\"\n    }\n}"
+								}
+							]
+						},
+						{
+							"name": "request-otp",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"sessionKey\":\"ac38bbed09f079940e14a5533004385267f7c2ef982c654184ab75010e361e6e\"\r\n    // You can request otp in 10 minutes after session creation\r\n    // and You can only request 10 otp only\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:4000/api/auth/request-registration-otp",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "4000",
+									"path": [
+										"api",
+										"auth",
+										"request-registration-otp"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "verify-otp",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"sessionKey\":\"ac38bbed09f079940e14a5533004385267f7c2ef982c654184ab75010e361e6e\",\r\n    \"otp\":\"123456\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:4000/api/auth/verify-registration-otp",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "4000",
+									"path": [
+										"api",
+										"auth",
+										"verify-registration-otp"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "reset-password",
+					"item": [
+						{
+							"name": "reset-password",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"password\":\"Password@123\",\r\n    \"newPassword\" :\"123@Password\",\r\n    \"userId\" :\"6815a8296f782c3184893534\",\r\n    \"confirmPassword\": \"Password@123\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:4000/api/auth/reset-password",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "4000",
+									"path": [
+										"api",
+										"auth",
+										"reset-password"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "forget-password",
+					"item": [
+						{
+							"name": "create-session",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"mubtasimf443@gmail.com\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:4000/api/auth/create-forget-password-session",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "4000",
+									"path": [
+										"api",
+										"auth",
+										"create-forget-password-session"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "request-otp",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"sessionKey\": \"630fbe3399007c9ffc47689d3f125271253f746f88ff784b6c1b63b883e08f2a\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:4000/api/auth/request-forget-password-otp",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "4000",
+									"path": [
+										"api",
+										"auth",
+										"request-forget-password-otp"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "verify-otp",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"sessionKey\": \"3cd7475030e9d0043b5d43c581810ca6373875a4affd77dfa9045431d324aadc\",\r\n    \"otp\": \"608990\",\r\n    \"newPassword\": \"NewSecure@Pass123\",\r\n    \"confirmPassword\": \"NewSecure@Pass123\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:4000/api/auth/verify-forget-password-otp",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "4000",
+									"path": [
+										"api",
+										"auth",
+										"verify-forget-password-otp"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Login",
+					"item": [
+						{
+							"name": "login-with-email",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"loginType\": \"with_email\",\r\n    \"password\": \"Password@123\",\r\n    \"email\": \"mubtasimf443@gmail.com\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:4000/api/auth/login",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "4000",
+									"path": [
+										"api",
+										"auth",
+										"login"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "login-with-phone",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"loginType\": \"with_phone\",\r\n    \"password\": \"Password@123\",\r\n    \"phoneInfo\": {\r\n        \"number\": \"1234567890\",\r\n        \"phone_code\": \"+1\"\r\n    }\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:4000/api/auth/login",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "4000",
+									"path": [
+										"api",
+										"auth",
+										"login"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			],
+			"description": "Authentication related endpoints"
+		},
+		{
+			"name": "Profile",
+			"item": [],
+			"description": "Profile management endpoints"
+		},
+		{
+			"name": "Search",
+			"item": [
+				{
+					"name": "Get Users by Location Match",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/search/users/matching/location?count=yes&limit=25&page=1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"search",
+								"users",
+								"matching",
+								"location"
+							],
+							"query": [
+								{
+									"key": "count",
+									"value": "yes"
+								},
+								{
+									"key": "limit",
+									"value": "25"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "search user by mid",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "",
+								"value": "uyi",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/search/user?mid=MBD855I847J",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"search",
+								"user"
+							],
+							"query": [
+								{
+									"key": "mid",
+									"value": "MBD855I847J"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Profile Viewers",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/search/users/others-viewed-my-profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"search",
+								"users",
+								"others-viewed-my-profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Just Joined User",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/search/users/just-joined?timeRange=7&limit=10&page=1&count=yes",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"search",
+								"users",
+								"just-joined"
+							],
+							"query": [
+								{
+									"key": "timeRange",
+									"value": "7"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "count",
+									"value": "yes"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "preffered location",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"loginType\": \"with_phone\",\r\n    \"password\": \"Password@123\",\r\n    \"phoneInfo\": {\r\n        \"number\": \"1234567890\",\r\n        \"phone_code\": \"+1\"\r\n    }\r\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/search/users/preferred-location?educationLevels=Bachelor's Degree&page=1&limit=25&count=yes&division_ids=2",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"search",
+								"users",
+								"preferred-location"
+							],
+							"query": [
+								{
+									"key": "educationLevels",
+									"value": "Bachelor's Degree"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "25"
+								},
+								{
+									"key": "count",
+									"value": "yes"
+								},
+								{
+									"key": "division_ids",
+									"value": "2"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "preferred education",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/search/users/preferred-education?educationLevels=Bachelor's Degree&page=1&limit=25&count=yes",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"search",
+								"users",
+								"preferred-education"
+							],
+							"query": [
+								{
+									"key": "educationLevels",
+									"value": "Bachelor's Degree"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "25"
+								},
+								{
+									"key": "count",
+									"value": "yes"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Daily Matches by location",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/search/users/matching/daily?limit=50",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"search",
+								"users",
+								"matching",
+								"daily"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "50"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "preferred occupation",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/search/users/preferred-occupation?occupations=",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"search",
+								"users",
+								"preferred-occupation"
+							],
+							"query": [
+								{
+									"key": "occupations",
+									"value": ""
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Not Viewed Profiles",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/search/users/not-viewed?page=1&limit=100&count=yes&sortBy=recent",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"search",
+								"users",
+								"not-viewed"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "100"
+								},
+								{
+									"key": "count",
+									"value": "yes"
+								},
+								{
+									"key": "sortBy",
+									"value": "recent"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "filter user",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/search/users/filter?division_ids=1,2,3,4,5,6",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"search",
+								"users",
+								"filter"
+							],
+							"query": [
+								{
+									"key": "division_ids",
+									"value": "1,2,3,4,5,6"
+								}
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Basic Search",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:4000/api/search/users/filter?page=1&limit=25&count=yes&religion=Islam&countries[]=Bangladesh&division_ids[]=1&languages[]=Bengali",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "4000",
+									"path": [
+										"api",
+										"search",
+										"users",
+										"filter"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "25"
+										},
+										{
+											"key": "count",
+											"value": "yes"
+										},
+										{
+											"key": "religion",
+											"value": "Islam"
+										},
+										{
+											"key": "countries[]",
+											"value": "Bangladesh"
+										},
+										{
+											"key": "division_ids[]",
+											"value": "1"
+										},
+										{
+											"key": "languages[]",
+											"value": "Bengali"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "X-Powered-By",
+									"value": "Express"
+								},
+								{
+									"key": "Access-Control-Allow-Origin",
+									"value": "http://localhost:3000"
+								},
+								{
+									"key": "Access-Control-Allow-Methods",
+									"value": "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+								},
+								{
+									"key": "Access-Control-Allow-Headers",
+									"value": "Content-Type, Authorization"
+								},
+								{
+									"key": "Access-Control-Allow-Credentials",
+									"value": "true"
+								},
+								{
+									"key": "RateLimit-Policy",
+									"value": "\"200-in-2min\"; q=200; w=120; pk=:ZWZmOGU3Y2E1MDY2:"
+								},
+								{
+									"key": "RateLimit",
+									"value": "\"200-in-2min\"; r=196; t=82"
+								},
+								{
+									"key": "Cache-Control",
+									"value": "public, max-age=60"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								},
+								{
+									"key": "Content-Length",
+									"value": "29289"
+								},
+								{
+									"key": "ETag",
+									"value": "W/\"7269-LAuFlCA5LWz40VaGzKqYNW/Az0k\""
+								},
+								{
+									"key": "Date",
+									"value": "Tue, 06 May 2025 14:17:17 GMT"
+								},
+								{
+									"key": "Connection",
+									"value": "keep-alive"
+								},
+								{
+									"key": "Keep-Alive",
+									"value": "timeout=5"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"success\": true,\n    \"data\": {\n        \"users\": [\n            {\n                \"_id\": \"68196803648d5c53237eb2ac\",\n                \"name\": \"Cynthia Walker\",\n                \"email\": \"cynthiawalker44762668569@hotmail.com\",\n                \"age\": 22,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Master's Degree\",\n                        \"certificate\": \"MSc in Physics\",\n                        \"institution\": \"University of Chicago\",\n                        \"yearOfCompletion\": 1992,\n                        \"grade\": \"B+\",\n                        \"additionalInfo\": \"Merit scholarship recipient\",\n                        \"_id\": \"68196803648d5c53237eb2ad\"\n                    },\n                    {\n                        \"level\": \"Diploma (Technical/Vocational)\",\n                        \"certificate\": \"General Certificate\",\n                        \"institution\": \"Military Institute of Science and Technology\",\n                        \"yearOfCompletion\": 1994,\n                        \"grade\": \"B+\",\n                        \"additionalInfo\": \"Student of the year\",\n                        \"_id\": \"68196803648d5c53237eb2ae\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"3\",\n                        \"name\": \"Khulna\",\n                        \"bd_name\": \"খুলনা\"\n                    },\n                    \"district\": {\n                        \"id\": \"21\",\n                        \"division_id\": \"3\",\n                        \"name\": \"Satkhira\",\n                        \"bn_name\": \"সাতক্ষীরা\",\n                        \"lat\": \"22.7185\",\n                        \"long\": \"89.0705\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"185\",\n                        \"district_id\": \"21\",\n                        \"name\": \"Kaliganj (Satkhira)\",\n                        \"bn_name\": \"কালিগঞ্জ\"\n                    },\n                    \"union\": {\n                        \"id\": \"1681\",\n                        \"upazilla_id\": \"185\",\n                        \"name\": \"Krishnanagar\",\n                        \"bn_name\": \"কৃষ্ণনগর\"\n                    },\n                    \"_id\": \"68196803648d5c53237eb2af\"\n                },\n                \"languages\": [\n                    \"Yoruba\",\n                    \"Bengali\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967fa648d5c53237eac14\",\n                \"name\": \"Tyler Thomas\",\n                \"email\": \"tylerthomas45291445044@outlook.com\",\n                \"age\": 31,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Junior Secondary (JSC)\",\n                        \"certificate\": \"JSC Certificate\",\n                        \"institution\": \"Khulna University of Engineering & Technology\",\n                        \"yearOfCompletion\": 2010,\n                        \"grade\": \"B\",\n                        \"_id\": \"681967fa648d5c53237eac15\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"1\",\n                        \"name\": \"Chattagram\",\n                        \"bd_name\": \"চট্টগ্রাম\"\n                    },\n                    \"district\": {\n                        \"id\": \"7\",\n                        \"division_id\": \"1\",\n                        \"name\": \"Lakshmipur\",\n                        \"bn_name\": \"লক্ষ্মীপুর\",\n                        \"lat\": \"22.942477\",\n                        \"long\": \"90.841184\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"63\",\n                        \"district_id\": \"7\",\n                        \"name\": \"Ramgati\",\n                        \"bn_name\": \"রামগতি\"\n                    },\n                    \"union\": {\n                        \"id\": \"604\",\n                        \"upazilla_id\": \"63\",\n                        \"name\": \"Alxendar\",\n                        \"bn_name\": \"আলেকজান্ডার\"\n                    },\n                    \"_id\": \"681967fa648d5c53237eac16\"\n                },\n                \"languages\": [\n                    \"Italian\",\n                    \"Bengali\",\n                    \"Hebrew\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967f5648d5c53237ea99b\",\n                \"name\": \"Gregory Green\",\n                \"email\": \"gregorygreen95600731989@aol.com\",\n                \"age\": 33,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Primary Education (PSC)\",\n                        \"certificate\": \"PSC Certificate\",\n                        \"institution\": \"Ahsanullah University of Science and Technology\",\n                        \"yearOfCompletion\": 1993,\n                        \"grade\": \"C+\",\n                        \"additionalInfo\": \"Student of the year\",\n                        \"_id\": \"681967f5648d5c53237ea99c\"\n                    },\n                    {\n                        \"level\": \"Secondary School Certificate (SSC)\",\n                        \"certificate\": \"General Certificate\",\n                        \"institution\": \"Khulna University of Engineering & Technology\",\n                        \"yearOfCompletion\": 2019,\n                        \"additionalInfo\": \"Scholarship recipient\",\n                        \"_id\": \"681967f5648d5c53237ea99d\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"1\",\n                        \"name\": \"Chattagram\",\n                        \"bd_name\": \"চট্টগ্রাম\"\n                    },\n                    \"district\": {\n                        \"id\": \"4\",\n                        \"division_id\": \"1\",\n                        \"name\": \"Rangamati\",\n                        \"bn_name\": \"রাঙ্গামাটি\",\n                        \"lat\": \"22.7324\",\n                        \"long\": \"92.2985\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"38\",\n                        \"district_id\": \"4\",\n                        \"name\": \"Langadu\",\n                        \"bn_name\": \"লংগদু\"\n                    },\n                    \"union\": {\n                        \"id\": \"368\",\n                        \"upazilla_id\": \"38\",\n                        \"name\": \"Gulshakhali\",\n                        \"bn_name\": \"গুলশাখালী\"\n                    },\n                    \"_id\": \"681967f5648d5c53237ea99e\"\n                },\n                \"languages\": [\n                    \"Vietnamese\",\n                    \"Bengali\",\n                    \"Gujarati\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967f4648d5c53237ea90b\",\n                \"name\": \"Mohammed Nguyen\",\n                \"email\": \"mohammednguyen95881405384@aol.com\",\n                \"age\": 34,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Bachelor's Degree\",\n                        \"certificate\": \"BSc in Civil Engineering\",\n                        \"institution\": \"Columbia University\",\n                        \"yearOfCompletion\": 2012,\n                        \"grade\": \"D+\",\n                        \"_id\": \"681967f4648d5c53237ea90c\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"8\",\n                        \"name\": \"Mymensingh\",\n                        \"bd_name\": \"ময়মনসিংহ\"\n                    },\n                    \"district\": {\n                        \"id\": \"61\",\n                        \"division_id\": \"8\",\n                        \"name\": \"Sherpur\",\n                        \"bn_name\": \"শেরপুর\",\n                        \"lat\": \"25.0204933\",\n                        \"long\": \"90.0152966\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"459\",\n                        \"district_id\": \"61\",\n                        \"name\": \"Sreebordi\",\n                        \"bn_name\": \"শ্রীবরদী\"\n                    },\n                    \"union\": {\n                        \"id\": \"4220\",\n                        \"upazilla_id\": \"459\",\n                        \"name\": \"Sreebordi\",\n                        \"bn_name\": \"শ্রীবরদী\"\n                    },\n                    \"_id\": \"681967f4648d5c53237ea90d\"\n                },\n                \"languages\": [\n                    \"Bengali\",\n                    \"Pashto\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967ec648d5c53237ea10e\",\n                \"name\": \"George Rahman\",\n                \"email\": \"georgerahman50216939518@yandex.com\",\n                \"age\": 31,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Technical/Vocational\",\n                        \"certificate\": \"Certificate in HVAC\",\n                        \"institution\": \"Independent University, Bangladesh\",\n                        \"yearOfCompletion\": 1995,\n                        \"grade\": \"A+\",\n                        \"additionalInfo\": \"Dean's list\",\n                        \"_id\": \"681967ec648d5c53237ea10f\"\n                    },\n                    {\n                        \"level\": \"Junior Secondary (JSC)\",\n                        \"certificate\": \"JSC Certificate\",\n                        \"institution\": \"North South University\",\n                        \"yearOfCompletion\": 1994,\n                        \"grade\": \"C\",\n                        \"additionalInfo\": \"Top of class\",\n                        \"_id\": \"681967ec648d5c53237ea110\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"2\",\n                        \"name\": \"Rajshahi\",\n                        \"bd_name\": \"রাজশাহী\"\n                    },\n                    \"district\": {\n                        \"id\": \"14\",\n                        \"division_id\": \"2\",\n                        \"name\": \"Bogura\",\n                        \"bn_name\": \"বগুড়া\",\n                        \"lat\": \"24.8465228\",\n                        \"long\": \"89.377755\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"127\",\n                        \"district_id\": \"14\",\n                        \"name\": \"Adamdighi\",\n                        \"bn_name\": \"আদমদিঘি\"\n                    },\n                    \"union\": {\n                        \"id\": \"1157\",\n                        \"upazilla_id\": \"127\",\n                        \"name\": \"Chapapur\",\n                        \"bn_name\": \"চাঁপাপুর\"\n                    },\n                    \"_id\": \"681967ec648d5c53237ea111\"\n                },\n                \"languages\": [\n                    \"Burmese\",\n                    \"Zulu\",\n                    \"Bengali\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967eb648d5c53237e9fc5\",\n                \"name\": \"Amy Adams\",\n                \"email\": \"amyadams9751435652@outlook.com\",\n                \"age\": 21,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Junior Secondary (JSC)\",\n                        \"certificate\": \"JSC Certificate\",\n                        \"institution\": \"Chittagong University\",\n                        \"yearOfCompletion\": 2003,\n                        \"grade\": \"C+\",\n                        \"additionalInfo\": \"Teaching assistant\",\n                        \"_id\": \"681967eb648d5c53237e9fc6\"\n                    },\n                    {\n                        \"level\": \"Secondary School Certificate (SSC)\",\n                        \"certificate\": \"General Certificate\",\n                        \"institution\": \"Harvard University\",\n                        \"yearOfCompletion\": 2004,\n                        \"grade\": \"B+\",\n                        \"additionalInfo\": \"Top of class\",\n                        \"_id\": \"681967eb648d5c53237e9fc7\"\n                    },\n                    {\n                        \"level\": \"Higher Secondary Certificate (HSC)\",\n                        \"certificate\": \"General Certificate\",\n                        \"institution\": \"East West University\",\n                        \"yearOfCompletion\": 2007,\n                        \"additionalInfo\": \"Teaching assistant\",\n                        \"_id\": \"681967eb648d5c53237e9fc8\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"5\",\n                        \"name\": \"Sylhet\",\n                        \"bd_name\": \"সিলেট\"\n                    },\n                    \"district\": {\n                        \"id\": \"39\",\n                        \"division_id\": \"5\",\n                        \"name\": \"Sunamganj\",\n                        \"bn_name\": \"সুনামগঞ্জ\",\n                        \"lat\": \"25.0658042\",\n                        \"long\": \"91.3950115\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"308\",\n                        \"district_id\": \"39\",\n                        \"name\": \"Jamalganj\",\n                        \"bn_name\": \"জামালগঞ্জ\"\n                    },\n                    \"union\": {\n                        \"id\": \"2754\",\n                        \"upazilla_id\": \"308\",\n                        \"name\": \"Beheli\",\n                        \"bn_name\": \"বেহেলী\"\n                    },\n                    \"_id\": \"681967eb648d5c53237e9fc9\"\n                },\n                \"languages\": [\n                    \"Gujarati\",\n                    \"Bengali\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967e3648d5c53237e9b0b\",\n                \"name\": \"Zakir Ahmed\",\n                \"email\": \"zakirahmed58491162894@protonmail.com\",\n                \"age\": 26,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Junior Secondary (JSC)\",\n                        \"certificate\": \"Junior School Certificate\",\n                        \"institution\": \"Harvard University\",\n                        \"yearOfCompletion\": 1991,\n                        \"grade\": \"C+\",\n                        \"additionalInfo\": \"Scholarship recipient\",\n                        \"_id\": \"681967e3648d5c53237e9b0c\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"8\",\n                        \"name\": \"Mymensingh\",\n                        \"bd_name\": \"ময়মনসিংহ\"\n                    },\n                    \"district\": {\n                        \"id\": \"61\",\n                        \"division_id\": \"8\",\n                        \"name\": \"Sherpur\",\n                        \"bn_name\": \"শেরপুর\",\n                        \"lat\": \"25.0204933\",\n                        \"long\": \"90.0152966\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"461\",\n                        \"district_id\": \"61\",\n                        \"name\": \"Jhenaigati\",\n                        \"bn_name\": \"ঝিনাইগাতী\"\n                    },\n                    \"union\": {\n                        \"id\": \"4236\",\n                        \"upazilla_id\": \"461\",\n                        \"name\": \"Nolkura\",\n                        \"bn_name\": \"নলকুড়া\"\n                    },\n                    \"_id\": \"681967e3648d5c53237e9b0d\"\n                },\n                \"languages\": [\n                    \"Bengali\",\n                    \"Amharic\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967e3648d5c53237e9a6f\",\n                \"name\": \"Rachel Garcia\",\n                \"email\": \"rachelgarcia54552067914@outlook.com\",\n                \"age\": 21,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Certificate Course\",\n                        \"certificate\": \"Certificate in Cybersecurity\",\n                        \"institution\": \"Bangladesh Agricultural University\",\n                        \"yearOfCompletion\": 2023,\n                        \"grade\": \"A\",\n                        \"additionalInfo\": \"Top of class\",\n                        \"_id\": \"681967e3648d5c53237e9a70\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"7\",\n                        \"name\": \"Rangpur\",\n                        \"bd_name\": \"রংপুর\"\n                    },\n                    \"district\": {\n                        \"id\": \"56\",\n                        \"division_id\": \"7\",\n                        \"name\": \"Nilphamari\",\n                        \"bn_name\": \"নীলফামারী\",\n                        \"lat\": \"25.931794\",\n                        \"long\": \"88.856006\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"427\",\n                        \"district_id\": \"56\",\n                        \"name\": \"Nilphamari Sadar\",\n                        \"bn_name\": \"নীলফামারী সদর\"\n                    },\n                    \"union\": {\n                        \"id\": \"3891\",\n                        \"upazilla_id\": \"427\",\n                        \"name\": \"Itakhola\",\n                        \"bn_name\": \"ইটাখোলা\"\n                    },\n                    \"_id\": \"681967e3648d5c53237e9a71\"\n                },\n                \"languages\": [\n                    \"Bengali\",\n                    \"Korean\",\n                    \"Czech\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967e2648d5c53237e99d8\",\n                \"name\": \"Zahra Moore\",\n                \"email\": \"zahramoore5357864713@hotmail.com\",\n                \"age\": 26,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Certificate Course\",\n                        \"certificate\": \"Certificate in Cloud Computing\",\n                        \"institution\": \"BRAC University\",\n                        \"yearOfCompletion\": 2023,\n                        \"_id\": \"681967e2648d5c53237e99d9\"\n                    },\n                    {\n                        \"level\": \"Religious Education\",\n                        \"certificate\": \"Islamic Studies Certificate\",\n                        \"institution\": \"University of Michigan\",\n                        \"yearOfCompletion\": 1994,\n                        \"grade\": \"B-\",\n                        \"additionalInfo\": \"Teaching assistant\",\n                        \"_id\": \"681967e2648d5c53237e99da\"\n                    },\n                    {\n                        \"level\": \"Higher Secondary Certificate (HSC)\",\n                        \"certificate\": \"General Certificate\",\n                        \"institution\": \"Harvard University\",\n                        \"yearOfCompletion\": 2009,\n                        \"additionalInfo\": \"Special achievement award\",\n                        \"_id\": \"681967e2648d5c53237e99db\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"7\",\n                        \"name\": \"Rangpur\",\n                        \"bd_name\": \"রংপুর\"\n                    },\n                    \"district\": {\n                        \"id\": \"54\",\n                        \"division_id\": \"7\",\n                        \"name\": \"Dinajpur\",\n                        \"bn_name\": \"দিনাজপুর\",\n                        \"lat\": \"25.6217061\",\n                        \"long\": \"88.6354504\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"405\",\n                        \"district_id\": \"54\",\n                        \"name\": \"Birganj\",\n                        \"bn_name\": \"বীরগঞ্জ\"\n                    },\n                    \"union\": {\n                        \"id\": \"3708\",\n                        \"upazilla_id\": \"405\",\n                        \"name\": \"Bhognagar\",\n                        \"bn_name\": \"ভোগনগর\"\n                    },\n                    \"_id\": \"681967e2648d5c53237e99dc\"\n                },\n                \"languages\": [\n                    \"Bengali\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967dd648d5c53237e96c9\",\n                \"name\": \"Catherine Martin\",\n                \"email\": \"catherinemartin76204979838@yahoo.com\",\n                \"age\": 28,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Secondary School Certificate (SSC)\",\n                        \"certificate\": \"General Certificate\",\n                        \"institution\": \"Chittagong University of Engineering & Technology\",\n                        \"yearOfCompletion\": 1990,\n                        \"grade\": \"A-\",\n                        \"_id\": \"681967dd648d5c53237e96ca\"\n                    },\n                    {\n                        \"level\": \"Doctorate (PhD)\",\n                        \"certificate\": \"General Certificate\",\n                        \"institution\": \"Daffodil International University\",\n                        \"yearOfCompletion\": 2009,\n                        \"additionalInfo\": \"Top of class\",\n                        \"_id\": \"681967dd648d5c53237e96cb\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"3\",\n                        \"name\": \"Khulna\",\n                        \"bd_name\": \"খুলনা\"\n                    },\n                    \"district\": {\n                        \"id\": \"21\",\n                        \"division_id\": \"3\",\n                        \"name\": \"Satkhira\",\n                        \"bn_name\": \"সাতক্ষীরা\",\n                        \"lat\": \"22.7185\",\n                        \"long\": \"89.0705\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"180\",\n                        \"district_id\": \"21\",\n                        \"name\": \"Debhata\",\n                        \"bn_name\": \"দেবহাটা\"\n                    },\n                    \"union\": {\n                        \"id\": \"1619\",\n                        \"upazilla_id\": \"180\",\n                        \"name\": \"Sakhipur\",\n                        \"bn_name\": \"সখিপুর\"\n                    },\n                    \"_id\": \"681967dd648d5c53237e96cc\"\n                },\n                \"languages\": [\n                    \"Xiang Chinese\",\n                    \"Bengali\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967db648d5c53237e956e\",\n                \"name\": \"Ali Akhtar\",\n                \"email\": \"aliakhtar23721803606@protonmail.com\",\n                \"age\": 29,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Diploma (Technical/Vocational)\",\n                        \"certificate\": \"General Certificate\",\n                        \"institution\": \"Daffodil International University\",\n                        \"yearOfCompletion\": 2011,\n                        \"grade\": \"B\",\n                        \"additionalInfo\": \"Student of the year\",\n                        \"_id\": \"681967db648d5c53237e956f\"\n                    },\n                    {\n                        \"level\": \"Bachelor's Degree\",\n                        \"certificate\": \"BSc in Physics\",\n                        \"institution\": \"Columbia University\",\n                        \"yearOfCompletion\": 2010,\n                        \"grade\": \"A+\",\n                        \"additionalInfo\": \"Scholarship recipient\",\n                        \"_id\": \"681967db648d5c53237e9570\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"2\",\n                        \"name\": \"Rajshahi\",\n                        \"bd_name\": \"রাজশাহী\"\n                    },\n                    \"district\": {\n                        \"id\": \"15\",\n                        \"division_id\": \"2\",\n                        \"name\": \"Rajshahi\",\n                        \"bn_name\": \"রাজশাহী\",\n                        \"lat\": \"24.3745\",\n                        \"long\": \"88.6042\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"139\",\n                        \"district_id\": \"15\",\n                        \"name\": \"Bagha\",\n                        \"bn_name\": \"বাঘা\"\n                    },\n                    \"union\": {\n                        \"id\": \"1251\",\n                        \"upazilla_id\": \"139\",\n                        \"name\": \"Bausa\",\n                        \"bn_name\": \"বাউসা\"\n                    },\n                    \"_id\": \"681967db648d5c53237e9571\"\n                },\n                \"languages\": [\n                    \"Bulgarian\",\n                    \"Bengali\",\n                    \"Pashto\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967cc648d5c53237e8d36\",\n                \"name\": \"Shirley Lewis\",\n                \"email\": \"shirleylewis56571602081@aol.com\",\n                \"age\": 24,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Other\",\n                        \"certificate\": \"Language Proficiency Certificate\",\n                        \"institution\": \"Dhaka University\",\n                        \"yearOfCompletion\": 1995,\n                        \"grade\": \"B+\",\n                        \"_id\": \"681967cc648d5c53237e8d37\"\n                    },\n                    {\n                        \"level\": \"Religious Education\",\n                        \"certificate\": \"Religious Education Diploma\",\n                        \"institution\": \"University of California\",\n                        \"yearOfCompletion\": 1990,\n                        \"grade\": \"C-\",\n                        \"_id\": \"681967cc648d5c53237e8d38\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"2\",\n                        \"name\": \"Rajshahi\",\n                        \"bd_name\": \"রাজশাহী\"\n                    },\n                    \"district\": {\n                        \"id\": \"14\",\n                        \"division_id\": \"2\",\n                        \"name\": \"Bogura\",\n                        \"bn_name\": \"বগুড়া\",\n                        \"lat\": \"24.8465228\",\n                        \"long\": \"89.377755\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"125\",\n                        \"district_id\": \"14\",\n                        \"name\": \"Shajahanpur\",\n                        \"bn_name\": \"শাজাহানপুর\"\n                    },\n                    \"union\": {\n                        \"id\": \"1141\",\n                        \"upazilla_id\": \"125\",\n                        \"name\": \"Aria\",\n                        \"bn_name\": \"আড়িয়া\"\n                    },\n                    \"_id\": \"681967cc648d5c53237e8d39\"\n                },\n                \"languages\": [\n                    \"Bengali\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967c9648d5c53237e8b1d\",\n                \"name\": \"Linda Kaur\",\n                \"email\": \"lindakaur61991897154@protonmail.com\",\n                \"age\": 21,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Certificate Course\",\n                        \"certificate\": \"Certificate in Data Science\",\n                        \"institution\": \"Independent University, Bangladesh\",\n                        \"yearOfCompletion\": 1998,\n                        \"grade\": \"C\",\n                        \"_id\": \"681967c9648d5c53237e8b1e\"\n                    },\n                    {\n                        \"level\": \"Bachelor's Degree\",\n                        \"certificate\": \"BSc in Mechanical Engineering\",\n                        \"institution\": \"Cornell University\",\n                        \"yearOfCompletion\": 2000,\n                        \"grade\": \"C+\",\n                        \"additionalInfo\": \"Student of the year\",\n                        \"_id\": \"681967c9648d5c53237e8b1f\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"3\",\n                        \"name\": \"Khulna\",\n                        \"bd_name\": \"খুলনা\"\n                    },\n                    \"district\": {\n                        \"id\": \"20\",\n                        \"division_id\": \"3\",\n                        \"name\": \"Jashore\",\n                        \"bn_name\": \"যশোর\",\n                        \"lat\": \"23.16643\",\n                        \"long\": \"89.2081126\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"173\",\n                        \"district_id\": \"20\",\n                        \"name\": \"Bagherpara\",\n                        \"bn_name\": \"বাঘারপাড়া\"\n                    },\n                    \"union\": {\n                        \"id\": \"1540\",\n                        \"upazilla_id\": \"173\",\n                        \"name\": \"Darajhat\",\n                        \"bn_name\": \"দরাজহাট\"\n                    },\n                    \"_id\": \"681967c9648d5c53237e8b20\"\n                },\n                \"languages\": [\n                    \"Hakka Chinese\",\n                    \"Bengali\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967c2648d5c53237e84b9\",\n                \"name\": \"Sandra Taylor\",\n                \"email\": \"sandrataylor94830015105@outlook.com\",\n                \"age\": 22,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Diploma (Technical/Vocational)\",\n                        \"certificate\": \"General Certificate\",\n                        \"institution\": \"Khulna University of Engineering & Technology\",\n                        \"yearOfCompletion\": 2017,\n                        \"grade\": \"C+\",\n                        \"_id\": \"681967c2648d5c53237e84ba\"\n                    },\n                    {\n                        \"level\": \"Primary Education (PSC)\",\n                        \"certificate\": \"PSC Certificate\",\n                        \"institution\": \"MIT\",\n                        \"yearOfCompletion\": 2013,\n                        \"grade\": \"D+\",\n                        \"_id\": \"681967c2648d5c53237e84bb\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"1\",\n                        \"name\": \"Chattagram\",\n                        \"bd_name\": \"চট্টগ্রাম\"\n                    },\n                    \"district\": {\n                        \"id\": \"1\",\n                        \"division_id\": \"1\",\n                        \"name\": \"Comilla\",\n                        \"bn_name\": \"কুমিল্লা\",\n                        \"lat\": \"23.4682747\",\n                        \"long\": \"91.1788135\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"8\",\n                        \"district_id\": \"1\",\n                        \"name\": \"Laksam\",\n                        \"bn_name\": \"লাকসাম\"\n                    },\n                    \"union\": {\n                        \"id\": \"94\",\n                        \"upazilla_id\": \"8\",\n                        \"name\": \"Azgora\",\n                        \"bn_name\": \"আজগরা\"\n                    },\n                    \"_id\": \"681967c2648d5c53237e84bc\"\n                },\n                \"languages\": [\n                    \"Slovenian\",\n                    \"Bengali\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967c0648d5c53237e83bb\",\n                \"name\": \"Kimberly Shah\",\n                \"email\": \"kimberlyshah53423673183@icloud.com\",\n                \"age\": 21,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Certificate Course\",\n                        \"certificate\": \"Certificate in Data Science\",\n                        \"institution\": \"Harvard University\",\n                        \"yearOfCompletion\": 2021,\n                        \"_id\": \"681967c0648d5c53237e83bc\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"3\",\n                        \"name\": \"Khulna\",\n                        \"bd_name\": \"খুলনা\"\n                    },\n                    \"district\": {\n                        \"id\": \"25\",\n                        \"division_id\": \"3\",\n                        \"name\": \"Kushtia\",\n                        \"bn_name\": \"কুষ্টিয়া\",\n                        \"lat\": \"23.901258\",\n                        \"long\": \"89.120482\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"196\",\n                        \"district_id\": \"25\",\n                        \"name\": \"Kushtia Sadar\",\n                        \"bn_name\": \"কুষ্টিয়া সদর\"\n                    },\n                    \"union\": {\n                        \"id\": \"1775\",\n                        \"upazilla_id\": \"196\",\n                        \"name\": \"Barkhada\",\n                        \"bn_name\": \"বারখাদা\"\n                    },\n                    \"_id\": \"681967c0648d5c53237e83bd\"\n                },\n                \"languages\": [\n                    \"Korean\",\n                    \"Bengali\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967b9648d5c53237e7e97\",\n                \"name\": \"Carol Martinez\",\n                \"email\": \"carolmartinez97700923723@gmail.com\",\n                \"age\": 22,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Primary Education (PSC)\",\n                        \"certificate\": \"PSC Certificate\",\n                        \"institution\": \"Chittagong University\",\n                        \"yearOfCompletion\": 2013,\n                        \"grade\": \"B-\",\n                        \"_id\": \"681967b9648d5c53237e7e98\"\n                    },\n                    {\n                        \"level\": \"Religious Education\",\n                        \"certificate\": \"Quranic Studies Diploma\",\n                        \"institution\": \"Daffodil International University\",\n                        \"yearOfCompletion\": 1994,\n                        \"_id\": \"681967b9648d5c53237e7e99\"\n                    },\n                    {\n                        \"level\": \"Secondary School Certificate (SSC)\",\n                        \"certificate\": \"General Certificate\",\n                        \"institution\": \"Princeton University\",\n                        \"yearOfCompletion\": 2018,\n                        \"grade\": \"B-\",\n                        \"_id\": \"681967b9648d5c53237e7e9a\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"4\",\n                        \"name\": \"Barisal\",\n                        \"bd_name\": \"বরিশাল\"\n                    },\n                    \"district\": {\n                        \"id\": \"32\",\n                        \"division_id\": \"4\",\n                        \"name\": \"Pirojpur\",\n                        \"bn_name\": \"পিরোজপুর\",\n                        \"lat\": \"22.5841\",\n                        \"long\": \"89.9720\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"244\",\n                        \"district_id\": \"32\",\n                        \"name\": \"Kawkhali\",\n                        \"bn_name\": \"কাউখালী\"\n                    },\n                    \"union\": {\n                        \"id\": \"2207\",\n                        \"upazilla_id\": \"244\",\n                        \"name\": \"Sayna Rogunathpur\",\n                        \"bn_name\": \"সয়না রঘুনাথপুর\"\n                    },\n                    \"_id\": \"681967b9648d5c53237e7e9b\"\n                },\n                \"languages\": [\n                    \"Hebrew\",\n                    \"Bengali\",\n                    \"Gujarati\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967b8648d5c53237e7d0d\",\n                \"name\": \"Bilal Williams\",\n                \"email\": \"bilalwilliams51745199688@gmail.com\",\n                \"age\": 28,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Religious Education\",\n                        \"certificate\": \"Madrasah Certificate\",\n                        \"institution\": \"University of Chicago\",\n                        \"yearOfCompletion\": 2014,\n                        \"grade\": \"B+\",\n                        \"additionalInfo\": \"Class valedictorian\",\n                        \"_id\": \"681967b8648d5c53237e7d0e\"\n                    },\n                    {\n                        \"level\": \"Bachelor's Degree\",\n                        \"certificate\": \"BSc in Agriculture\",\n                        \"institution\": \"Rajshahi University of Engineering & Technology\",\n                        \"yearOfCompletion\": 2008,\n                        \"grade\": \"D+\",\n                        \"_id\": \"681967b8648d5c53237e7d0f\"\n                    },\n                    {\n                        \"level\": \"Bachelor's Degree\",\n                        \"certificate\": \"BSc in Agriculture\",\n                        \"institution\": \"Princeton University\",\n                        \"yearOfCompletion\": 2000,\n                        \"grade\": \"D\",\n                        \"additionalInfo\": \"Class valedictorian\",\n                        \"_id\": \"681967b8648d5c53237e7d10\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"4\",\n                        \"name\": \"Barisal\",\n                        \"bd_name\": \"বরিশাল\"\n                    },\n                    \"district\": {\n                        \"id\": \"33\",\n                        \"division_id\": \"4\",\n                        \"name\": \"Barisal\",\n                        \"bn_name\": \"বরিশাল\",\n                        \"lat\": \"22.7010\",\n                        \"long\": \"90.3535\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"256\",\n                        \"district_id\": \"33\",\n                        \"name\": \"Mehendiganj\",\n                        \"bn_name\": \"মেহেন্দিগঞ্জ\"\n                    },\n                    \"union\": {\n                        \"id\": \"2308\",\n                        \"upazilla_id\": \"256\",\n                        \"name\": \"Bhashanchar\",\n                        \"bn_name\": \"ভাষানচর\"\n                    },\n                    \"_id\": \"681967b8648d5c53237e7d11\"\n                },\n                \"languages\": [\n                    \"Lithuanian\",\n                    \"Bengali\",\n                    \"Pashto\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967b6648d5c53237e7b79\",\n                \"name\": \"Joseph Miller\",\n                \"email\": \"josephmiller92022593150@protonmail.com\",\n                \"age\": 27,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Diploma (Technical/Vocational)\",\n                        \"certificate\": \"General Certificate\",\n                        \"institution\": \"Duke University\",\n                        \"yearOfCompletion\": 2020,\n                        \"grade\": \"C-\",\n                        \"additionalInfo\": \"Scholarship recipient\",\n                        \"_id\": \"681967b6648d5c53237e7b7a\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"1\",\n                        \"name\": \"Chattagram\",\n                        \"bd_name\": \"চট্টগ্রাম\"\n                    },\n                    \"district\": {\n                        \"id\": \"9\",\n                        \"division_id\": \"1\",\n                        \"name\": \"Coxsbazar\",\n                        \"bn_name\": \"কক্সবাজার\",\n                        \"lat\": \"21.4272\",\n                        \"long\": \"92.0058\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"86\",\n                        \"district_id\": \"9\",\n                        \"name\": \"Ramu\",\n                        \"bn_name\": \"রামু\"\n                    },\n                    \"union\": {\n                        \"id\": \"870\",\n                        \"upazilla_id\": \"86\",\n                        \"name\": \"Khuniapalong\",\n                        \"bn_name\": \"খুনিয়াপালং\"\n                    },\n                    \"_id\": \"681967b6648d5c53237e7b7b\"\n                },\n                \"languages\": [\n                    \"Bengali\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967b1648d5c53237e77ed\",\n                \"name\": \"Salim Garcia\",\n                \"email\": \"salimgarcia49519251033@zoho.com\",\n                \"age\": 32,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Bachelor's Degree\",\n                        \"certificate\": \"BSc in Marine Science\",\n                        \"institution\": \"Khulna University\",\n                        \"yearOfCompletion\": 2011,\n                        \"grade\": \"B+\",\n                        \"additionalInfo\": \"Special achievement award\",\n                        \"_id\": \"681967b1648d5c53237e77ee\"\n                    },\n                    {\n                        \"level\": \"Bachelor's Degree\",\n                        \"certificate\": \"BA in Geography\",\n                        \"institution\": \"Princeton University\",\n                        \"yearOfCompletion\": 2020,\n                        \"grade\": \"F\",\n                        \"additionalInfo\": \"Class valedictorian\",\n                        \"_id\": \"681967b1648d5c53237e77ef\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"7\",\n                        \"name\": \"Rangpur\",\n                        \"bd_name\": \"রংপুর\"\n                    },\n                    \"district\": {\n                        \"id\": \"59\",\n                        \"division_id\": \"7\",\n                        \"name\": \"Rangpur\",\n                        \"bn_name\": \"রংপুর\",\n                        \"lat\": \"25.7558096\",\n                        \"long\": \"89.244462\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"440\",\n                        \"district_id\": \"59\",\n                        \"name\": \"Rangpur Sadar\",\n                        \"bn_name\": \"রংপুর সদর\"\n                    },\n                    \"union\": {\n                        \"id\": \"4038\",\n                        \"upazilla_id\": \"440\",\n                        \"name\": \"Topodhan\",\n                        \"bn_name\": \"তপোধন\"\n                    },\n                    \"_id\": \"681967b1648d5c53237e77f0\"\n                },\n                \"languages\": [\n                    \"Polish\",\n                    \"Bengali\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967af648d5c53237e75a3\",\n                \"name\": \"Richard Chowdhury\",\n                \"email\": \"richardchowdhury46946508867@hotmail.com\",\n                \"age\": 33,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Religious Education\",\n                        \"certificate\": \"Religious Education Diploma\",\n                        \"institution\": \"American International University-Bangladesh\",\n                        \"yearOfCompletion\": 2019,\n                        \"additionalInfo\": \"Scholarship recipient\",\n                        \"_id\": \"681967af648d5c53237e75a4\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"8\",\n                        \"name\": \"Mymensingh\",\n                        \"bd_name\": \"ময়মনসিংহ\"\n                    },\n                    \"district\": {\n                        \"id\": \"64\",\n                        \"division_id\": \"8\",\n                        \"name\": \"Netrokona\",\n                        \"bn_name\": \"নেত্রকোণা\",\n                        \"lat\": \"24.870955\",\n                        \"long\": \"90.727887\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"487\",\n                        \"district_id\": \"64\",\n                        \"name\": \"Khaliajuri\",\n                        \"bn_name\": \"খালিয়াজুরী\"\n                    },\n                    \"union\": {\n                        \"id\": \"4498\",\n                        \"upazilla_id\": \"487\",\n                        \"name\": \"Nogor\",\n                        \"bn_name\": \"নগর\"\n                    },\n                    \"_id\": \"681967af648d5c53237e75a5\"\n                },\n                \"languages\": [\n                    \"Portuguese\",\n                    \"Bengali\",\n                    \"Marathi\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967ac648d5c53237e73a6\",\n                \"name\": \"Dennis Ali\",\n                \"email\": \"dennisali34149428929@mail.com\",\n                \"age\": 31,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Other\",\n                        \"certificate\": \"Specialized Workshop Completion\",\n                        \"institution\": \"University of Chicago\",\n                        \"yearOfCompletion\": 2017,\n                        \"grade\": \"D\",\n                        \"additionalInfo\": \"Dean's list\",\n                        \"_id\": \"681967ac648d5c53237e73a7\"\n                    },\n                    {\n                        \"level\": \"Diploma (Technical/Vocational)\",\n                        \"certificate\": \"General Certificate\",\n                        \"institution\": \"Princeton University\",\n                        \"yearOfCompletion\": 2001,\n                        \"additionalInfo\": \"Graduated with honors\",\n                        \"_id\": \"681967ac648d5c53237e73a8\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"5\",\n                        \"name\": \"Sylhet\",\n                        \"bd_name\": \"সিলেট\"\n                    },\n                    \"district\": {\n                        \"id\": \"38\",\n                        \"division_id\": \"5\",\n                        \"name\": \"Habiganj\",\n                        \"bn_name\": \"হবিগঞ্জ\",\n                        \"lat\": \"24.374945\",\n                        \"long\": \"91.41553\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"296\",\n                        \"district_id\": \"38\",\n                        \"name\": \"Lakhai\",\n                        \"bn_name\": \"লাখাই\"\n                    },\n                    \"union\": {\n                        \"id\": \"2648\",\n                        \"upazilla_id\": \"296\",\n                        \"name\": \"Lakhai\",\n                        \"bn_name\": \"লাখাই\"\n                    },\n                    \"_id\": \"681967ac648d5c53237e73a9\"\n                },\n                \"languages\": [\n                    \"Xhosa\",\n                    \"Bengali\",\n                    \"Sundanese\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"681967ac648d5c53237e7344\",\n                \"name\": \"Laura Sharma\",\n                \"email\": \"laurasharma53517700282@gmail.com\",\n                \"age\": 26,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Junior Secondary (JSC)\",\n                        \"certificate\": \"Junior School Certificate\",\n                        \"institution\": \"Chittagong University of Engineering & Technology\",\n                        \"yearOfCompletion\": 2020,\n                        \"grade\": \"D+\",\n                        \"additionalInfo\": \"Research assistant\",\n                        \"_id\": \"681967ac648d5c53237e7345\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"4\",\n                        \"name\": \"Barisal\",\n                        \"bd_name\": \"বরিশাল\"\n                    },\n                    \"district\": {\n                        \"id\": \"31\",\n                        \"division_id\": \"4\",\n                        \"name\": \"Patuakhali\",\n                        \"bn_name\": \"পটুয়াখালী\",\n                        \"lat\": \"22.3596316\",\n                        \"long\": \"90.3298712\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"238\",\n                        \"district_id\": \"31\",\n                        \"name\": \"Kalapara\",\n                        \"bn_name\": \"কলাপাড়া\"\n                    },\n                    \"union\": {\n                        \"id\": \"2161\",\n                        \"upazilla_id\": \"238\",\n                        \"name\": \"Nilgonj\",\n                        \"bn_name\": \"নীলগঞ্জ\"\n                    },\n                    \"_id\": \"681967ac648d5c53237e7346\"\n                },\n                \"languages\": [\n                    \"Czech\",\n                    \"Bengali\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"6819679d648d5c53237e67ee\",\n                \"name\": \"Dorothy Perez\",\n                \"email\": \"dorothyperez93703963870@zoho.com\",\n                \"age\": 25,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Primary Education (PSC)\",\n                        \"certificate\": \"PSC Certificate\",\n                        \"institution\": \"Khulna University of Engineering & Technology\",\n                        \"yearOfCompletion\": 2021,\n                        \"grade\": \"B+\",\n                        \"additionalInfo\": \"Student council member\",\n                        \"_id\": \"6819679d648d5c53237e67ef\"\n                    },\n                    {\n                        \"level\": \"Higher Secondary Certificate (HSC)\",\n                        \"certificate\": \"General Certificate\",\n                        \"institution\": \"University of California\",\n                        \"yearOfCompletion\": 2019,\n                        \"additionalInfo\": \"Top of class\",\n                        \"_id\": \"6819679d648d5c53237e67f0\"\n                    },\n                    {\n                        \"level\": \"Religious Education\",\n                        \"certificate\": \"Hafiz Certification\",\n                        \"institution\": \"Khulna University of Engineering & Technology\",\n                        \"yearOfCompletion\": 2025,\n                        \"_id\": \"6819679d648d5c53237e67f1\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"5\",\n                        \"name\": \"Sylhet\",\n                        \"bd_name\": \"সিলেট\"\n                    },\n                    \"district\": {\n                        \"id\": \"36\",\n                        \"division_id\": \"5\",\n                        \"name\": \"Sylhet\",\n                        \"bn_name\": \"সিলেট\",\n                        \"lat\": \"24.8897956\",\n                        \"long\": \"91.8697894\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"282\",\n                        \"district_id\": \"36\",\n                        \"name\": \"Zakiganj\",\n                        \"bn_name\": \"জকিগঞ্জ\"\n                    },\n                    \"union\": {\n                        \"id\": \"2527\",\n                        \"upazilla_id\": \"282\",\n                        \"name\": \"Zakiganj\",\n                        \"bn_name\": \"জকিগঞ্জ\"\n                    },\n                    \"_id\": \"6819679d648d5c53237e67f2\"\n                },\n                \"languages\": [\n                    \"Bengali\",\n                    \"Xiang Chinese\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"6819679a648d5c53237e6584\",\n                \"name\": \"Imran Adams\",\n                \"email\": \"imranadams20897707517@icloud.com\",\n                \"age\": 26,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Technical/Vocational\",\n                        \"certificate\": \"Certificate in HVAC\",\n                        \"institution\": \"Harvard University\",\n                        \"yearOfCompletion\": 2014,\n                        \"additionalInfo\": \"Dean's list\",\n                        \"_id\": \"6819679a648d5c53237e6585\"\n                    },\n                    {\n                        \"level\": \"Secondary School Certificate (SSC)\",\n                        \"certificate\": \"General Certificate\",\n                        \"institution\": \"Ahsanullah University of Science and Technology\",\n                        \"yearOfCompletion\": 2003,\n                        \"additionalInfo\": \"Top of class\",\n                        \"_id\": \"6819679a648d5c53237e6586\"\n                    },\n                    {\n                        \"level\": \"Other\",\n                        \"certificate\": \"Industry Certification\",\n                        \"institution\": \"Bangladesh University of Engineering and Technology\",\n                        \"yearOfCompletion\": 1990,\n                        \"grade\": \"C\",\n                        \"additionalInfo\": \"Student of the year\",\n                        \"_id\": \"6819679a648d5c53237e6587\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"1\",\n                        \"name\": \"Chattagram\",\n                        \"bd_name\": \"চট্টগ্রাম\"\n                    },\n                    \"district\": {\n                        \"id\": \"1\",\n                        \"division_id\": \"1\",\n                        \"name\": \"Comilla\",\n                        \"bn_name\": \"কুমিল্লা\",\n                        \"lat\": \"23.4682747\",\n                        \"long\": \"91.1788135\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"8\",\n                        \"district_id\": \"1\",\n                        \"name\": \"Laksam\",\n                        \"bn_name\": \"লাকসাম\"\n                    },\n                    \"union\": {\n                        \"id\": \"88\",\n                        \"upazilla_id\": \"8\",\n                        \"name\": \"Bakoi\",\n                        \"bn_name\": \"বাকই\"\n                    },\n                    \"_id\": \"6819679a648d5c53237e6588\"\n                },\n                \"languages\": [\n                    \"Bengali\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            },\n            {\n                \"_id\": \"68196795648d5c53237e613c\",\n                \"name\": \"Virginia Flores\",\n                \"email\": \"virginiaflores52068970339@aol.com\",\n                \"age\": 25,\n                \"isEducated\": true,\n                \"education\": [\n                    {\n                        \"level\": \"Higher Secondary Certificate (HSC)\",\n                        \"certificate\": \"General Certificate\",\n                        \"institution\": \"Duke University\",\n                        \"yearOfCompletion\": 1996,\n                        \"grade\": \"C-\",\n                        \"additionalInfo\": \"Top of class\",\n                        \"_id\": \"68196795648d5c53237e613d\"\n                    },\n                    {\n                        \"level\": \"Diploma (Technical/Vocational)\",\n                        \"certificate\": \"General Certificate\",\n                        \"institution\": \"University of California\",\n                        \"yearOfCompletion\": 2013,\n                        \"grade\": \"B-\",\n                        \"_id\": \"68196795648d5c53237e613e\"\n                    }\n                ],\n                \"address\": {\n                    \"country\": \"Bangladesh\",\n                    \"division\": {\n                        \"id\": \"8\",\n                        \"name\": \"Mymensingh\",\n                        \"bd_name\": \"ময়মনসিংহ\"\n                    },\n                    \"district\": {\n                        \"id\": \"61\",\n                        \"division_id\": \"8\",\n                        \"name\": \"Sherpur\",\n                        \"bn_name\": \"শেরপুর\",\n                        \"lat\": \"25.0204933\",\n                        \"long\": \"90.0152966\"\n                    },\n                    \"upazila\": {\n                        \"id\": \"457\",\n                        \"district_id\": \"61\",\n                        \"name\": \"Sherpur Sadar\",\n                        \"bn_name\": \"শেরপুর সদর\"\n                    },\n                    \"union\": {\n                        \"id\": \"4194\",\n                        \"upazilla_id\": \"457\",\n                        \"name\": \"Pakuriya\",\n                        \"bn_name\": \"পাকুরিয়া\"\n                    },\n                    \"_id\": \"68196795648d5c53237e613f\"\n                },\n                \"languages\": [\n                    \"Bengali\"\n                ],\n                \"religion\": \"Islam\",\n                \"annualIncome\": {\n                    \"amount\": 200000,\n                    \"currency\": \"BDT\"\n                },\n                \"maritalStatus\": \"never_married\",\n                \"occupation\": \"doctor\"\n            }\n        ],\n        \"pagination\": {\n            \"currentPage\": 1,\n            \"pageSize\": 25\n        }\n    }\n}"
+						},
+						{
+							"name": "filter user",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:4000/api/search/users/filter?page=1&limit=25&religion=Islam&languages=Bengali&minAge=20&maxAge=35&isEducated=yes&maritalStatus=never_married&occupation=doctor&minAnnualIncome=50000&maxAnnualIncome=2000000&incomeCurrency=BDT",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "4000",
+									"path": [
+										"api",
+										"search",
+										"users",
+										"filter"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "25"
+										},
+										{
+											"key": "religion",
+											"value": "Islam"
+										},
+										{
+											"key": "languages",
+											"value": "Bengali"
+										},
+										{
+											"key": "minAge",
+											"value": "20"
+										},
+										{
+											"key": "maxAge",
+											"value": "35"
+										},
+										{
+											"key": "isEducated",
+											"value": "yes"
+										},
+										{
+											"key": "maritalStatus",
+											"value": "never_married"
+										},
+										{
+											"key": "occupation",
+											"value": "doctor"
+										},
+										{
+											"key": "minAnnualIncome",
+											"value": "50000"
+										},
+										{
+											"key": "maxAnnualIncome",
+											"value": "2000000"
+										},
+										{
+											"key": "incomeCurrency",
+											"value": "BDT"
+										}
+									]
+								}
+							},
+							"_postman_previewlanguage": null,
+							"header": null,
+							"cookie": [],
+							"body": null
+						},
+						{
+							"name": "Advanced Search with Age and Height",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:4000/api/search/users/filter?page=1&limit=25&religion=Islam&languages=Bengali&minAge=20&maxAge=35&isEducated=yes&maritalStatus=never_married&occupation=doctor&minAnnualIncome=50000&maxAnnualIncome=2000000&incomeCurrency=BDT",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "4000",
+									"path": [
+										"api",
+										"search",
+										"users",
+										"filter"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "25"
+										},
+										{
+											"key": "religion",
+											"value": "Islam"
+										},
+										{
+											"key": "languages",
+											"value": "Bengali"
+										},
+										{
+											"key": "minAge",
+											"value": "20"
+										},
+										{
+											"key": "maxAge",
+											"value": "35"
+										},
+										{
+											"key": "isEducated",
+											"value": "yes"
+										},
+										{
+											"key": "maritalStatus",
+											"value": "never_married"
+										},
+										{
+											"key": "occupation",
+											"value": "doctor"
+										},
+										{
+											"key": "minAnnualIncome",
+											"value": "50000"
+										},
+										{
+											"key": "maxAnnualIncome",
+											"value": "2000000"
+										},
+										{
+											"key": "incomeCurrency",
+											"value": "BDT"
+										}
+									]
+								}
+							},
+							"_postman_previewlanguage": null,
+							"header": null,
+							"cookie": [],
+							"body": null
+						},
+						{
+							"name": "Marital Status Based Search:",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:4000/api/search/users/filter?page=1&limit=25&religion=Islam&languages=Bengali&minAge=20&maxAge=35&isEducated=yes&maritalStatus=never_married&occupation=doctor&minAnnualIncome=50000&maxAnnualIncome=2000000&incomeCurrency=BDT",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "4000",
+									"path": [
+										"api",
+										"search",
+										"users",
+										"filter"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "25"
+										},
+										{
+											"key": "religion",
+											"value": "Islam"
+										},
+										{
+											"key": "languages",
+											"value": "Bengali"
+										},
+										{
+											"key": "minAge",
+											"value": "20"
+										},
+										{
+											"key": "maxAge",
+											"value": "35"
+										},
+										{
+											"key": "isEducated",
+											"value": "yes"
+										},
+										{
+											"key": "maritalStatus",
+											"value": "never_married"
+										},
+										{
+											"key": "occupation",
+											"value": "doctor"
+										},
+										{
+											"key": "minAnnualIncome",
+											"value": "50000"
+										},
+										{
+											"key": "maxAnnualIncome",
+											"value": "2000000"
+										},
+										{
+											"key": "incomeCurrency",
+											"value": "BDT"
+										}
+									]
+								}
+							},
+							"_postman_previewlanguage": null,
+							"header": null,
+							"cookie": [],
+							"body": null
+						}
+					]
+				},
+				{
+					"name": "Get Online Users",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/search/users/online?count=yes&limit=50&page=54",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"search",
+								"users",
+								"online"
+							],
+							"query": [
+								{
+									"key": "count",
+									"value": "yes"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								},
+								{
+									"key": "page",
+									"value": "54"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Suggested Profiles",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/search/users/suggested-for-you",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"search",
+								"users",
+								"suggested-for-you"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Profiles Who Liked Me",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "Get Viewed But Not Contacted Profiles",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{searchRoute}}/users/viewed-not-contact",
+							"host": [
+								"{{searchRoute}}"
+							],
+							"path": [
+								"users",
+								"viewed-not-contact"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Liked By Me Profiles",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{searchRoute}}/users/liked-by-me",
+							"host": [
+								"{{searchRoute}}"
+							],
+							"path": [
+								"users",
+								"liked-by-me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Email Sent Profiles",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{searchRoute}}/users/send-mails-by-me?count=yes",
+							"host": [
+								"{{searchRoute}}"
+							],
+							"path": [
+								"users",
+								"send-mails-by-me"
+							],
+							"query": [
+								{
+									"key": "count",
+									"value": "yes"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Phone Number Viewed Profiles",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "Get SMS Sent Profiles",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "Get SMS Received Profiles",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{searchRoute}}/users/send-sms-to-me",
+							"host": [
+								"{{searchRoute}}"
+							],
+							"path": [
+								"users",
+								"send-sms-to-me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Profiles Who Viewed My Phone Number",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "Get Mutual Connections",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "Get Recently Viewed Profiles",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				}
+			],
+			"description": "Search and matching endpoints"
+		},
+		{
+			"name": "Assets",
+			"item": [
+				{
+					"name": "upload Image",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "52fb85c105c6a58c41ad54aa8f813b07d758cd13943165114772f984373bfbb8",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "image",
+									"type": "file",
+									"src": "/C:/Users/hp/Downloads/google-tag-manager.png"
+								}
+							]
+						},
+						"url": {
+							"raw": "http://localhost:4000/api/assets/upload/image",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"api",
+								"assets",
+								"upload",
+								"image"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Asset management endpoints"
+		},
+		{
+			"name": "Data",
+			"item": [
+				{
+					"name": "location",
+					"item": [
+						{
+							"name": "division",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:4000/api/data/location/divisions",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "4000",
+									"path": [
+										"api",
+										"data",
+										"location",
+										"divisions"
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "res",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "http://localhost:4000/api/data/location/divisions",
+											"protocol": "http",
+											"host": [
+												"localhost"
+											],
+											"port": "4000",
+											"path": [
+												"api",
+												"data",
+												"location",
+												"divisions"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Access-Control-Allow-Origin",
+											"value": "http://localhost:3000"
+										},
+										{
+											"key": "Access-Control-Allow-Methods",
+											"value": "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+										},
+										{
+											"key": "Access-Control-Allow-Headers",
+											"value": "Content-Type, Authorization"
+										},
+										{
+											"key": "Access-Control-Allow-Credentials",
+											"value": "true"
+										},
+										{
+											"key": "cache-control",
+											"value": "max-age=3600, public"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "518"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"206-3wQdHQjxBaMyyIDqp4rCsJ8qTlA\""
+										},
+										{
+											"key": "Date",
+											"value": "Sun, 04 May 2025 04:48:43 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"success\": true,\n    \"message\": \"ok\",\n    \"data\": [\n        {\n            \"id\": \"1\",\n            \"name\": \"Chattagram\",\n            \"bn_name\": \"চট্টগ্রাম\"\n        },\n        {\n            \"id\": \"2\",\n            \"name\": \"Rajshahi\",\n            \"bn_name\": \"রাজশাহী\"\n        },\n        {\n            \"id\": \"3\",\n            \"name\": \"Khulna\",\n            \"bn_name\": \"খুলনা\"\n        },\n        {\n            \"id\": \"4\",\n            \"name\": \"Barisal\",\n            \"bn_name\": \"বরিশাল\"\n        },\n        {\n            \"id\": \"5\",\n            \"name\": \"Sylhet\",\n            \"bn_name\": \"সিলেট\"\n        },\n        {\n            \"id\": \"6\",\n            \"name\": \"Dhaka\",\n            \"bn_name\": \"ঢাকা\"\n        },\n        {\n            \"id\": \"7\",\n            \"name\": \"Rangpur\",\n            \"bn_name\": \"রংপুর\"\n        },\n        {\n            \"id\": \"8\",\n            \"name\": \"Mymensingh\",\n            \"bn_name\": \"ময়মনসিংহ\"\n        }\n    ]\n}"
+								}
+							]
+						},
+						{
+							"name": "districts",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:4000/api/data/location/district?division_id=8",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "4000",
+									"path": [
+										"api",
+										"data",
+										"location",
+										"district"
+									],
+									"query": [
+										{
+											"key": "division_id",
+											"value": "8"
+										}
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "1",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "http://localhost:4000/api/data/location/district?division_id=1",
+											"protocol": "http",
+											"host": [
+												"localhost"
+											],
+											"port": "4000",
+											"path": [
+												"api",
+												"data",
+												"location",
+												"district"
+											],
+											"query": [
+												{
+													"key": "division_id",
+													"value": "1"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Access-Control-Allow-Origin",
+											"value": "http://localhost:3000"
+										},
+										{
+											"key": "Access-Control-Allow-Methods",
+											"value": "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+										},
+										{
+											"key": "Access-Control-Allow-Headers",
+											"value": "Content-Type, Authorization"
+										},
+										{
+											"key": "Access-Control-Allow-Credentials",
+											"value": "true"
+										},
+										{
+											"key": "cache-control",
+											"value": "max-age=3600, public"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "1403"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"57b-ZflTOnvqiZm5UaAjQPub/ijU+Bc\""
+										},
+										{
+											"key": "Date",
+											"value": "Sun, 04 May 2025 04:49:50 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": \"1\",\n            \"division_id\": \"1\",\n            \"name\": \"Comilla\",\n            \"bn_name\": \"কুমিল্লা\",\n            \"lat\": \"23.4682747\",\n            \"long\": \"91.1788135\"\n        },\n        {\n            \"id\": \"2\",\n            \"division_id\": \"1\",\n            \"name\": \"Feni\",\n            \"bn_name\": \"ফেনী\",\n            \"lat\": \"23.0159\",\n            \"long\": \"91.3976\"\n        },\n        {\n            \"id\": \"3\",\n            \"division_id\": \"1\",\n            \"name\": \"Brahmanbaria\",\n            \"bn_name\": \"ব্রাহ্মণবাড়িয়া\",\n            \"lat\": \"23.9570904\",\n            \"long\": \"91.1119286\"\n        },\n        {\n            \"id\": \"4\",\n            \"division_id\": \"1\",\n            \"name\": \"Rangamati\",\n            \"bn_name\": \"রাঙ্গামাটি\",\n            \"lat\": \"22.7324\",\n            \"long\": \"92.2985\"\n        },\n        {\n            \"id\": \"5\",\n            \"division_id\": \"1\",\n            \"name\": \"Noakhali\",\n            \"bn_name\": \"নোয়াখালী\",\n            \"lat\": \"22.869563\",\n            \"long\": \"91.099398\"\n        },\n        {\n            \"id\": \"6\",\n            \"division_id\": \"1\",\n            \"name\": \"Chandpur\",\n            \"bn_name\": \"চাঁদপুর\",\n            \"lat\": \"23.2332585\",\n            \"long\": \"90.6712912\"\n        },\n        {\n            \"id\": \"7\",\n            \"division_id\": \"1\",\n            \"name\": \"Lakshmipur\",\n            \"bn_name\": \"লক্ষ্মীপুর\",\n            \"lat\": \"22.942477\",\n            \"long\": \"90.841184\"\n        },\n        {\n            \"id\": \"8\",\n            \"division_id\": \"1\",\n            \"name\": \"Chattogram\",\n            \"bn_name\": \"চট্টগ্রাম\",\n            \"lat\": \"22.335109\",\n            \"long\": \"91.834073\"\n        },\n        {\n            \"id\": \"9\",\n            \"division_id\": \"1\",\n            \"name\": \"Coxsbazar\",\n            \"bn_name\": \"কক্সবাজার\",\n            \"lat\": \"21.4272\",\n            \"long\": \"92.0058\"\n        },\n        {\n            \"id\": \"10\",\n            \"division_id\": \"1\",\n            \"name\": \"Khagrachhari\",\n            \"bn_name\": \"খাগড়াছড়ি\",\n            \"lat\": \"23.119285\",\n            \"long\": \"91.984663\"\n        },\n        {\n            \"id\": \"11\",\n            \"division_id\": \"1\",\n            \"name\": \"Bandarban\",\n            \"bn_name\": \"বান্দরবান\",\n            \"lat\": \"22.1953275\",\n            \"long\": \"92.2183773\"\n        }\n    ]\n}"
+								},
+								{
+									"name": "8",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "http://localhost:4000/api/data/location/district?division_id=8",
+											"protocol": "http",
+											"host": [
+												"localhost"
+											],
+											"port": "4000",
+											"path": [
+												"api",
+												"data",
+												"location",
+												"district"
+											],
+											"query": [
+												{
+													"key": "division_id",
+													"value": "8"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Access-Control-Allow-Origin",
+											"value": "http://localhost:3000"
+										},
+										{
+											"key": "Access-Control-Allow-Methods",
+											"value": "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+										},
+										{
+											"key": "Access-Control-Allow-Headers",
+											"value": "Content-Type, Authorization"
+										},
+										{
+											"key": "Access-Control-Allow-Credentials",
+											"value": "true"
+										},
+										{
+											"key": "cache-control",
+											"value": "max-age=3600, public"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "513"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"201-waaGpDoYlf4npQAMefBoMt07Glg\""
+										},
+										{
+											"key": "Date",
+											"value": "Sun, 04 May 2025 04:50:05 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": \"61\",\n            \"division_id\": \"8\",\n            \"name\": \"Sherpur\",\n            \"bn_name\": \"শেরপুর\",\n            \"lat\": \"25.0204933\",\n            \"long\": \"90.0152966\"\n        },\n        {\n            \"id\": \"62\",\n            \"division_id\": \"8\",\n            \"name\": \"Mymensingh\",\n            \"bn_name\": \"ময়মনসিংহ\",\n            \"lat\": \"24.7471\",\n            \"long\": \"90.4203\"\n        },\n        {\n            \"id\": \"63\",\n            \"division_id\": \"8\",\n            \"name\": \"Jamalpur\",\n            \"bn_name\": \"জামালপুর\",\n            \"lat\": \"24.937533\",\n            \"long\": \"89.937775\"\n        },\n        {\n            \"id\": \"64\",\n            \"division_id\": \"8\",\n            \"name\": \"Netrokona\",\n            \"bn_name\": \"নেত্রকোণা\",\n            \"lat\": \"24.870955\",\n            \"long\": \"90.727887\"\n        }\n    ]\n}"
+								}
+							]
+						},
+						{
+							"name": "upazilas",
+							"request": {
+								"method": "GET",
+								"header": []
+							},
+							"response": [
+								{
+									"name": "1",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "http://localhost:4000/api/data/location/upazila?district_id=1",
+											"protocol": "http",
+											"host": [
+												"localhost"
+											],
+											"port": "4000",
+											"path": [
+												"api",
+												"data",
+												"location",
+												"upazila"
+											],
+											"query": [
+												{
+													"key": "district_id",
+													"value": "1"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Access-Control-Allow-Origin",
+											"value": "http://localhost:3000"
+										},
+										{
+											"key": "Access-Control-Allow-Methods",
+											"value": "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+										},
+										{
+											"key": "Access-Control-Allow-Headers",
+											"value": "Content-Type, Authorization"
+										},
+										{
+											"key": "Access-Control-Allow-Credentials",
+											"value": "true"
+										},
+										{
+											"key": "cache-control",
+											"value": "max-age=3600, public"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "1470"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"5be-D2VFw50Do87YIxZpCuuSOcGLo7U\""
+										},
+										{
+											"key": "Date",
+											"value": "Sun, 04 May 2025 04:50:41 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": \"1\",\n            \"district_id\": \"1\",\n            \"name\": \"Debidwar\",\n            \"bn_name\": \"দেবিদ্বার\"\n        },\n        {\n            \"id\": \"2\",\n            \"district_id\": \"1\",\n            \"name\": \"Barura\",\n            \"bn_name\": \"বরুড়া\"\n        },\n        {\n            \"id\": \"3\",\n            \"district_id\": \"1\",\n            \"name\": \"Brahmanpara\",\n            \"bn_name\": \"ব্রাহ্মণপাড়া\"\n        },\n        {\n            \"id\": \"4\",\n            \"district_id\": \"1\",\n            \"name\": \"Chandina\",\n            \"bn_name\": \"চান্দিনা\"\n        },\n        {\n            \"id\": \"5\",\n            \"district_id\": \"1\",\n            \"name\": \"Chauddagram\",\n            \"bn_name\": \"চৌদ্দগ্রাম\"\n        },\n        {\n            \"id\": \"6\",\n            \"district_id\": \"1\",\n            \"name\": \"Daudkandi\",\n            \"bn_name\": \"দাউদকান্দি\"\n        },\n        {\n            \"id\": \"7\",\n            \"district_id\": \"1\",\n            \"name\": \"Homna\",\n            \"bn_name\": \"হোমনা\"\n        },\n        {\n            \"id\": \"8\",\n            \"district_id\": \"1\",\n            \"name\": \"Laksam\",\n            \"bn_name\": \"লাকসাম\"\n        },\n        {\n            \"id\": \"9\",\n            \"district_id\": \"1\",\n            \"name\": \"Muradnagar\",\n            \"bn_name\": \"মুরাদনগর\"\n        },\n        {\n            \"id\": \"10\",\n            \"district_id\": \"1\",\n            \"name\": \"Nangalkot\",\n            \"bn_name\": \"নাঙ্গলকোট\"\n        },\n        {\n            \"id\": \"11\",\n            \"district_id\": \"1\",\n            \"name\": \"Comilla Sadar\",\n            \"bn_name\": \"কুমিল্লা সদর\"\n        },\n        {\n            \"id\": \"12\",\n            \"district_id\": \"1\",\n            \"name\": \"Meghna\",\n            \"bn_name\": \"মেঘনা\"\n        },\n        {\n            \"id\": \"13\",\n            \"district_id\": \"1\",\n            \"name\": \"Monohargonj\",\n            \"bn_name\": \"মনোহরগঞ্জ\"\n        },\n        {\n            \"id\": \"14\",\n            \"district_id\": \"1\",\n            \"name\": \"Sadarsouth\",\n            \"bn_name\": \"সদর দক্ষিণ\"\n        },\n        {\n            \"id\": \"15\",\n            \"district_id\": \"1\",\n            \"name\": \"Titas\",\n            \"bn_name\": \"তিতাস\"\n        },\n        {\n            \"id\": \"16\",\n            \"district_id\": \"1\",\n            \"name\": \"Burichang\",\n            \"bn_name\": \"বুড়িচং\"\n        },\n        {\n            \"id\": \"17\",\n            \"district_id\": \"1\",\n            \"name\": \"Lalmai\",\n            \"bn_name\": \"লালমাই\"\n        }\n    ]\n}"
+								},
+								{
+									"name": "64",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "http://localhost:4000/api/data/location/upazila?district_id=64",
+											"protocol": "http",
+											"host": [
+												"localhost"
+											],
+											"port": "4000",
+											"path": [
+												"api",
+												"data",
+												"location",
+												"upazila"
+											],
+											"query": [
+												{
+													"key": "district_id",
+													"value": "64"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Access-Control-Allow-Origin",
+											"value": "http://localhost:3000"
+										},
+										{
+											"key": "Access-Control-Allow-Methods",
+											"value": "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+										},
+										{
+											"key": "Access-Control-Allow-Headers",
+											"value": "Content-Type, Authorization"
+										},
+										{
+											"key": "Access-Control-Allow-Credentials",
+											"value": "true"
+										},
+										{
+											"key": "cache-control",
+											"value": "max-age=3600, public"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "912"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"390-PyV7olnetzqOtO6jiay8yEcN7QQ\""
+										},
+										{
+											"key": "Date",
+											"value": "Sun, 04 May 2025 04:50:57 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": \"482\",\n            \"district_id\": \"64\",\n            \"name\": \"Barhatta\",\n            \"bn_name\": \"বারহাট্টা\"\n        },\n        {\n            \"id\": \"483\",\n            \"district_id\": \"64\",\n            \"name\": \"Durgapur\",\n            \"bn_name\": \"দুর্গাপুর\"\n        },\n        {\n            \"id\": \"484\",\n            \"district_id\": \"64\",\n            \"name\": \"Kendua\",\n            \"bn_name\": \"কেন্দুয়া\"\n        },\n        {\n            \"id\": \"485\",\n            \"district_id\": \"64\",\n            \"name\": \"Atpara\",\n            \"bn_name\": \"আটপাড়া\"\n        },\n        {\n            \"id\": \"486\",\n            \"district_id\": \"64\",\n            \"name\": \"Madan\",\n            \"bn_name\": \"মদন\"\n        },\n        {\n            \"id\": \"487\",\n            \"district_id\": \"64\",\n            \"name\": \"Khaliajuri\",\n            \"bn_name\": \"খালিয়াজুরী\"\n        },\n        {\n            \"id\": \"488\",\n            \"district_id\": \"64\",\n            \"name\": \"Kalmakanda\",\n            \"bn_name\": \"কলমাকান্দা\"\n        },\n        {\n            \"id\": \"489\",\n            \"district_id\": \"64\",\n            \"name\": \"Mohongonj\",\n            \"bn_name\": \"মোহনগঞ্জ\"\n        },\n        {\n            \"id\": \"490\",\n            \"district_id\": \"64\",\n            \"name\": \"Purbadhala\",\n            \"bn_name\": \"পূর্বধলা\"\n        },\n        {\n            \"id\": \"491\",\n            \"district_id\": \"64\",\n            \"name\": \"Netrokona Sadar\",\n            \"bn_name\": \"নেত্রকোণা সদর\"\n        }\n    ]\n}"
+								}
+							]
+						},
+						{
+							"name": "unions",
+							"request": {
+								"method": "GET",
+								"header": []
+							},
+							"response": [
+								{
+									"name": "1",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "http://localhost:4000/api/data/location/unions?upazila_id=1",
+											"protocol": "http",
+											"host": [
+												"localhost"
+											],
+											"port": "4000",
+											"path": [
+												"api",
+												"data",
+												"location",
+												"unions"
+											],
+											"query": [
+												{
+													"key": "upazila_id",
+													"value": "1"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Access-Control-Allow-Origin",
+											"value": "http://localhost:3000"
+										},
+										{
+											"key": "Access-Control-Allow-Methods",
+											"value": "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+										},
+										{
+											"key": "Access-Control-Allow-Headers",
+											"value": "Content-Type, Authorization"
+										},
+										{
+											"key": "Access-Control-Allow-Credentials",
+											"value": "true"
+										},
+										{
+											"key": "cache-control",
+											"value": "max-age=3600, public"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "1302"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"516-GOPpPxzpx+vZozvE6UFNNOy7kGk\""
+										},
+										{
+											"key": "Date",
+											"value": "Sun, 04 May 2025 04:54:00 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": \"1\",\n            \"upazilla_id\": \"1\",\n            \"name\": \"Subil\",\n            \"bn_name\": \"সুবিল\"\n        },\n        {\n            \"id\": \"2\",\n            \"upazilla_id\": \"1\",\n            \"name\": \"North Gunaighor\",\n            \"bn_name\": \"উত্তর গুনাইঘর\"\n        },\n        {\n            \"id\": \"3\",\n            \"upazilla_id\": \"1\",\n            \"name\": \"South Gunaighor\",\n            \"bn_name\": \"দক্ষিণ গুনাইঘর\"\n        },\n        {\n            \"id\": \"4\",\n            \"upazilla_id\": \"1\",\n            \"name\": \"Boroshalghor\",\n            \"bn_name\": \"বড়শালঘর\"\n        },\n        {\n            \"id\": \"5\",\n            \"upazilla_id\": \"1\",\n            \"name\": \"Rajameher\",\n            \"bn_name\": \"রাজামেহার\"\n        },\n        {\n            \"id\": \"6\",\n            \"upazilla_id\": \"1\",\n            \"name\": \"Yousufpur\",\n            \"bn_name\": \"ইউসুফপুর\"\n        },\n        {\n            \"id\": \"7\",\n            \"upazilla_id\": \"1\",\n            \"name\": \"Rasulpur\",\n            \"bn_name\": \"রসুলপুর\"\n        },\n        {\n            \"id\": \"8\",\n            \"upazilla_id\": \"1\",\n            \"name\": \"Fatehabad\",\n            \"bn_name\": \"ফতেহাবাদ\"\n        },\n        {\n            \"id\": \"9\",\n            \"upazilla_id\": \"1\",\n            \"name\": \"Elahabad\",\n            \"bn_name\": \"এলাহাবাদ\"\n        },\n        {\n            \"id\": \"10\",\n            \"upazilla_id\": \"1\",\n            \"name\": \"Jafargonj\",\n            \"bn_name\": \"জাফরগঞ্জ\"\n        },\n        {\n            \"id\": \"11\",\n            \"upazilla_id\": \"1\",\n            \"name\": \"Dhampti\",\n            \"bn_name\": \"ধামতী\"\n        },\n        {\n            \"id\": \"12\",\n            \"upazilla_id\": \"1\",\n            \"name\": \"Mohanpur\",\n            \"bn_name\": \"মোহনপুর\"\n        },\n        {\n            \"id\": \"13\",\n            \"upazilla_id\": \"1\",\n            \"name\": \"Vani\",\n            \"bn_name\": \"ভানী\"\n        },\n        {\n            \"id\": \"14\",\n            \"upazilla_id\": \"1\",\n            \"name\": \"Barkamta\",\n            \"bn_name\": \"বরকামতা\"\n        },\n        {\n            \"id\": \"15\",\n            \"upazilla_id\": \"1\",\n            \"name\": \"Sultanpur\",\n            \"bn_name\": \"সুলতানপুর\"\n        }\n    ]\n}"
+								},
+								{
+									"name": "491",
+									"originalRequest": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "http://localhost:4000/api/data/location/unions?upazila_id=491",
+											"protocol": "http",
+											"host": [
+												"localhost"
+											],
+											"port": "4000",
+											"path": [
+												"api",
+												"data",
+												"location",
+												"unions"
+											],
+											"query": [
+												{
+													"key": "upazila_id",
+													"value": "491"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Access-Control-Allow-Origin",
+											"value": "http://localhost:3000"
+										},
+										{
+											"key": "Access-Control-Allow-Methods",
+											"value": "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+										},
+										{
+											"key": "Access-Control-Allow-Headers",
+											"value": "Content-Type, Authorization"
+										},
+										{
+											"key": "Access-Control-Allow-Credentials",
+											"value": "true"
+										},
+										{
+											"key": "cache-control",
+											"value": "max-age=3600, public"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "1133"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"46d-SZG4P2FaLXqCD+aFG21JIlFVIB0\""
+										},
+										{
+											"key": "Date",
+											"value": "Sun, 04 May 2025 04:54:58 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"success\": true,\n    \"data\": [\n        {\n            \"id\": \"4529\",\n            \"upazilla_id\": \"491\",\n            \"name\": \"Chollisha\",\n            \"bn_name\": \"চল্লিশা\"\n        },\n        {\n            \"id\": \"4530\",\n            \"upazilla_id\": \"491\",\n            \"name\": \"Kailati\",\n            \"bn_name\": \"কাইলাটি\"\n        },\n        {\n            \"id\": \"4531\",\n            \"upazilla_id\": \"491\",\n            \"name\": \"Dokkhin Bishiura\",\n            \"bn_name\": \"দক্ষিণ বিশিউড়া\"\n        },\n        {\n            \"id\": \"4532\",\n            \"upazilla_id\": \"491\",\n            \"name\": \"Modonpur\",\n            \"bn_name\": \"মদনপুর\"\n        },\n        {\n            \"id\": \"4533\",\n            \"upazilla_id\": \"491\",\n            \"name\": \"Amtola\",\n            \"bn_name\": \"আমতলা\"\n        },\n        {\n            \"id\": \"4534\",\n            \"upazilla_id\": \"491\",\n            \"name\": \"Lokkhiganj\",\n            \"bn_name\": \"লক্ষীগঞ্জ\"\n        },\n        {\n            \"id\": \"4535\",\n            \"upazilla_id\": \"491\",\n            \"name\": \"Singher Bangla\",\n            \"bn_name\": \"সিংহের বাংলা\"\n        },\n        {\n            \"id\": \"4536\",\n            \"upazilla_id\": \"491\",\n            \"name\": \"Thakurakona\",\n            \"bn_name\": \"ঠাকুরাকোণা\"\n        },\n        {\n            \"id\": \"4537\",\n            \"upazilla_id\": \"491\",\n            \"name\": \"Mougati\",\n            \"bn_name\": \"মৌগাতি\"\n        },\n        {\n            \"id\": \"4538\",\n            \"upazilla_id\": \"491\",\n            \"name\": \"Rouha\",\n            \"bn_name\": \"রৌহা\"\n        },\n        {\n            \"id\": \"4539\",\n            \"upazilla_id\": \"491\",\n            \"name\": \"Medni\",\n            \"bn_name\": \"মেদনী\"\n        },\n        {\n            \"id\": \"4540\",\n            \"upazilla_id\": \"491\",\n            \"name\": \"Kaliara Babragati\",\n            \"bn_name\": \"কালিয়ারা গাবরাগাতি\"\n        }\n    ]\n}"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "others",
+					"item": [
+						{
+							"name": "currency",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:4000/api/data/currency",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "4000",
+									"path": [
+										"api",
+										"data",
+										"currency"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "education",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:4000/api/data/education",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "4000",
+									"path": [
+										"api",
+										"data",
+										"education"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "marital-status",
+							"request": {
+								"method": "GET",
+								"header": []
+							},
+							"response": []
+						}
+					]
+				}
+			],
+			"description": "Data retrieval endpoints"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "authToken",
+			"value": "your-auth-token",
+			"type": "string"
+		}
+	]
+}

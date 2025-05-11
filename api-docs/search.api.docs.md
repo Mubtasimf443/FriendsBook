@@ -801,6 +801,19 @@ Authorization: Bearer <auth-token>
 }
 ```
 
+### 29. Get Recently Viewed Profiles
+Get profiles that the current user has viewed recently.
+
+**Endpoint:** `GET /users/viewed-profiles`
+
+**Query Parameters:**
+```typescript
+{
+  page: number;    // Page number for pagination
+  limit: number;   // Number of results per page
+  count: boolean;  // Whether to include total count
+}
+
 
 
 ### Common Error Responses for All Endpoints
