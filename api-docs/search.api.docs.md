@@ -887,7 +887,6 @@ Get profiles that the current user has viewed recently.
 
 
 
-### Common Error Responses for All Endpoints
 
 
 ### 31. Search by User ID
@@ -926,6 +925,124 @@ Get profiles of users with active premium membership.
 ```
 
 
+
+### 33. Get My Shortlisted Profiles
+**Endpoint:** `GET /users/my-shortlist`
+
+**Query Parameters:**
+```typescript
+{
+  page: number;    // Page number for pagination
+  limit: number;   // Number of results per page
+  count: boolean;  // Whether to include total count
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "users": [/* array of user objects */],
+    "pagination": {
+      "currentPage": 1,
+      "pageSize": 10,
+      "totalPages": 5,
+      "totalUsers": 50
+    }
+  }
+}
+```
+
+### 34. Get Who Shortlisted Me
+**Endpoint:** `GET /users/others-shortlisted-me`
+
+**Query Parameters:**
+```typescript
+{
+  page: number;    // Page number for pagination
+  limit: number;   // Number of results per page
+  count: boolean;  // Whether to include total count
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "users": [/* array of user objects */],
+    "pagination": {
+      "currentPage": 1,
+      "pageSize": 10,
+      "totalPages": 5,
+      "totalUsers": 50
+    }
+  }
+}
+```
+
+
+
+
+### 35. Get Recently Joined Users
+**Endpoint:** `GET /users/just-joined`
+
+**Query Parameters:**
+```typescript
+{
+  page: number;      // Page number for pagination
+  limit: number;     // Number of results per page
+  count: boolean;    // Whether to include total count
+  timeRange: "7" | "15" | "30";  // Time range in days, defaults to "7"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "users": [/* array of user objects */],
+    "pagination": {
+      "currentPage": 1,
+      "pageSize": 10,
+      "totalPages": 5,
+      "totalUsers": 50
+    },
+    "timeRange": "7 days"
+  }
+}
+```
+
+
+### Get Who Viewed My Profile
+**Endpoint:** `GET /users/viewed-my-profile`
+
+**Query Parameters:**
+```typescript
+{
+  page: number;    // Page number for pagination
+  limit: number;   // Number of results per page
+  count: boolean;  // Whether to include total count
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "users": [/* array of user objects */],
+    "pagination": {
+      "currentPage": 1,
+      "pageSize": 10,
+      "totalPages": 5,
+      "totalUsers": 50
+    }
+  }
+}
+```
 
 
 
@@ -966,6 +1083,13 @@ Get profiles of users with active premium membership.
   "data": null
 }
 ```
+
+
+
+
+
+
+
 
 ### Error Handler
 
