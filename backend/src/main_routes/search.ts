@@ -159,7 +159,7 @@ router.get('/users/matching/daily', async function (req: Request, res: Response)
 
         let totalCount = await User.find(baseQuery).countDocuments().maxTimeMS(5000);
 
-        let skip = Math.floor(Math.random() * (totalCount - limit));
+        let skip = Math.floor(Math.random() * ((totalCount || limit) - limit));
 
 
 
@@ -421,6 +421,7 @@ router.get('/users/online', async function (req: Request, res: Response): Promis
         });
     }
 });
+
 router.get('/users/others-viewed-my-profile', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         const userData = req.authSession.value;
@@ -467,6 +468,7 @@ router.get('/users/others-viewed-my-profile', async function (req: Request, res:
         });
     }
 });
+
 // Complete the shortlist APIs in search.ts
 router.get('/users/my-shortlist', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -553,6 +555,7 @@ router.get('/users/my-shortlist', async function (req: Request, res: Response): 
         });
     }
 });
+
 router.get('/users/others-shortlisted-me', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // Validate query parameters
@@ -638,6 +641,7 @@ router.get('/users/others-shortlisted-me', async function (req: Request, res: Re
         });
     }
 });
+
 router.get('/users/preferred-occupation', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         Array.isArray(req.query.occupations) === false && (req.query.occupations = [req.query.occupations || Occupation.DOCTOR]);
@@ -731,7 +735,6 @@ router.get('/users/preferred-occupation', async function (req: Request, res: Res
         });
     }
 });
-
 
 router.get('/users/preferred-education', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -953,6 +956,7 @@ router.get('/user', async function (req: Request, res: Response): Promise<Respon
     }
 });
 
+
 router.get('/user/:id', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         let _id = await _idValidator.parseAsync(req.params.id);
@@ -987,7 +991,6 @@ router.get('/user/:id', async function (req: Request, res: Response): Promise<Re
         });
     }
 });
-
 
 
 router.get('/users/filter', async function (req: Request, res: Response): Promise<Response | any> {
@@ -2390,14 +2393,174 @@ router.get('/users/seen-my-phobe-details', async function (req: Request, res: Re
 
 router.get('/users/suggested-for-you', async function (req: Request, res: Response): Promise<Response | any> {
     try {
+        // Validate pagination parameters using zod schema
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount } = validationResult.data;
+        const userData = req.authSession.value;
+
+        // Get current user's partner preferences and gender
+        const currentUser = await User.findById(userData.userId, 'partnerPreference gender')
+            .lean();
+
+
+        if (!currentUser) {
+            throw new Error("currentUser is null");
+
+        }
+        if (!currentUser?.partnerPreference) {
+            // If no preferences exist, create them automatically
+            const userForPrefs = await User.findById(userData.userId);
+            if (userForPrefs) {
+                userForPrefs.createPreference();
+                await userForPrefs.save();
+                currentUser.partnerPreference = userForPrefs.partnerPreference;
+            } else {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                    data: null
+                });
+            }
+        }
+
+        // Build base query including base search criteria
+        const baseQuery :any= {
+            ...getBaseSearchQuery(userData), // Use existing helper for base query
+            _id: { $ne: userData.userId }, // Exclude current user
+            'suspension.isSuspended': false,
+            // Match opposite gender
+            gender: currentUser.gender === 'male' ? 'female' : 'male'
+        };
+
+        const pref = currentUser.partnerPreference;
+
+        // Add age preferences
+        if (pref.ageRange?.min || pref.ageRange?.max) {
+            baseQuery.age = {};
+            if (pref.ageRange.min) baseQuery.age.$gte = pref.ageRange.min;
+            if (pref.ageRange.max) baseQuery.age.$lte = pref.ageRange.max;
+        }
+
+        // Add height preferences with proper validation
+        if (pref.heightRange?.min && pref.heightRange?.max) {
+            baseQuery.height = { 
+                $in: searchHeightGenerator(
+                    pref.heightRange.min,
+                    pref.heightRange.max
+                ) 
+            };
+        }
+
+        // Add religion preferences
+        if (pref.religion?.length > 0) {
+            baseQuery.religion = { $in: pref.religion };
+        }
+
+        // Add marital status preferences
+        if (pref.maritalStatus?.length > 0) {
+            baseQuery.maritalStatus = { $in: pref.maritalStatus };
+        }
+
+        // Add education preferences with null handling
+        if (pref.education?.minimumLevel) {
+            const educationLevels = Object.values(EducationLevel);
+            const minLevelIndex = educationLevels.indexOf(pref.education.minimumLevel);
+            if (minLevelIndex !== -1) {
+                const acceptableLevels = educationLevels.slice(minLevelIndex);
+                baseQuery['education.level'] = { $in: acceptableLevels };
+            }
+        }
+
+        // Add location preferences
+        if (pref.locationPreference?.preferredCountries?.length > 0) {
+            baseQuery['address.country'] = { $in: pref.locationPreference.preferredCountries };
+            
+            
+            // Add division/district preferences for Bangladesh
+            if (!!pref.locationPreference?.preferredRegions?.length && pref.locationPreference.preferredRegions?.length > 0 && 
+                pref.locationPreference.preferredCountries.includes(CountryNamesEnum.BANGLADESH)) {
+                baseQuery['address.division.id'] = { $in: pref.locationPreference.preferredRegions };
+            }
+        }
+
+        // Add occupation preferences
+        if (!!pref.profession?.acceptedOccupations?.length  && pref.profession?.acceptedOccupations?.length > 0) {
+            baseQuery.occupation = { $in: pref.profession.acceptedOccupations };
+        }
+
+        // Add income preferences with currency matching
+        if (pref.profession?.minimumAnnualIncome) {
+            baseQuery.annualIncome = { 
+                amount: { $gte: pref.profession.minimumAnnualIncome.min },
+                currency: pref.profession.minimumAnnualIncome.currency
+            };
+        }
+
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+
+        // Find matching users with pagination and proper fields
+        let users = await User.find(baseQuery, userField)
+            .sort({ 
+                'membership.currentMembership.membership_exipation_date': -1, // Premium users first
+                createdAt: -1 // Then by newest
+            })
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        // Get total count if requested
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery)
+                .maxTimeMS(10000);
+        }
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        // Cache control - short cache due to frequent updates
+        res.set('Cache-Control', 'private, max-age=60');
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination
+            },
+            message: 'SUGGESTED_USERS_FOUND'
+        });
 
     } catch (error) {
-
+        console.error('[Suggested For You API error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
     }
 });
-
-
-
 
 
 

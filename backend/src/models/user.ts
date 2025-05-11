@@ -962,12 +962,13 @@ userSchema.methods.getSuspensionHistory = function () {
     return this.suspension.suspensions;
 };
 
-userSchema.index({ gender: 1, country: 1 });
+userSchema.index({ gender: 1 });
 userSchema.index({ age: 1 });
 userSchema.index({ createdAt: -1 });
 userSchema.index({ 'education.level': 1 });
 userSchema.index({ dateOfBirth: 1 });
-userSchema.index({ 'address.country': 1, 'address.district.id': 1, 'isSuspended': 1 });
+userSchema.index({ 'address.country': 1, 'address.district.id': 1 });
+userSchema.index({"suspension.isSuspended": 1 });
 userSchema.index({ 'onlineStatus.lastActive': -1 });
 userSchema.index({ maritalStatus: 1 });
 userSchema.index({ occupation: 1 });
