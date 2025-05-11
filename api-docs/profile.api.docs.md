@@ -10,9 +10,57 @@ Retrieve user profile details.
 **Rate Limit:** 120 requests per 120 seconds
 
 **Query Parameters:**
+
 - `fields` (array, optional): Specific fields to retrieve
   - Default: First 10 basic profile fields
-  - Maximum: 10 fields per request
+  - Maximum: 37 fields per request
+
+
+
+### Available Profile Fields
+The following fields can be requested in the `fields` parameter:
+
+```typescript
+const Fields = [
+    'name',
+    'mid',
+    'email',
+    'phoneInfo',
+    'gender',
+    'age',
+    'dateOfBirth',
+    'height',
+    'weight',
+    'maritalStatus',
+    'profileCreatedBy',
+    'profileImage',
+    'coverImage',
+    'userImages',
+    'address',
+    'religion',
+    'languages',
+    'isEducated',
+    'education',
+    'occupation',
+    'annualIncome',
+    'aboutMe',
+    'familyInfo',
+    'aboutMe.interestedSports',
+    'aboutMe.interestedHobbies',
+    'aboutMe.interestedFoodTypes',
+    'aboutMe.interestedMusicTypes',
+    'aboutMe.badHabits',
+    'createdAt',
+    'onlineStatus',
+    'preferences.age',
+    'preferences.height',
+    'preferences.weight',
+    'preferences.education',
+    'preferences.location',
+    'enhancedSettings.privacy.whoCanViewProfile',
+    'enhancedSettings.privacy.whoCanContactMe'
+]
+```
 
 **Response:**
 ```json
