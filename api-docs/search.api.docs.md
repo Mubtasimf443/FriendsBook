@@ -193,6 +193,7 @@ Authorization: Bearer <auth-token>
 ### 15. Get Mutual Connections
 Get users who have accepted connection requests with current user.
 
+
 **Endpoint:** `GET /users/mutual`
 
 **Query Parameters:**
@@ -642,6 +643,165 @@ Authorization: Bearer <auth-token>
   "message": "SUGGESTED_USERS_FOUND"
 }
 ```
+
+### 26. Filter Users
+Search for users based on multiple criteria.
+
+**Endpoint:** `GET /filter-users`
+
+**Query Parameters:**
+```typescript
+{
+  // Pagination
+  page: number;
+  limit: number;
+  count: boolean;
+
+  // Basic Filters
+  religion?: "Islam" | "Christianity" | "Hinduism" | "Buddhism" | "Judaism" | /* other religions */;
+  languages?: string[]; // Array of languages
+  countries?: string[]; // Array of country names
+  division_ids?: string[]; // Required for Bangladesh
+  
+  // Education & Professional
+  isEducated?: "yes" | "no";
+  maritalStatuses?: ("never_married" | "divorced" | "widowed" | "separated" | "annulled")[];
+  occupations?: string[]; // Array of occupations
+
+  // Physical Attributes
+  minWeight?: number; // 30-200
+  maxWeight?: number; // 30-200
+  minHeight?: number; // 4-8 feet
+  maxHeight?: number; // 5-9 feet
+  
+  // Age Range
+  minAge?: number; // 18-70
+  maxAge?: number; // 18-70
+
+  // Income
+  minAnnualIncome?: number;
+  maxAnnualIncome?: number;
+  incomeCurrency?: string; // 3-letter currency code
+}
+```
+
+**Headers:**
+```
+Authorization: Bearer <auth-token>
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "Users filtered successfully",
+  "data": {
+    "users": [
+      {
+        "mid": "BD123456",
+        "name": "User Name",
+        "age": 25,
+        "height": "5 foot 8 inch",
+        "weight": 70,
+        "religion": "Islam",
+        "occupation": "Software Engineer",
+        "education": [
+          {
+            "level": "Bachelor's Degree",
+            "certificate": "BSc in Computer Science",
+            "institution": "University Name"
+          }
+        ],
+        "location": {
+          "country": "Bangladesh",
+          "division": "Dhaka",
+          "district": "Dhaka"
+        }
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 10,
+      "totalCount": 100,
+      "hasMore": true
+    }
+  }
+}
+```
+
+### 27. Search by Matrimony ID
+Find a user by their matrimony ID.
+
+**Endpoint:** `GET /user/:mid`
+
+**Path Parameters:**
+- `mid`: Matrimony ID (e.g., "BD123456")
+
+**Headers:**
+```
+Authorization: Bearer <auth-token>
+```
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "message": "User found",
+  "data": {
+    "user": {
+      "mid": "BD123456",
+      "name": "User Name",
+      "age": 25,
+      // ... other user details
+    }
+  }
+}
+```
+
+### 28. Search by Preferred Criteria
+
+#### Education-based Search
+**Endpoint:** `GET /preferred/education`
+
+**Query Parameters:**
+```typescript
+{
+  page: number;
+  limit: number;
+  count: boolean;
+  educationLevels: string[]; // Array of education levels
+}
+```
+
+
+#### Location-based Search
+**Endpoint:** `GET /preferred/location`
+
+**Query Parameters:**
+```typescript
+{
+  page: number;
+  limit: number;
+  count: boolean;
+  countries: string[];
+  division_ids?: string[]; // Required for Bangladesh
+}
+```
+
+#### Occupation-based Search
+**Endpoint:** `GET /preferred/occupation`
+
+**Query Parameters:**
+```typescript
+{
+  page: number;
+  limit: number;
+  count: boolean;
+  occupations: string[]; // Array of occupations
+}
+```
+
+
 
 ### Common Error Responses for All Endpoints
 
