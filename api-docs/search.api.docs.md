@@ -730,28 +730,20 @@ Authorization: Bearer <auth-token>
 ```
 
 ### 27. Search by Matrimony ID
-Find a user by their matrimony ID.
 
-**Endpoint:** `GET /user/:mid`
+**Endpoint:** `GET /user?mid=<matrimony-id>`
 
-**Path Parameters:**
-- `mid`: Matrimony ID (e.g., "BD123456")
+**Query Parameters:**
+- `mid`: Matrimony ID (string, required)
 
-**Headers:**
-```
-Authorization: Bearer <auth-token>
-```
-
-**Success Response (200):**
+**Success Response:**
 ```json
 {
   "success": true,
-  "message": "User found",
   "data": {
     "user": {
       "mid": "BD123456",
       "name": "User Name",
-      "age": 25,
       // ... other user details
     }
   }
@@ -761,7 +753,7 @@ Authorization: Bearer <auth-token>
 ### 28. Search by Preferred Criteria
 
 #### Education-based Search
-**Endpoint:** `GET /preferred/education`
+**Endpoint:** `GET /users/preferred-education`
 
 **Query Parameters:**
 ```typescript
@@ -775,7 +767,7 @@ Authorization: Bearer <auth-token>
 
 
 #### Location-based Search
-**Endpoint:** `GET /preferred/location`
+**Endpoint:** `GET /users/preferred-location`
 
 **Query Parameters:**
 ```typescript
@@ -789,7 +781,7 @@ Authorization: Bearer <auth-token>
 ```
 
 #### Occupation-based Search
-**Endpoint:** `GET /preferred/occupation`
+**Endpoint:** `GET /users/preferred-occupation`
 
 **Query Parameters:**
 ```typescript
@@ -814,9 +806,130 @@ Get profiles that the current user has viewed recently.
   count: boolean;  // Whether to include total count
 }
 
+```
+
+### 30. Search History Management
+
+#### Get Search History
+**Endpoint:** `GET /search-history`
+
+**Query Parameters:**
+```typescript
+{
+  page: number;    // Page number for pagination
+  limit: number;   // Number of results per page
+  count: boolean;  // Whether to include total count
+}
+```
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "searchHistory": [
+      {
+        "title": "Search Title",
+        "query": {
+          // Filter parameters used in the search
+        },
+        "savedAt": "2025-05-11T08:15:56Z",
+        "userId": "user_id"
+      }
+    ]
+  }
+}
+```
+
+#### Save Search History
+**Endpoint:** `POST /search-history`
+
+**Request Body:**
+```typescript
+{
+  title: string;      // Title for the search (3-80 chars)
+  searchQuery: {      // The search query parameters
+    // Filter parameters
+  }
+}
+```
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "history_id",
+    "title": "Search Title",
+    "createdAt": "2025-05-11T08:15:56Z"
+  },
+  "message": "Search history saved successfully"
+}
+```
+
+#### Delete Search History
+**Endpoint:** `DELETE /search-history/:id`
+
+**Path Parameters:**
+- `id`: MongoDB ObjectId of the search history entry
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "history_id",
+    "deletedAt": "2025-05-11T08:15:56Z"
+  },
+  "message": "Search history deleted successfully"
+}
+```
+
 
 
 ### Common Error Responses for All Endpoints
+
+
+### 31. Search by User ID
+**Endpoint:** `GET /user/:id`
+
+**Path Parameters:**
+- `id`: MongoDB ObjectId of the user
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "mid": "BD123456",
+      "name": "User Name",
+      // ... other user details
+    }
+  }
+}
+```
+
+
+### 32. Get Premium Users
+Get profiles of users with active premium membership.
+
+**Endpoint:** `GET /users/premium`
+
+**Query Parameters:**
+```typescript
+{
+  page: number;    // Page number for pagination
+  limit: number;   // Number of results per page
+  count: boolean;  // Whether to include total count
+}
+```
+
+
+
+
+
+
 
 **401 Unauthorized:**
 ```json
