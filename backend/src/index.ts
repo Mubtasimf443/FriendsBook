@@ -26,6 +26,7 @@ async function main() {
     await connectDB();
     app.use(cookieParser());
     app.use(ExpressJsonMidleware());
+    app.use(express.static('public'));
     app.use(cors)
     
     NODE_ENV === 'developement' && app.use(morgan('dev'));
