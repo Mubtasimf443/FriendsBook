@@ -37,7 +37,7 @@ declare global {
     }
 }
 
-let userField = 'name _id address email age isEducated education address religion languages maritalStatus occupation annualIncome enhancedSettings.blocked profileImage coverImage';
+let userField = 'mid name _id address email age isEducated education address religion languages maritalStatus occupation annualIncome enhancedSettings.blocked profileImage';
 
 
 router.get('/users/matching/location', async function (req: Request, res: Response): Promise<Response | any> {
@@ -76,6 +76,7 @@ router.get('/users/matching/location', async function (req: Request, res: Respon
             'address.district.id': { $in: nearestDistricts.map(district => district.id) },
         };
 
+        console.log(baseQuery)
 
         let users = await User.find(baseQuery, userField)
             .skip(skip)
@@ -124,9 +125,6 @@ router.get('/users/matching/location', async function (req: Request, res: Respon
         });
     }
 });
-
-
-
 
 router.get('/users/matching/daily', async function (req: Request, res: Response): Promise<Response | any> {
     try {
