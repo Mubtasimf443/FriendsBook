@@ -61,11 +61,7 @@ const Fields= [
         'createdAt',
         'onlineStatus',
   
-        'preferences.age',
-        'preferences.height',
-        'preferences.weight',
-        'preferences.education',
-        'preferences.location',
+         'partnerPreference',
   
         'enhancedSettings.privacy.whoCanViewProfile',
         'enhancedSettings.privacy.whoCanContactMe'

@@ -7,7 +7,7 @@ import { IAuthSession } from "../models/AuthSession";
 import { User } from "../models/user";
 import { _idValidator } from "../lib/schema/schemaComponents";
 import { formatDistanceToNow } from 'date-fns';
-import { array, object, z } from 'zod';
+import { array, object, z, ZodError } from 'zod';
 import queryMiddleware from "../lib/middlewares/query.middleware";
 import { userDetailsQuerySchema } from "../lib/schema/profile.schema";
 import { updateUserSchema, UpdateUserInput, updateUserEducationSchema } from '../lib/schema/updateUser.schema';
@@ -16,6 +16,7 @@ import { MembershipRequestStatus } from "../lib/types/memberdship.types";
 import { membershipRequestQuerySchema, membershipRequestSchema } from "../lib/schema/membership.schema";
 import { Asset } from "../models/asset";
 import { log } from "console";
+import { partnerPreferenceSchema } from "../lib/schema/partnerPreference.schema";
 
 const router: Router = Router();
 
@@ -307,6 +308,103 @@ router.put('/user-details/education', async function (req: Request, res: Respons
         return res.status(500).json({
             success: false,
             message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+
+router.put('/partner-preferrence',  async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        // Validate request body against schema
+        const validationResult = await partnerPreferenceSchema.safeParseAsync(req.body);
+
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid request parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        let userId = req.authSession.value.userId;
+
+        // Find user and update preferences
+        let user :any= await User.findById(userId);
+        
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+                error: "USER_NOT_FOUND",
+                data: null
+            });
+        }
+
+        // Additional validation for height range
+        if (validationResult.data.heightRange) {
+            const { min, max } = validationResult.data.heightRange;
+            const minHeight = parseInt(min.split(' ')[0]);
+            const maxHeight = parseInt(max.split(' ')[0]);
+
+            if (minHeight > maxHeight) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid height range",
+                    error: "HEIGHT_RANGE_INVALID",
+                    data: null
+                });
+            }
+        }
+
+        // Update partner preferences
+        user.partnerPreference = {
+            ...user.partnerPreference,
+            ...validationResult.data,
+            lastUpdated: new Date()
+        };
+
+        // Save the updated user
+        await user.save();
+
+        user =user.toObject();
+
+        // Remove sensitive data before sending response
+        const sanitizedPreferences = {
+            ...user.partnerPreference,
+            _id: undefined,
+            __v: undefined
+        };
+
+        // Set cache control headers
+        res.set('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+
+        return res.status(200).json({
+            success: true,
+            message: "Partner preferences updated successfully",
+            data: {
+                preferences: sanitizedPreferences,
+                lastUpdated: user.partnerPreference.lastUpdated
+            }
+        });
+
+    } catch (error) {
+        // Log the error for debugging
+        console.error('[Partner Preferences Update API Error]', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString(),
+            userId: req.authSession?.value?.userId
+        });
+
+        // Handle other errors
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: "INTERNAL_SERVER_ERROR",
             data: null
         });
     }
