@@ -3,7 +3,7 @@
 */
 
 import { Router, Request, Response, NextFunction } from "express";
-import { z } from "zod";
+import { z, ZodError } from "zod";
 import { ICity, IDistrict, IUpazila } from "../lib/types/location.types";
 import { Unions } from "../lib/data/unions";
 import { Upazilas } from "../lib/data/upazilas";
@@ -12,9 +12,10 @@ import { Divisions } from "../lib/data/divisions";
 import countryNames from "../lib/data/countryNames";
 import { countryAndCurrency } from "../lib/types/currencyCodes.enum";
 import { EducationLevel } from "../lib/types/userEducation.types";
-import { MaritalStatus } from "../lib/types/user.types";
+import { Language, MaritalStatus, Religion } from "../lib/types/user.types";
 import rateLimiter from "../config/rateRimiter";
 import getEducationCertificates from "../lib/core/getEducationCertificates";
+import { ReligiousBranch } from "../lib/types/userProfile.types";
 
 
 
@@ -152,6 +153,14 @@ router.get('/currency', async function (req: Request, res: Response): Promise<an
         data: { countryAndCurrency }
     })
 });
+router.get('/languages', async function (req: Request, res: Response): Promise<any> {
+    return res.status(200).json({
+        success: true,
+        data: {
+            levels: Object.values(Language)
+        }
+    })
+});
 
 
 router.get('/education', async function (req: Request, res: Response): Promise<any> {
@@ -162,6 +171,7 @@ router.get('/education', async function (req: Request, res: Response): Promise<a
         }
     })
 });
+
 router.get('/marital-status', async function (req: Request, res: Response): Promise<any> {
     return res.status(200).json({
         success: true,
@@ -173,17 +183,14 @@ router.get('/marital-status', async function (req: Request, res: Response): Prom
 
 router.get('/certificates', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        const educationLevelValidator = z.nativeEnum(EducationLevel, { message: "Not a Education level" });
+        const educationLevelValidator = z.nativeEnum(EducationLevel);
         const validationResult = await educationLevelValidator.safeParseAsync(req.query.education_level);
 
         if (!validationResult.success) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid education level provided",
-                errors: validationResult.error.errors.map(err => ({
-                    path: err.path.join('.'),
-                    message: err.message
-                }))
+                errors: validationResult.error
             });
         }
 
@@ -205,6 +212,56 @@ router.get('/certificates', async function (req: Request, res: Response): Promis
         });
     }
 });
+
+router.get('/religions', async function (req: Request, res: Response): Promise<any> {
+    return res.status(200).json({
+        success: true,
+        data: {
+            marital_statuses: Object.values(Religion)
+        }
+    })
+});
+
+
+router.get('/religional-branch', async function (req: Request, res: Response): Promise<any> {
+    try {
+        let regionalBranches: any = {};
+        regionalBranches[Religion.ISLAM] = Object.values(ReligiousBranch).slice(0, 4);
+        regionalBranches[Religion.HINDUISM] = Object.values(ReligiousBranch).slice(4, 9);
+        regionalBranches[Religion.BUDDHISM] = Object.values(ReligiousBranch).slice(9, 11);
+        regionalBranches[Religion.CHRISTIANITY] = Object.values(ReligiousBranch).slice(11, 13);
+        regionalBranches["OHTERS"] = Object.values(ReligiousBranch).slice(13, 15);
+
+        let schema = z.enum([Religion.ISLAM, Religion.HINDUISM, Religion.BUDDHISM, Religion.CHRISTIANITY , "OHTERS"]);
+
+        let religion = schema.parse(req.query.religion);
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                branches : regionalBranches[religion]
+            }
+        })
+    } catch (error) {
+        if (error instanceof ZodError) {
+            res.status(400).json({
+                success: false,
+                message: 'Invalid request parameters',
+                error : error , 
+                data: null
+            });
+            return;
+        }
+        console.error('[religional Branch error]', error);
+        return res.status(500).json({
+           success: false,
+           message: 'Internal server error',
+           data: null
+        });
+    }
+});
+
+
 
 
 export default router;

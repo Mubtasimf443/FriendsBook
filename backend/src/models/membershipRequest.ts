@@ -21,7 +21,6 @@ const verificationImageSchema = new Schema(
 
 const paymentInfoSchema = new Schema(
     {
-
         transactionId: {
             type: String,
             required: true,

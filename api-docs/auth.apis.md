@@ -43,29 +43,26 @@ Creates a new registration session for a user.
     "country": "Bangladesh",
     "division": {
       "id": "1",
-      "name": "Dhaka"
+ 
     },
     "district": {
       "id": "1",
-      "division_id": "1",
-      "name": "Dhaka"
+     
     },
     "upazila": {
       "id": "1",
-      "district_id": "1",
-      "name": "Uttara"
+   
     },
     "union": {
       "id": "1",
-      "upazilla_id": "1",
-      "name": "Union Name"
+  
     }
   },
   "phoneInfo": {
-    "number": "1234567890",
+    "number": "01234567890",
     "country": {
       "name": "Bangladesh",
-      "phone_code": "+880"
+      "phone_code": "+88"
     }
   },
   "languages": ["Bengali", "English"],

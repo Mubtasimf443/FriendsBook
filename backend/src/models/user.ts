@@ -941,6 +941,8 @@ userSchema.methods.createPreference = function () {
     };
     return this;
 };
+
+
 userSchema.methods.createMID = function () {
     return generateMatrimonyId(this.address.country);
 };

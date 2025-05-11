@@ -15,6 +15,7 @@ import { MembershipRequest } from "../models/membershipRequest";
 import { MembershipRequestStatus } from "../lib/types/memberdship.types";
 import { membershipRequestQuerySchema, membershipRequestSchema } from "../lib/schema/membership.schema";
 import { Asset } from "../models/asset";
+import { log } from "console";
 
 const router: Router = Router();
 
@@ -40,17 +41,18 @@ router.get('/user-details', async function (req: Request, res: Response): Promis
     try {
 
         if (typeof req.query.fields === 'string') req.query.fields = [req.query.fields];
-
-        const { fields } = await userDetailsQuerySchema.parseAsync(req.body);
-
+        log(req.query.fields)
+        const { fields } = await userDetailsQuerySchema.parseAsync(req.query);
+        console.log(fields)
         // Parse and validate user ID
-        const userId = await _idValidator.parseAsync(req.authSession.value.userId);
+      
+        const userId = req.authSession.value.userId;
 
         // Default fields if none specified
         const selectedFields = fields
 
         // Fetch user details
-        const user = await User.findById(userId).select(selectedFields).lean();
+        const user = await User.findById(userId , selectedFields).lean();
 
         if (!user) {
             res.status(404).json({
@@ -133,14 +135,12 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         if (updateData.aboutMe) updatesData['aboutMe'] = updateData.aboutMe;
         if (updateData.familyInfo) updatesData['familyInfo'] = updateData.familyInfo;
 
-        // Preferences
-        if (updateData.preferences) updatesData['preferences'] = updateData.preferences;
-
-        // firebase
-        if (updateData.preferences) updatesData['preferences'] = updateData.preferences;
-
+       
+        
         // Settings
         if (updateData.fcmToken) updatesData['fcmToken'] = updateData.fcmToken;
+        if (updateData.enhancedSettings) updatesData['enhancedSettings'] = updateData.enhancedSettings;
+
 
         // Filter out undefined values
         updatesData = Object.fromEntries(
@@ -180,7 +180,7 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         return res.status(200).json({
             success: true,
             message: 'User details updated successfully',
-            data: updatedUser
+            data: null
         });
 
     } catch (error: any) {

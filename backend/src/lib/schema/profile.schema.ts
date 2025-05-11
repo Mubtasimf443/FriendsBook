@@ -92,6 +92,8 @@ export const userDetailsQuerySchema = z.object({
         .optional()
         .default(Fields.slice(0, 10))
         .transform(arr => arr.join(' '))
-});
+})
+
+;
 
 

@@ -12,11 +12,6 @@ Get list of available countries with their names and codes.
 
 **Endpoint:** `GET /countries`
 
-**Headers:**
-```
-Authorization: Bearer <auth-token>
-```
-
 **Success Response (200):**
 ```json
 {
@@ -38,11 +33,6 @@ Authorization: Bearer <auth-token>
 Get list of districts. For Bangladesh, includes both English and Bangla names.
 
 **Endpoint:** `GET /districts`
-
-**Headers:**
-```
-Authorization: Bearer <auth-token>
-```
 
 **Query Parameters:**
 ```typescript
@@ -75,11 +65,6 @@ Get list of administrative divisions (primarily for Bangladesh).
 
 **Endpoint:** `GET /divisions`
 
-**Headers:**
-```
-Authorization: Bearer <auth-token>
-```
-
 **Success Response (200):**
 ```json
 {
@@ -100,11 +85,6 @@ Authorization: Bearer <auth-token>
 Get list of available languages.
 
 **Endpoint:** `GET /languages`
-
-**Headers:**
-```
-Authorization: Bearer <auth-token>
-```
 
 **Success Response (200):**
 ```json
@@ -128,11 +108,6 @@ Get list of available occupations.
 
 **Endpoint:** `GET /occupations`
 
-**Headers:**
-```
-Authorization: Bearer <auth-token>
-```
-
 **Success Response (200):**
 ```json
 {
@@ -153,11 +128,6 @@ Get list of available education levels.
 
 **Endpoint:** `GET /education-levels`
 
-**Headers:**
-```
-Authorization: Bearer <auth-token>
-```
-
 **Success Response (200):**
 ```json
 {
@@ -177,11 +147,6 @@ Authorization: Bearer <auth-token>
 Get list of available currency codes.
 
 **Endpoint:** `GET /currency-codes`
-
-**Headers:**
-```
-Authorization: Bearer <auth-token>
-```
 
 **Success Response (200):**
 ```json
@@ -210,11 +175,6 @@ Get list of available religions.
 
 **Endpoint:** `GET /religions`
 
-**Headers:**
-```
-Authorization: Bearer <auth-token>
-```
-
 **Success Response (200):**
 ```json
 {
@@ -226,6 +186,67 @@ Authorization: Bearer <auth-token>
       "CHRISTIANITY",
       "BUDDHISM",
       // ... other religions
+    ]
+  }
+}
+```
+
+### 9. Get Religions Branch List
+Get list of available religions.
+
+**Endpoint:** `GET /religional-branch`
+
+**Query Parameters:**
+```typescript
+{
+  religion: 'Islam' | 'Hinduism' | 'Buddhism' | 'Christianity' | 'OHTERS';  // Optional: Filter districts by division ID
+}
+```
+
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "branches": [
+     
+    ]
+  }
+}
+```
+
+### 9. Get Religions Branch List
+Get list of available religions.
+
+**Endpoint:** `GET /religional-branch`
+
+**Query Parameters:**
+```typescript
+{
+  education_level:  "Primary Education (PSC)" |
+  "Junior Secondary (JSC)"|  
+  "Secondary School Certificate (SSC)"| 
+  "Higher Secondary Certificate (HSC)"|    
+  "Diploma (Technical/Vocational)"|
+  "Bachelor's Degree"|
+  "Master's Degree"|
+  "Doctorate (PhD)"|
+  "Religious Education"|
+  "Certificate Course"|
+  "Technical/Vocational"|
+  "Other";  // Optional: Filter districts by division ID
+}
+```
+
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "certificates": [
+     
     ]
   }
 }

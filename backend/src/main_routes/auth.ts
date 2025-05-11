@@ -341,8 +341,7 @@ router.post('/login', async function (req: Request, res: Response): Promise<Resp
         }
 
         const loginData = loginValidationResult.data;
-        console.log(loginData);
-        
+      
         let existingUser: null | IUser = null;
 
         // Check for user based on login type

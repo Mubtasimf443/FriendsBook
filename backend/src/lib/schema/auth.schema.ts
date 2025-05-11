@@ -12,6 +12,8 @@ import { Unions } from "../data/unions";
 import { setHeapSnapshotNearHeapLimit } from "v8";
 import { countryNames as CountryNamesForCountryField} from '../data/countryNames'
 import { log } from "console";
+import { CertificateType } from "../types/userEducation.types";
+import getEducationCertificates from "../core/getEducationCertificates";
 
 
 const calculateAge = (dateOfBirth: Date): number => {
@@ -27,14 +29,23 @@ const CountryPhoneCodeEnum = z.enum([phoneCountryCodes[0], ...phoneCountryCodes]
 
 export const educationSchema =  z.object({
             level: z.nativeEnum(EducationLevel),
-            certificate: z.string().min(2, "Certificate name is too short").max(100),
+            certificate: z.nativeEnum(CertificateType),
             institution: z.string().min(2, "Institution name is too short").max(100),
             yearOfCompletion: z.number()
                 .min(1950, "Year must be after 1950")
                 .max(new Date().getFullYear(), "Year cannot be in the future"),
             grade: z.string().max(25).optional(),
             additionalInfo: z.string().max(100).optional()
-        })
+})
+    .refine(
+        (data) => getEducationCertificates(data.level).includes(data.certificate),
+        {
+            message: `The certificate does not belong to the education level`,
+            path: ['education.certificate', 'education.level'],
+
+        }
+    );
+        
 
 const AddressSchema = z.object({
     country: z.enum(
@@ -315,7 +326,31 @@ export const registrationUserSchema = z.object({
             message: "Selected union does not belong to the selected upazila",
             path: ["address.union.upazilla_id"]
         }
+    )
+    .refine(
+        (data) => {
+            if (data.isEducated && data.education.length === 0) return false;
+            return true;
+        },
+        {
+            message: "If User Is educated than the education details is required",
+            path: ["isEducated", 'education']
+        }
+    )
+    .refine(
+        function ({ isEducated, education }) {
+            if (!isEducated && education.length !== 0) {
+                return false;
+            }
+            return true;
+        },
+        {
+            message: 'If User is not educated Than education details is not required',
+            path: ['isEducated', 'education[0].level', 'education[0].certificate', 'education[0].yearOfCompletion']
+        }
     );
+
+
     
 // You might want to create a type from the schema
 export type RegistrationUserInput = z.infer<typeof registrationUserSchema>;

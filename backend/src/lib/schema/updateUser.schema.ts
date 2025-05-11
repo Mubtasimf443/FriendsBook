@@ -80,15 +80,15 @@ const educationPreferenceSchema = z.object({
     level: z.nativeEnum(EducationLevel)
 });
 
-const preferencesSchema = z.object({
-    isEducated: z.boolean().optional(),
-    education: z.array(educationPreferenceSchema).optional(),
-    location: z.array(z.string()).optional(),
-    weight: weightPreferenceSchema,
-    height: heightPreferenceSchema,
-    age: agePreferenceSchema,
-    lastUpdated: z.date().optional()
-}).optional();
+// const preferencesSchema = z.object({
+//     isEducated: z.boolean().optional(),
+//     education: z.array(educationPreferenceSchema).optional(),
+//     location: z.array(z.string()).optional(),
+//     weight: weightPreferenceSchema,
+//     height: heightPreferenceSchema,
+//     age: agePreferenceSchema,
+//     lastUpdated: z.date().optional()
+// }).optional();
 
 
 
@@ -210,7 +210,7 @@ export const updateUserSchema = z.object({
     familyInfo: familyInfoSchema,
 
     // Preferences & Settings
-    preferences: preferencesSchema,
+    // preferences: preferencesSchema,
 
     enhancedSettings: enhancedSettingsSchema,
 
@@ -242,10 +242,7 @@ export const updateUserEducationSchema = z.object({
             if (education.length ===0) {
                 return false;
             }
-            let {certificate ,level ,yearOfCompletion } = education[0];
-            if(!level || !certificate ||!yearOfCompletion) return false;
         }
-
         return true;
     }, 
     {
