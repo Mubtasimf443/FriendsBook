@@ -7,10 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Link, useLocation } from 'react-router';
 
-const SideBarNavLink = ({ label, icon: Icon, href, badge, description }) => {
+const SideBarNavLink = ({ label, icon, href, badge, description }) => {
+    let Icon = icon;
     const pathname = useLocation().pathname;
     const isActive = pathname === href;
-
     return (
         <Fragment>
             <TooltipProvider key={href}>

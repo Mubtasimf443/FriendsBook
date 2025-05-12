@@ -1,18 +1,20 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
+import WithErrorBoundary from '@/components/custom/withErrorBoundary';
 import Header from '@/components/layout/Header';
 import Layout from '@/components/layout/Layout';
 import React , { Fragment, useLayoutEffect } from 'react';
+import { Outlet } from 'react-router';
 
 
 const DashBoard = ({ }) => {
   return (
     <Fragment >
       <Layout >
-        <></>
+        <Outlet />
       </Layout>
     </Fragment>
   )
 };
 
-export default DashBoard;
+export default WithErrorBoundary(DashBoard);

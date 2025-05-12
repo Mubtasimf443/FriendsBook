@@ -1,7 +1,7 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 import React from 'react';
-import { Bell, User as UserIcon, Settings, LogOut, MessageSquare, Users, ChevronDown } from "lucide-react"
+import { Bell, User as UserIcon, Settings, LogOut, MessageSquare, Users, ChevronDown, HelpCircle, AlertCircle, Mail, Heart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { HeaderLinks, HeaderLinksContainer } from './HeaderLinks';
 import {
@@ -33,33 +33,29 @@ const Header = ({ user = {
           </h2>
         </div>
 
-        <HeaderSearch />
+        {/* <HeaderSearch /> */}
 
         {/* Right side - Notifications and User Profile */}
         <div className="flex items-center gap-4">
           <HeaderLinksContainer>
-            <HeaderLinks
-              href='/admin/messages'
-              Icon={MessageSquare}
-              BadgeNumber={12}
-              title='Messages'
+              <HeaderLinks
+                href='/admin/feedback'
+                Icon={MessageSquare}
+                BadgeNumber={12}
+                title='User Feedback'
             />
+            
+            {/* Contact Link */}
             <HeaderLinks
-              href='/admin/users'
-              Icon={Users}
-              BadgeNumber={5}
-              title='New Users'
-            />
-            <HeaderLinks
-              href='/admin/notifications'
-              Icon={Bell}
-              BadgeNumber={8}
-              title='Notifications'
+                href='/admin/contact'
+                Icon={Mail}
+                BadgeNumber={5}
+                title='Contact Messages'
             />
           </HeaderLinksContainer>
 
           {/* User Profile Dropdown */}
-          <DropdownMenu>
+          {/* <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-fit gap-2 px-2">
                 <Avatar className="h-8 w-8">
@@ -99,7 +95,7 @@ const Header = ({ user = {
                 <span>Log out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+          </DropdownMenu> */}
         </div>
       </div>
     </header>
