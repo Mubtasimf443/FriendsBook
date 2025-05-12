@@ -11,6 +11,7 @@ import NotFoundTab from './pages/tabs/NotFoundTab'
 import NotFound from './pages/NotFound'
 import Logout from './pages/Logout'
 import LoginPage from './pages/Login'
+import { Toaster } from '@/components/ui/sonner'
 
 const LazyDashboard = Lazy(() => import('./pages/DashBoard'))
 
@@ -58,7 +59,7 @@ function App() {
     <>
 
       <RouterProvider router={router} />
-
+      <Toaster />
 
     </>
   )
