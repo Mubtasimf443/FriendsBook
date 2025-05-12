@@ -1,6 +1,6 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-import React from 'react';
+import React, { useId } from 'react';
 import { Separator } from "@/components/ui/separator";
 import SideBarNavLink from './SideBarNavLink';
 import { 
@@ -14,7 +14,12 @@ import {
     UserPlus,
     HeartHandshake,
     Star,
+    User2Icon,
+    User,
+    UserRoundSearch,
+    UsersRound,
 } from 'lucide-react';
+import SideBarLinksSection from './SideBarLinksSection';
 
 const Sidebar = () => {
     return (
@@ -22,47 +27,54 @@ const Sidebar = () => {
             <div className="px-3 py-4 flex-1">
                 {/* Overview Section */}
                 <div className="space-y-1">
+
                     <SideBarNavLink 
                         label="Overview" 
                         href="/dashboard/overview" 
                         icon={LayoutDashboard}
                         description="Dashboard overview"
                     />
-                    <SideBarNavLink 
-                        label="Analytics" 
-                        href="/dashboard/analytics" 
-                        icon={BarChart2}
-                        badge={{
-                            text: "Live",
-                            variant: "default"
-                        }}
-                        description="Real-time statistics"
-                    />
+
                 </div>
 
                 <Separator className="my-4" />
 
                 {/* User Management Section */}
+
+                <SideBarLinksSection
+                    icon={UsersRound}
+                    title={"USER MANAGEMENT"}
+                    route={'/users'}
+                    id={useId()}
+                    routes={
+                        [
+                            {
+                                label: "All Users",
+                                href: "users/all",
+                                icon: User,
+                                description: "Manage all users"
+                            },
+                            {
+                                label: "New Users",
+                                href: "users/new",
+                                icon:UserPlus,
+                                description: "Manage new users"
+                            },
+                            {
+                                label: "Search Users",
+                                href: "users/search-by-id",
+                                icon:UserRoundSearch,
+                                description: "Search Users By Id"
+                            },
+                        ]
+                    }
+                />
+
                 <div className="space-y-1 mb-4">
                     <p className="text-xs font-semibold text-muted-foreground mb-2 px-3">
                         USER MANAGEMENT
                     </p>
-                    <SideBarNavLink 
-                        label="All Users" 
-                        href="/dashboard/users" 
-                        icon={Users}
-                        description="Manage all users"
-                    />
-                    <SideBarNavLink 
-                        label="New Users" 
-                        href="/dashboard/users/new" 
-                        icon={UserPlus}
-                        badge={{
-                            text: "12",
-                            variant: "default"
-                        }}
-                        description="Recent registrations"
-                    />
+                 
                 </div>
 
                 {/* Membership Section */}

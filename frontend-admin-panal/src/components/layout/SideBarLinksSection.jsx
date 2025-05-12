@@ -21,7 +21,7 @@ const SideBarLinksSection = ({ id, title, icon: Icon, routes, route }) => {
     const [isOpen, setIsOpen] = useState(location.pathname.includes(route));
     const navigate= useNavigate()
 
- function redirectToRoute() {
+    function redirectToRoute() {
         if (!isOpen) {
             navigate(route);
         }
@@ -43,14 +43,14 @@ const SideBarLinksSection = ({ id, title, icon: Icon, routes, route }) => {
                 <CollapsibleTrigger asChild>
                     <Button
                         variant="ghost"
-                        className="w-full justify-between font-medium text-sm"
+                        className="w-full justify-between text-xs font-semibold  mb-2 px-3"
                     >
                         <div 
                             className="flex items-center"
                             onClick={redirectToRoute}
                         >
                             <Icon className="h-4 w-4 mr-2" />
-                            <span>{title}</span>
+                            <span >{title}</span>
                         </div>
                         <ChevronDown
                             className={cn(
