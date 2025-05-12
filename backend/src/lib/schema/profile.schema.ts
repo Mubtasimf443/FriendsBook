@@ -82,11 +82,11 @@ export const userDetailsQuerySchema = z.object({
             })
         })
     )
-        .max(10, {
+        .max(MAX_FIELDS, {
             message: ERROR_MESSAGES.FIELDS.TOO_MANY(MAX_FIELDS)
         })
         .optional()
-        .default(Fields.slice(0, 10))
+        .default(Fields.slice(0, MAX_FIELDS))
         .transform(arr => arr.join(' '))
 })
 

@@ -7,7 +7,7 @@ import { IAuthSession } from "../models/AuthSession";
 import { CountryNamesEnum } from "../lib/types/country_names.enum";
 import { findNearestDistricts, getBaseSearchQuery, searchHeightGenerator } from "../controllers/search.controller";
 import { User } from "../models/user";
-import { FilterUsersQueryParams, filterUsersSchema, getUserByMIDSchema, justJoinedSchema, preferredEducationSearchSchema, preferredLocationSearchSchema, preferredOccupationSearchSchema, paginationSchema, todaysMatchSchema, searchHistorySchema } from "../lib/schema/search.schema";
+import { FilterUsersQueryParams, filterUsersSchema, getUserByMIDSchema, justJoinedSchema, preferredEducationSearchSchema, preferredLocationSearchSchema, preferredOccupationSearchSchema, paginationSchema, todaysMatchSchema, searchHistorySchema, exploreByCountrySchema, exploreByDivisionSchema } from "../lib/schema/search.schema";
 import { IProfileView, ProfileView } from "../models/ProfileView";
 import queryMiddleware from "../lib/middlewares/query.middleware";
 import { EducationLevel } from "../lib/types/userEducation.types";
@@ -21,6 +21,7 @@ import { SendMailedProfile } from "../models/SendMailedProfile";
 import { LikedProfile } from "../models/LikedProfile";
 import { RequestMobileNumberView } from "../models/RequestMobileNumberView";
 import { ConnectionRequest } from "../models/ConnectionRequest";
+import { log } from "console";
 
 const router: Router = Router();
 
@@ -37,7 +38,7 @@ declare global {
     }
 }
 
-let userField = 'mid name _id address email age isEducated education address religion languages maritalStatus occupation annualIncome enhancedSettings.blocked profileImage';
+let userField = 'mid name _id email profileImage';
 
 
 router.get('/users/matching/location', async function (req: Request, res: Response): Promise<Response | any> {
@@ -851,11 +852,13 @@ router.get('/users/preferred-location', async function (req: Request, res: Respo
             'address.country': { $in: countries }
         };
 
+
+     
         // Add division filter if country includes Bangladesh
         if (countries.includes(CountryNamesEnum.BANGLADESH) && division_ids.length > 0) {
-            baseQuery['address.division.id'] = { $in: division_ids };
+            baseQuery['address.division.id'] = { $in: division_ids.map(e => e.toString()) };
         }
-
+        console.log(baseQuery)
         // Find users
         let users = await User.find(baseQuery, userField)
             .sort({ createdAt: -1 })
@@ -907,6 +910,271 @@ router.get('/users/preferred-location', async function (req: Request, res: Respo
         });
     }
 });
+
+
+
+router.get('/users/preferred-location', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        (typeof req.query.countries === "string") && (req.query.countries = [req.query.countries]);
+        (typeof req.query.division_ids === "string") && (req.query.division_ids = [req.query.division_ids]);
+        const validationResult = preferredLocationSearchSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const {
+            page,
+            limit,
+            count: shouldCount,
+            countries,
+            division_ids
+        } = validationResult.data;
+
+        const userData = req.authSession.value;
+
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+
+        // Base query for finding users
+        const baseQuery: any = {
+             ...getBaseSearchQuery(req.authSession.value),
+            'address.country': { $in: countries }
+        };
+
+
+     
+        // Add division filter if country includes Bangladesh
+        if (countries.includes(CountryNamesEnum.BANGLADESH) && division_ids.length > 0) {
+            baseQuery['address.division.id'] = { $in: division_ids.map(e => e.toString()) };
+        }
+        console.log(baseQuery)
+        // Find users
+        let users = await User.find(baseQuery, userField)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        // Get total count if requested
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+                searchCriteria: {
+                    countries,
+                    divisions_ids: division_ids || []
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Preferred location API error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+
+
+// Explore users by country
+router.get('/users/explore/by-country', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        // Handle array conversion if single string
+        (typeof req.query.countries === "string") && (req.query.countries = [req.query.countries]);
+        
+        const validationResult = exploreByCountrySchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const {
+            page,
+            limit,
+            count: shouldCount,
+            countries
+        } = validationResult.data;
+
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+
+        // Base query for finding users
+        const baseQuery: any = {
+            // ...getBaseSearchQuery(req.authSession.value),
+            'address.country': { $in: countries }
+        };
+
+        // Find users
+        let users = await User.find(baseQuery, userField)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        // Get total count if requested
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        res.set('Cache-Control', 'public, max-age=60');
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+                searchCriteria: { countries }
+            }
+        });
+
+    } catch (error) {
+        console.error('Explore by country API error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+// Explore users by division (Bangladesh only)
+router.get('/users/explore/by-division', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        // Handle array conversion if single string
+        (typeof req.query.division_ids === "string") && (req.query.division_ids = [req.query.division_ids]);
+
+        const validationResult = exploreByDivisionSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const {
+            page,
+            limit,
+            count: shouldCount,
+            division_ids
+        } = validationResult.data;
+
+        const userData = req.authSession.value;
+
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+
+        // Base query for finding users
+        const baseQuery: any = {
+            // ...getBaseSearchQuery(req.authSession.value),
+            // 'address.country': CountryNamesEnum.BANGLADESH,
+            'address.division.id': { $in: division_ids.map(id => id.toString()) }
+        };
+
+        // Find users
+        let users = await User.find(baseQuery, userField)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean()
+            .maxTimeMS(20000);
+
+        // Get total count if requested
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        res.set('Cache-Control', 'public, max-age=60');
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+                searchCriteria: {
+                    country: CountryNamesEnum.BANGLADESH,
+                    division_ids
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Explore by division API error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
 
 
 router.get('/user', async function (req: Request, res: Response): Promise<Response | any> {

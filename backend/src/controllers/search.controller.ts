@@ -45,10 +45,10 @@ export function searchHeightGenerator(min: number, max: number): string[] {
 // Add this at the top of search.ts
 export function getBaseSearchQuery(userData: IAuthSession['value']) {
   return {
-    'suspension.isSuspended': false,
-    '_id': { $ne: userData.userId },
-    'enhancedSettings.blocked.userId': { $ne: userData.userId },
-    'gender': { $ne: userData.gender },
+    // 'suspension.isSuspended': false,
+    // '_id': { $ne: userData.userId },
+    // 'enhancedSettings.blocked.userId': { $ne: userData.userId },
+    // 'gender': { $ne: userData.gender },
     religion: userData.religion
   };
 }

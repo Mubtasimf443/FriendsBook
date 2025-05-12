@@ -70,6 +70,9 @@ export const preferredLocationSearchSchema =  paginationSchema.extend({
         }
     );
 
+
+
+
 // Add this new schema for preferred occupation search
 
 export const preferredOccupationSearchSchema =  paginationSchema.extend({
@@ -245,3 +248,16 @@ export const searchHistorySchema = z.object({
     title: z.string().max(80).min(3).trim().transform(el => el.replace('  ', ' ')),
     searchQuery : filterUsersSchema
 })
+
+
+export const exploreByCountrySchema = paginationSchema.extend({
+    countries: z.array(z.nativeEnum(CountryNamesEnum))
+        .min(1, "At least one country must be selected")
+        .max(5, "Maximum 5 countries can be selected at once"),
+});
+
+export const exploreByDivisionSchema = paginationSchema.extend({
+    division_ids: z.array(z.string())
+        .min(1, "At least one division must be selected")
+        .max(8, "Maximum 8 divisions can be selected at once")
+});
