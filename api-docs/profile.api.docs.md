@@ -10,80 +10,94 @@ This documentation covers the Profile API endpoints for user profile management 
 
 ---
 
-## Get User Details
+## User Details API Documentation
 
-Retrieve user profile details with customizable field selection.
+### Overview
+The User Details API endpoint allows retrieving specific user profile fields with enhanced validation and flexible field selection.
 
-### Request
+### Endpoint
+```
+GET /user-details
+```
 
+#### Query Parameters
+| Parameter | Type | Description | Optional | Default |
+|-----------|------|-------------|----------|---------|
+| `fields` | string[] | Array of user profile fields to retrieve | Yes | [Default Fields](#default-fields) |
+
+#### Available Fields
+- `name`
+- `mid`
+- `email`
+- `phoneInfo`
+- `gender`
+- `age`
+- `dateOfBirth`
+- `height`
+- `weight`
+- `maritalStatus`
+- `profileCreatedBy`
+- `profileImage`
+- `coverImage`
+- `userImages`
+- `address`
+- `religion`
+- `languages`
+- `isEducated`
+- `education`
+- `occupation`
+- `annualIncome`
+- `aboutMe`
+- `familyInfo`
+- `createdAt`
+- `onlineStatus`
+- `partnerPreference`
+- `enhancedSettings`
+
+#### Default Fields
+By default, if no fields are specified, the following fields will be returned:
+- `name`
+- `mid`
+- `email`
+- `phoneInfo`
+- `gender`
+- `age`
+- `dateOfBirth`
+- `height`
+- `weight`
+- `maritalStatus`
+- `profileCreatedBy`
+- `profileImage`
+- `coverImage`
+- `userImages`
+- `religion`
+- `languages`
+- `isEducated`
+- `education`
+- `occupation`
+- `annualIncome`
+
+### Request Examples
+
+### Retrieve Default Fields
 ```http
 GET /user-details
 ```
 
-### Authentication
-
-Bearer token required
-
-### Query Parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `fields` | Array[String] | No | Specific profile fields to retrieve |
-
-The `fields` parameter accepts an array of field names. If not specified, returns the first 10 basic profile fields by default. Maximum of 10 fields can be requested per request.
-
-### Available Profile Fields
-
-```
-name                                      - User's full name
-mid                                       - Matrimony ID
-email                                     - User's email address
-phoneInfo                                 - Phone number information
-gender                                    - User's gender
-age                                       - User's age
-dateOfBirth                               - Date of birth
-height                                    - Height in cm
-weight                                    - Weight in kg
-maritalStatus                             - Current marital status
-profileCreatedBy                          - Who created the profile
-profileImage                              - Main profile image
-coverImage                                - Cover/banner image
-userImages                                - Additional user photos
-address                                   - User's address information
-religion                                  - Religious affiliation
-languages                                 - Languages spoken
-isEducated                                - Education status
-education                                 - Education details
-occupation                                - Current occupation
-annualIncome                              - Annual income information
-aboutMe                                   - User's self-description
-familyInfo                                - Family information
-aboutMe.interestedSports                  - Sports interests
-aboutMe.interestedHobbies                 - Hobby interests
-aboutMe.interestedFoodTypes               - Food preferences
-aboutMe.interestedMusicTypes              - Music preferences
-aboutMe.badHabits                         - Bad habits if any
-createdAt                                 - Account creation date
-onlineStatus                              - Online status
-preferences.age                           - Partner age preference
-preferences.height                        - Partner height preference
-preferences.weight                        - Partner weight preference
-preferences.education                     - Partner education preference
-preferences.location                      - Partner location preference
-enhancedSettings.privacy.whoCanViewProfile - Privacy setting for profile visibility
-enhancedSettings.privacy.whoCanContactMe   - Privacy setting for contact permissions
+### Retrieve Specific Fields
+```http
+GET /user-details?fields=name&fields=email&fields=age
 ```
 
-### Response
+## Response
 
-#### Success Response (200 OK)
-
+### Successful Response
 ```json
 {
   "success": true,
   "data": {
     "userDetails": {
-      // Requested user profile fields
+      // Selected user details
     }
   },
   "error": null,
@@ -91,21 +105,21 @@ enhancedSettings.privacy.whoCanContactMe   - Privacy setting for contact permiss
 }
 ```
 
-#### Error Responses
+### Error Responses
 
-**400 Bad Request**
+#### Invalid Fields
 ```json
 {
   "success": false,
   "message": "Invalid request parameters",
   "error": [
-    // Validation errors
+    // Zod validation error details
   ],
   "data": null
 }
 ```
 
-**404 Not Found**
+#### User Not Found
 ```json
 {
   "success": false,
@@ -114,7 +128,7 @@ enhancedSettings.privacy.whoCanContactMe   - Privacy setting for contact permiss
 }
 ```
 
-**500 Internal Server Error**
+#### Internal Server Error
 ```json
 {
   "success": false,
@@ -124,8 +138,25 @@ enhancedSettings.privacy.whoCanContactMe   - Privacy setting for contact permiss
 }
 ```
 
----
+## Validation Rules
+- Maximum of 22 fields can be requested per query
+- Fields must be valid from the predefined list
+- Invalid fields will result in a 400 Bad Request error
 
+## Authentication
+- Requires user authentication
+- Uses `authSession` to retrieve the current user's ID
+
+## Potential Error Messages
+- **Invalid Field**: "Invalid field requested: '{field}'. Please refer to the API documentation for valid fields"
+- **Too Many Fields**: "Too many fields requested. Maximum 22 fields allowed per request"
+- **Access Restricted**: "Access to requested fields is restricted by privacy settings"
+- **Premium Required**: "This field requires a premium subscription"
+
+## Notes
+- The API uses Zod for robust input validation
+- All field selections are case-sensitive
+- Unexpected or unauthorized field requests will be rejected
 ## Update User Details
 
 Update various user profile information.

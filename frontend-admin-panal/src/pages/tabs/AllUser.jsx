@@ -1,7 +1,8 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 import Pagination from '@/components/custom/Pagination';
-import { UserCard, UserGrid } from '@/components/custom/Users';
+import { EmtyUsers, UserCard, UserGrid } from '@/components/custom/Users';
+import { Plus, RefreshCcw, Users } from 'lucide-react';
 import React, { Fragment, useState } from 'react';
 
 const AllUser = ({ }) => {
@@ -15,6 +16,30 @@ const AllUser = ({ }) => {
             status: "active",
             isPremium: true,
         },
+        //   {
+        //     id: 1,
+        //     name: "John Doe",
+        //     email: "john@example.com",
+        //     avatar: "https://ui-avatars.com/api/?name=John+Doe",
+        //     status: "active",
+        //     isPremium: true,
+        // },
+        //   {
+        //     id: 1,
+        //     name: "John Doe",
+        //     email: "john@example.com",
+        //     avatar: "https://ui-avatars.com/api/?name=John+Doe",
+        //     status: "active",
+        //     isPremium: true,
+        // },
+        //   {
+        //     id: 1,
+        //     name: "John Doe",
+        //     email: "john@example.com",
+        //     avatar: "https://ui-avatars.com/api/?name=John+Doe",
+        //     status: "active",
+        //     isPremium: true,
+        // },
     ];
 
     return (
@@ -38,9 +63,11 @@ const AllUser = ({ }) => {
 
             {/* User Grid */}
             <UserGrid>
-                {users.map((user, index) => (
+                {users.length !== 0 && users.map((user, index) => (
                     <UserCard key={index} user={user} />
                 ))}
+
+                {users.length === 0 && <EmtyUsers />}
             </UserGrid>
 
             <div className="w-full flex flex-row justify-center items-center gap-4 my-6">

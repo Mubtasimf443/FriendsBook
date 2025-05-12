@@ -57,7 +57,7 @@ function App() {
                 Component: AllUser
               },
               {
-                path: 'search',
+                path: 'search-by-id',
                 Component: SearchUser
               }
             ]
