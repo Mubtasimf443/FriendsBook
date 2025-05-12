@@ -7,9 +7,9 @@ import { EducationLevel } from "../types/userEducation.types";
 const ERROR_MESSAGES = {
     FIELDS: {
         INVALID_TYPE: "Fields must be an array of valid profile field names",
-        TOO_MANY: (max: number) => 
+        TOO_MANY: (max: number) =>
             `Too many fields requested. Maximum ${max} fields allowed per request`,
-        INVALID_FIELD: (field: string) => 
+        INVALID_FIELD: (field: string) =>
             `Invalid field requested: '${field}'. Please refer to the API documentation for valid fields`,
         RESTRICTED: (field: string) =>
             `Access to field '${field}' is restricted. Please check your permissions`,
@@ -23,53 +23,64 @@ const ERROR_MESSAGES = {
 } as const;
 
 // Field groups for better organization and validation
-const Fields= [
-        'name',
-        'mid',
-        'email',
-        'phoneInfo',
-        'gender',
-        'age',
-        'dateOfBirth',
-        'height',
-        'weight',
-        'maritalStatus',
-        'profileCreatedBy',
-        'profileImage',
-        'coverImage',
-        'userImages',
-    
-        'address',
-  
-        'religion',
-        'languages',
-  
-        'isEducated',
-        'education',
-        'occupation',
-        'annualIncome',
-  
-        'aboutMe',
-        'familyInfo',
-  
-        'aboutMe.interestedSports',
-        'aboutMe.interestedHobbies',
-        'aboutMe.interestedFoodTypes',
-        'aboutMe.interestedMusicTypes',
-        'aboutMe.badHabits',
-
-        'createdAt',
-        'onlineStatus',
-  
-         'partnerPreference',
-  
-        'enhancedSettings.privacy.whoCanViewProfile',
-        'enhancedSettings.privacy.whoCanContactMe'
+const Fields = [
+    'name',
+    'mid',
+    'email',
+    'phoneInfo',
+    'gender',
+    'age',
+    'dateOfBirth',
+    'height',
+    'weight',
+    'maritalStatus',
+    'profileCreatedBy',
+    'profileImage',
+    'coverImage',
+    'userImages',
+    'address',
+    'religion',
+    'languages',
+    'isEducated',
+    'education',
+    'occupation',
+    'annualIncome',
+    'aboutMe',
+    'familyInfo',
+    'createdAt',
+    'onlineStatus',
+    'partnerPreference',
+    'enhancedSettings',
 ] as const;
 
-// Flatten all fields for validation
+// Type for valid fields
+type ValidField = typeof Fields[number];
 
-const MAX_FIELDS = Fields.length-1;
+const MAX_FIELDS = Fields.length;
+
+// Default fields with proper typing
+const defaultFields: ValidField[] = [
+    'name',
+    'mid',
+    'email',
+    'phoneInfo',
+    'gender',
+    'age',
+    'dateOfBirth',
+    'height',
+    'weight',
+    'maritalStatus',
+    'profileCreatedBy',
+    'profileImage',
+    'coverImage',
+    'userImages',
+    'religion',
+    'languages',
+    'isEducated',
+    'education',
+    'occupation',
+    'annualIncome',
+];
 
 // Schema with enhanced validation and error messages
 export const userDetailsQuerySchema = z.object({
@@ -86,10 +97,6 @@ export const userDetailsQuerySchema = z.object({
             message: ERROR_MESSAGES.FIELDS.TOO_MANY(MAX_FIELDS)
         })
         .optional()
-        .default(Fields.slice(0, MAX_FIELDS))
+        .default(defaultFields)
         .transform(arr => arr.join(' '))
-})
-
-;
-
-
+});

@@ -15,13 +15,16 @@ import { IUser, Occupation } from "../lib/types/user.types";
 import { ShortList } from "../models/ShortListedProfiles";
 import { SearchHistory } from "../models/SearchHistory";
 import { _idValidator } from "../lib/schema/schemaComponents";
-import { z } from "zod";
+import { z, ZodError } from "zod";
 import { SmsSendedProfile } from "../models/SmsSendedProfile";
 import { SendMailedProfile } from "../models/SendMailedProfile";
 import { LikedProfile } from "../models/LikedProfile";
 import { RequestMobileNumberView } from "../models/RequestMobileNumberView";
 import { ConnectionRequest } from "../models/ConnectionRequest";
 import { log } from "console";
+import { UserRecord } from "firebase-admin/lib/auth/user-record";
+import { randomDataFromArray } from "../lib/core/randomInt";
+import { calculateDistance, countryCoordinates, getCountriesNearby } from "../lib/data/countryWithLatLong";
 
 const router: Router = Router();
 
@@ -72,7 +75,7 @@ router.get('/users/matching/location', async function (req: Request, res: Respon
         const skip = (page - 1) * limit;
 
         const baseQuery = {
-             ...getBaseSearchQuery(userData), 
+            ...getBaseSearchQuery(userData),
             'address.country': CountryNamesEnum.BANGLADESH,
             'address.district.id': { $in: nearestDistricts.map(district => district.id) },
         };
@@ -284,12 +287,12 @@ router.get('/users/not-viewed', async function (req: Request, res: Response): Pr
             viewerId: userData.userId
         });
         const baseQuery: any = {
-               ...getBaseSearchQuery(req.authSession.value),
+            ...getBaseSearchQuery(req.authSession.value),
             'address.country': userData.address.country,
             _id: {
-                $nin: [...viewedProfileIds , userData.userId ] 
+                $nin: [...viewedProfileIds, userData.userId]
             },
-            
+
         };
 
         // Calculate pagination
@@ -366,7 +369,7 @@ router.get('/users/online', async function (req: Request, res: Response): Promis
         // Base query for finding online users
         const baseQuery = {
             'address.country': userData.address.country,
-          
+
             'onlineStatus.isOnline': true,
             ...getBaseSearchQuery(req.authSession.value),
         };
@@ -672,7 +675,7 @@ router.get('/users/preferred-occupation', async function (req: Request, res: Res
 
         // Construct base query with occupation filter
         const baseQuery = {
-             ...getBaseSearchQuery(req.authSession.value),
+            ...getBaseSearchQuery(req.authSession.value),
             occupation: { $in: occupations }
         };
 
@@ -764,7 +767,7 @@ router.get('/users/preferred-education', async function (req: Request, res: Resp
 
         // Base query for finding users
         const baseQuery = {
-              ...getBaseSearchQuery(req.authSession.value),
+            ...getBaseSearchQuery(req.authSession.value),
             isEducated: true,
             "education.level": { $in: educationLevels }
         };
@@ -848,12 +851,12 @@ router.get('/users/preferred-location', async function (req: Request, res: Respo
 
         // Base query for finding users
         const baseQuery: any = {
-             ...getBaseSearchQuery(req.authSession.value),
+            ...getBaseSearchQuery(req.authSession.value),
             'address.country': { $in: countries }
         };
 
 
-     
+
         // Add division filter if country includes Bangladesh
         if (countries.includes(CountryNamesEnum.BANGLADESH) && division_ids.length > 0) {
             baseQuery['address.division.id'] = { $in: division_ids.map(e => e.toString()) };
@@ -942,12 +945,12 @@ router.get('/users/preferred-location', async function (req: Request, res: Respo
 
         // Base query for finding users
         const baseQuery: any = {
-             ...getBaseSearchQuery(req.authSession.value),
+            ...getBaseSearchQuery(req.authSession.value),
             'address.country': { $in: countries }
         };
 
 
-     
+
         // Add division filter if country includes Bangladesh
         if (countries.includes(CountryNamesEnum.BANGLADESH) && division_ids.length > 0) {
             baseQuery['address.division.id'] = { $in: division_ids.map(e => e.toString()) };
@@ -1008,174 +1011,499 @@ router.get('/users/preferred-location', async function (req: Request, res: Respo
 
 
 // Explore users by country
-router.get('/users/explore/by-country', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        // Handle array conversion if single string
-        (typeof req.query.countries === "string") && (req.query.countries = [req.query.countries]);
-        
-        const validationResult = exploreByCountrySchema.safeParse(req.query);
-        if (!validationResult.success) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid query parameters",
-                error: validationResult.error.errors,
-                data: null
+// router.get('/users/explore/by-country', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         // Handle array conversion if single string
+//         (typeof req.query.countries === "string") && (req.query.countries = [req.query.countries]);
+
+//         const validationResult = exploreByCountrySchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+
+//         const {
+//             page,
+//             limit,
+//             count: shouldCount,
+//             countries
+//         } = validationResult.data;
+
+//         // Calculate pagination
+//         const skip = (page - 1) * limit;
+
+//         // Base query for finding users
+//         const baseQuery: any = {
+//             // ...getBaseSearchQuery(req.authSession.value),
+//             'address.country': { $in: countries }
+//         };
+
+//         // Find users
+//         let users = await User.find(baseQuery, userField)
+//             .sort({ createdAt: -1 })
+//             .skip(skip)
+//             .limit(limit)
+//             .lean()
+//             .maxTimeMS(20000);
+
+//         // Get total count if requested
+//         let totalCount: number | undefined = undefined;
+//         if (shouldCount === 'yes') {
+//             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+//         }
+
+//         // Prepare pagination info
+//         let pagination: object = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+
+//         if (totalCount !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(totalCount / limit),
+//                 totalUsers: totalCount
+//             };
+//         }
+
+//         res.set('Cache-Control', 'public, max-age=60');
+
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 users,
+//                 pagination,
+//                 searchCriteria: { countries }
+//             }
+//         });
+
+//     } catch (error) {
+//         console.error('Explore by country API error:', error);
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+
+// // Explore users by division (Bangladesh only)
+// router.get('/users/explore/by-division', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         // Handle array conversion if single string
+//         (typeof req.query.division_ids === "string") && (req.query.division_ids = [req.query.division_ids]);
+
+//         const validationResult = exploreByDivisionSchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+
+//         const {
+//             page,
+//             limit,
+//             count: shouldCount,
+//             division_ids
+//         } = validationResult.data;
+
+//         const userData = req.authSession.value;
+
+//         // Calculate pagination
+//         const skip = (page - 1) * limit;
+
+//         // Base query for finding users
+//         const baseQuery: any = {
+//             // ...getBaseSearchQuery(req.authSession.value),
+//             // 'address.country': CountryNamesEnum.BANGLADESH,
+//             'address.division.id': { $in: division_ids.map(id => id.toString()) }
+//         };
+
+//         // Find users
+//         let users = await User.find(baseQuery, userField)
+//             .sort({ createdAt: -1 })
+//             .skip(skip)
+//             .limit(limit)
+//             .lean()
+//             .maxTimeMS(20000);
+
+//         // Get total count if requested
+//         let totalCount: number | undefined = undefined;
+//         if (shouldCount === 'yes') {
+//             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+//         }
+
+//         // Prepare pagination info
+//         let pagination: object = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+
+//         if (totalCount !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(totalCount / limit),
+//                 totalUsers: totalCount
+//             };
+//         }
+
+//         res.set('Cache-Control', 'public, max-age=60');
+
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 users,
+//                 pagination,
+//                 searchCriteria: {
+//                     country: CountryNamesEnum.BANGLADESH,
+//                     division_ids
+//                 }
+//             }
+//         });
+
+//     } catch (error) {
+//         console.error('Explore by division API error:', error);
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+
+
+router.get('/users/explore/country',
+    async function (req: Request, res: Response): Promise<any> {
+        try {
+            const getOnlineUsersSchema = z.object({
+                country: z.string().optional(),
+                page: z.string().regex(/^\d+$/).transform(Number).pipe(
+                    z.number().min(1).max(100)
+                ).optional().default("1"),
+                limit: z.string().regex(/^\d+$/).transform(Number).pipe(
+                    z.number().min(1).max(50)
+                ).optional().default("20"),
             });
-        }
-
-        const {
-            page,
-            limit,
-            count: shouldCount,
-            countries
-        } = validationResult.data;
-
-        // Calculate pagination
-        const skip = (page - 1) * limit;
-
-        // Base query for finding users
-        const baseQuery: any = {
-            // ...getBaseSearchQuery(req.authSession.value),
-            'address.country': { $in: countries }
-        };
-
-        // Find users
-        let users = await User.find(baseQuery, userField)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .lean()
-            .maxTimeMS(20000);
-
-        // Get total count if requested
-        let totalCount: number | undefined = undefined;
-        if (shouldCount === 'yes') {
-            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
-        }
-
-        // Prepare pagination info
-        let pagination: object = {
-            currentPage: page,
-            pageSize: limit,
-        };
-
-        if (totalCount !== undefined) {
-            pagination = {
-                ...pagination,
-                totalPages: Math.ceil(totalCount / limit),
-                totalUsers: totalCount
-            };
-        }
-
-        res.set('Cache-Control', 'public, max-age=60');
-
-        return res.status(200).json({
-            success: true,
-            data: {
-                users,
-                pagination,
-                searchCriteria: { countries }
+            // Validate query parameters
+            const validation = getOnlineUsersSchema.safeParse(req.query);
+            if (!validation.success) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid query parameters",
+                    errors: validation.error.errors,
+                    data: null
+                });
             }
-        });
 
-    } catch (error) {
-        console.error('Explore by country API error:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
+            const { country, page, limit } = validation.data;
+            const skip = (page - 1) * limit;
+            const userData = req.authSession.value;
 
-// Explore users by division (Bangladesh only)
-router.get('/users/explore/by-division', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        // Handle array conversion if single string
-        (typeof req.query.division_ids === "string") && (req.query.division_ids = [req.query.division_ids]);
-
-        const validationResult = exploreByDivisionSchema.safeParse(req.query);
-        if (!validationResult.success) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid query parameters",
-                error: validationResult.error.errors,
-                data: null
-            });
-        }
-
-        const {
-            page,
-            limit,
-            count: shouldCount,
-            division_ids
-        } = validationResult.data;
-
-        const userData = req.authSession.value;
-
-        // Calculate pagination
-        const skip = (page - 1) * limit;
-
-        // Base query for finding users
-        const baseQuery: any = {
-            // ...getBaseSearchQuery(req.authSession.value),
-            // 'address.country': CountryNamesEnum.BANGLADESH,
-            'address.division.id': { $in: division_ids.map(id => id.toString()) }
-        };
-
-        // Find users
-        let users = await User.find(baseQuery, userField)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .lean()
-            .maxTimeMS(20000);
-
-        // Get total count if requested
-        let totalCount: number | undefined = undefined;
-        if (shouldCount === 'yes') {
-            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
-        }
-
-        // Prepare pagination info
-        let pagination: object = {
-            currentPage: page,
-            pageSize: limit,
-        };
-
-        if (totalCount !== undefined) {
-            pagination = {
-                ...pagination,
-                totalPages: Math.ceil(totalCount / limit),
-                totalUsers: totalCount
+            // Base query using your existing helper
+            const baseQuery: any = {
+                'suspension.isSuspended': false,
             };
-        }
 
-        res.set('Cache-Control', 'public, max-age=60');
+            // Handle country filtering
+            if (country && country.toLowerCase() !== 'any') {
+                baseQuery['address.country'] = country;
+            }
 
-        return res.status(200).json({
-            success: true,
-            data: {
-                users,
-                pagination,
-                searchCriteria: {
-                    country: CountryNamesEnum.BANGLADESH,
-                    division_ids
+            // Get list of all unique countries where users have signed up
+            let userCountries: any[] = [];
+            if (!country || country.toLowerCase() === 'any') {
+                userCountries = await User.distinct('address.country', {
+                    'suspension.isSuspended': false
+                });
+            }
+
+            // Fetch users with sorting by online status
+            const aggregationPipeline: any = [
+                { $match: baseQuery },
+                {
+                    $addFields: {
+                        onlineSortOrder: {
+                            $cond: [
+                                "$onlineStatus.isOnline",
+                                0,  // Online users first
+                                1   // Offline users second
+                            ]
+                        }
+                    }
+                },
+                {
+                    $sort: {
+                        onlineSortOrder: 1,
+                        "onlineStatus.lastActive": -1
+                    }
+                },
+                { $skip: skip },
+                { $limit: limit },
+                {
+                    $project: {
+                        mid: 1,
+                        name: 1,
+                        email: 1,
+                        profileImage: 1,
+                        onlineStatus: 1,
+                        address: 1
+                    }
                 }
+            ];
+
+            const [users, totalCount] = await Promise.all([
+                User.aggregate(aggregationPipeline),
+                User.countDocuments(baseQuery)
+            ]);
+
+            // Prepare response data
+            const responseData: any = {
+                success: true,
+                data: {
+                    users,
+                    pagination: {
+                        currentPage: page,
+                        pageSize: limit,
+                        totalPages: Math.ceil(totalCount / limit),
+                        totalUsers: totalCount
+                    }
+                }
+            };
+
+            // Add countries list if 'any' was requested
+            if (!country || country.toLowerCase() === 'any') {
+                responseData.data.countries = userCountries;
+            } else {
+                responseData.data.country = country;
             }
-        });
 
-    } catch (error) {
-        console.error('Explore by division API error:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
+            // Set cache control headers
+            res.set('Cache-Control', 'public, max-age=30'); // Cache for 30 seconds since this is real-time data
+
+            return res.status(200).json(responseData);
+
+        } catch (error) {
+            console.error('[Online Users API Error]:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
+            });
+        }
     }
-});
+)
+router.get('/users/explore/country/near-by-me',
+    async function (req: Request, res: Response): Promise<any> {
+        try {
+            const getOnlineUsersSchema = z.object({
+                country: z.string().optional(),
+                nearMe: z.enum(['true', 'false']).optional().default('false'),
+                maxDistance: z.string()
+                    .regex(/^\d+$/)
+                    .transform(Number)
+                    .pipe(z.number().min(100).max(5000))
+                    .optional()
+                    .default('2000'),
+                page: z.string()
+                    .regex(/^\d+$/)
+                    .transform(Number)
+                    .pipe(z.number().min(1).max(100))
+                    .optional()
+                    .default('1'),
+                limit: z.string()
+                    .regex(/^\d+$/)
+                    .transform(Number)
+                    .pipe(z.number().min(1).max(50))
+                    .optional()
+                    .default('20'),
+            });
 
+            // Validate query parameters
+            const validation = getOnlineUsersSchema.safeParse(req.query);
+            if (!validation.success) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid query parameters",
+                    errors: validation.error.errors,
+                    data: null
+                });
+            }
 
+            const { country, nearMe, maxDistance, page, limit } = validation.data;
+            const skip = (page - 1) * limit;
+            const userData = req.authSession.value;
+
+            // Base query using your existing helper
+            const baseQuery :any= {
+                'suspension.isSuspended': false,
+            };
+
+            // Get user's country coordinates
+            const userCountry = countryCoordinates.find(
+                c => c.name === userData.address.country
+            );
+
+            if (nearMe === 'true' && !userCountry) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Cannot determine user's location for nearby search",
+                    data: null
+                });
+            }
+
+            // Handle country filtering and nearby search
+            if (nearMe === 'true' && userCountry) {
+                const nearbyCountries = getCountriesNearby(
+                    userCountry.latitude,
+                    userCountry.longitude,
+                    maxDistance
+                );
+                baseQuery['address.country'] = { $in: nearbyCountries };
+            } else if (country && country.toLowerCase() !== 'any') {
+                baseQuery['address.country'] = country;
+            }
+
+            // Aggregation pipeline for sorting and distance calculation
+            const aggregationPipeline: any[] = [
+                { $match: baseQuery }
+            ];
+
+            // Add distance calculation if doing nearby search
+            if (nearMe === 'true' && userCountry) {
+                aggregationPipeline.push({
+                    $addFields: {
+                        distance: {
+                            $function: {
+                                body: function (userLat: number, userLon: number, countryName: string) {
+                                    const countryCoord = countryCoordinates.find(
+                                        c => c.name === countryName
+                                    );
+                                    if (!countryCoord) return Number.MAX_SAFE_INTEGER;
+
+                                    return calculateDistance(
+                                        userLat,
+                                        userLon,
+                                        countryCoord.latitude,
+                                        countryCoord.longitude
+                                    );
+                                },
+                                args: [userCountry.latitude, userCountry.longitude, "$address.country"],
+                                lang: "js"
+                            }
+                        },
+                        onlineSortOrder: {
+                            $cond: [
+                                "$onlineStatus.isOnline",
+                                0,
+                                1
+                            ]
+                        }
+                    }
+                });
+
+                // Sort by online status first, then by distance
+                aggregationPipeline.push({
+                    $sort: {
+                        onlineSortOrder: 1,
+                        distance: 1,
+                        "onlineStatus.lastActive": -1
+                    }
+                });
+            } else {
+                // Regular sorting without distance
+                aggregationPipeline.push(
+                    {
+                        $addFields: {
+                            onlineSortOrder: {
+                                $cond: [
+                                    "$onlineStatus.isOnline",
+                                    0,
+                                    1
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        $sort: {
+                            onlineSortOrder: 1,
+                            "onlineStatus.lastActive": -1
+                        }
+                    }
+                );
+            }
+
+            // Add pagination
+            aggregationPipeline.push(
+                { $skip: skip },
+                { $limit: limit },
+                {
+                    $project: {
+                        mid: 1,
+                        name: 1,
+                        email: 1,
+                        profileImage: 1,
+                        onlineStatus: 1,
+                        address: 1,
+                        distance: nearMe === 'true' ? 1 : 0
+                    }
+                }
+            );
+
+            // Execute aggregation
+            const [users, totalCount] = await Promise.all([
+                User.aggregate(aggregationPipeline),
+                User.countDocuments(baseQuery)
+            ]);
+
+            // Prepare response data
+            const responseData: any = {
+                success: true,
+                data: {
+                    users,
+                    pagination: {
+                        currentPage: page,
+                        pageSize: limit,
+                        totalPages: Math.ceil(totalCount / limit),
+                        totalUsers: totalCount
+                    }
+                }
+            };
+
+            // Add country/distance information
+            if (nearMe === 'true') {
+                responseData.data.searchType = 'nearby';
+                responseData.data.maxDistance = maxDistance;
+                responseData.data.userCountry = userCountry?.name;
+            } else if (!country || country.toLowerCase() === 'any') {
+                responseData.data.countries = await User.distinct('address.country', {
+                    'suspension.isSuspended': false
+                });
+            } else {
+                responseData.data.country = country;
+            }
+
+            // Set cache control headers
+            res.set('Cache-Control', 'public, max-age=30');
+
+            return res.status(200).json(responseData);
+
+        } catch (error) {
+            console.error('[Online Users API Error]:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
+            });
+        }
+    }
+)
 
 router.get('/user', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -1227,7 +1555,7 @@ router.get('/user', async function (req: Request, res: Response): Promise<Respon
 router.get('/user/:id', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         let _id = await _idValidator.parseAsync(req.params.id);
-        
+
         const user = await User.findById(
             _id,
             userField
@@ -1616,7 +1944,7 @@ router.get('/users/premium', async function (req: Request, res: Response): Promi
         const { page, limit, count: shouldCount } = validationResult.data;
 
         const baseQuery = {
-              ...getBaseSearchQuery(req.authSession.value),
+            ...getBaseSearchQuery(req.authSession.value),
             'membership.currentMembership.requestId': { $exists: true },
             'membership.currentMembership.membership_exipation_date': { $exists: true }
         };
@@ -1808,7 +2136,7 @@ router.get('/users/suggested-for-you', async function (req: Request, res: Respon
         }
 
         // Build base query including base search criteria
-        const baseQuery :any= {
+        const baseQuery: any = {
             ...getBaseSearchQuery(userData), // Use existing helper for base query
             _id: { $ne: userData.userId }, // Exclude current user
             'suspension.isSuspended': false,
@@ -1827,11 +2155,11 @@ router.get('/users/suggested-for-you', async function (req: Request, res: Respon
 
         // Add height preferences with proper validation
         if (pref.heightRange?.min && pref.heightRange?.max) {
-            baseQuery.height = { 
+            baseQuery.height = {
                 $in: searchHeightGenerator(
                     pref.heightRange.min,
                     pref.heightRange.max
-                ) 
+                )
             };
         }
 
@@ -1858,23 +2186,23 @@ router.get('/users/suggested-for-you', async function (req: Request, res: Respon
         // Add location preferences
         if (pref.locationPreference?.preferredCountries?.length > 0) {
             baseQuery['address.country'] = { $in: pref.locationPreference.preferredCountries };
-            
-            
+
+
             // Add division/district preferences for Bangladesh
-            if (!!pref.locationPreference?.preferredRegions?.length && pref.locationPreference.preferredRegions?.length > 0 && 
+            if (!!pref.locationPreference?.preferredRegions?.length && pref.locationPreference.preferredRegions?.length > 0 &&
                 pref.locationPreference.preferredCountries.includes(CountryNamesEnum.BANGLADESH)) {
                 baseQuery['address.division.id'] = { $in: pref.locationPreference.preferredRegions };
             }
         }
 
         // Add occupation preferences
-        if (!!pref.profession?.acceptedOccupations?.length  && pref.profession?.acceptedOccupations?.length > 0) {
+        if (!!pref.profession?.acceptedOccupations?.length && pref.profession?.acceptedOccupations?.length > 0) {
             baseQuery.occupation = { $in: pref.profession.acceptedOccupations };
         }
 
         // Add income preferences with currency matching
         if (pref.profession?.minimumAnnualIncome) {
-            baseQuery.annualIncome = { 
+            baseQuery.annualIncome = {
                 amount: { $gte: pref.profession.minimumAnnualIncome.min },
                 currency: pref.profession.minimumAnnualIncome.currency
             };
@@ -1885,7 +2213,7 @@ router.get('/users/suggested-for-you', async function (req: Request, res: Respon
 
         // Find matching users with pagination and proper fields
         let users = await User.find(baseQuery, userField)
-            .sort({ 
+            .sort({
                 'membership.currentMembership.membership_exipation_date': -1, // Premium users first
                 createdAt: -1 // Then by newest
             })
@@ -2162,13 +2490,13 @@ router.get('/users/viewed-my-profile', async function (req: Request, res: Respon
             viewedId: userData.userId
         });
         const baseQuery: any = {
-               ...getBaseSearchQuery(req.authSession.value),
+            ...getBaseSearchQuery(req.authSession.value),
             'address.country': userData.address.country,
             _id: {
                 $ne: userData.userId,  // Exclude current user
                 $in: viewedProfileIds // Exclude viewed profiles
             },
-           
+
         };
 
         // Calculate pagination

@@ -2,7 +2,7 @@
 
 import express, { Router, Request, Response } from "express";
 import TemporarySession, { TemporarySessionNames } from "../models/temporarySession";
-import { registrationUserSchema, LoginEnum, LoginSchema ,tempSessionValidation  , VerifyOtpSchema, ResetPasswordSchema, VerifyForgotPasswordOtpSchema } from "../lib/schema/auth.schema";
+import { registrationUserSchema, LoginEnum, LoginSchema, tempSessionValidation, VerifyOtpSchema, ResetPasswordSchema, VerifyForgotPasswordOtpSchema, authSessionValidation } from "../lib/schema/auth.schema";
 import { comparePasswords, GenerateOtp, giveAuthSessionId, generateSalt, hashPassword, giveAuthSession, giveAuthSessionValue } from "../controllers/auth.controller";
 import crypto from 'crypto';
 import { User } from "../models/user";
@@ -10,11 +10,12 @@ import { authEmails } from "../lib/mails/auth.emails";
 import AuthSession, { IAuthSession } from "../models/AuthSession";
 import rateLimiter from "../config/rateRimiter";
 import { IUser } from "../lib/types/user.types";
-import { emailValidatior } from "../lib/schema/schemaComponents";
+import { _idValidator, emailValidatior } from "../lib/schema/schemaComponents";
 import { AuthenticatedRequest, validateUser } from "../lib/middlewares/auth.middleware";
 import { NODE_ENV } from "../config/env";
 import { CountryNamesEnum } from "../lib/types/country_names.enum";
 import generateMatrimonyId from "../lib/core/mid-geneator";
+import { z, ZodError } from "zod";
 
 const router: Router = express.Router();
 declare global {
@@ -32,7 +33,7 @@ router.use(rateLimiter(600 * 100, 100));
 
 router.post("/create-registration-session", async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        const validationResult =await registrationUserSchema.safeParseAsync(req.body);
+        const validationResult = await registrationUserSchema.safeParseAsync(req.body);
 
         if (!validationResult.success) {
             return res.status(400).json({
@@ -62,7 +63,7 @@ router.post("/create-registration-session", async function (req: Request, res: R
             name: TemporarySessionNames.REGISTRATION_SESSION,
             key: sessionKey,
             value: JSON.stringify({
-                hasOtpRequest : 10, // this is the limit of requesting otp 
+                hasOtpRequest: 10, // this is the limit of requesting otp 
                 ...userData
             })
         });
@@ -90,8 +91,8 @@ router.post("/create-registration-session", async function (req: Request, res: R
 router.post("/request-registration-otp", async function (req: Request, res: Response): Promise<Response | any> {
     try {
 
-        let validationResult =await tempSessionValidation.safeParseAsync(req.body.sessionKey)
-        
+        let validationResult = await tempSessionValidation.safeParseAsync(req.body.sessionKey)
+
         if (!validationResult.success) {
             return res.status(400).json({
                 success: false,
@@ -101,7 +102,7 @@ router.post("/request-registration-otp", async function (req: Request, res: Resp
             });
         }
 
-        let sessionKey =validationResult.data;
+        let sessionKey = validationResult.data;
 
         if (!sessionKey) {
             return res.status(400).json({
@@ -139,8 +140,8 @@ router.post("/request-registration-otp", async function (req: Request, res: Resp
             otp,
             otpExpiry: Date.now() + 70 * 1000 // OTP valid for 1 minutes 25 seconds
         });
-        
-        switch (userData.hasOtpRequest  < 1) {
+
+        switch (userData.hasOtpRequest < 1) {
             case true:
                 await session.deleteOne()
                 break;
@@ -149,7 +150,7 @@ router.post("/request-registration-otp", async function (req: Request, res: Resp
                 await session.save();
                 break;
         }
-       
+
 
         // Send OTP via email
 
@@ -162,8 +163,8 @@ router.post("/request-registration-otp", async function (req: Request, res: Resp
                 data: null
             });
         }
-        
-      
+
+
 
         return res.status(200).json({
             success: true,
@@ -184,8 +185,8 @@ router.post("/request-registration-otp", async function (req: Request, res: Resp
 // Verify registration OTP endpoint
 router.post("/verify-registration-otp", async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        let validationResult =await VerifyOtpSchema.safeParseAsync(req.body);
-        
+        let validationResult = await VerifyOtpSchema.safeParseAsync(req.body);
+
         if (!validationResult.success) {
             return res.status(400).json({
                 success: false,
@@ -256,7 +257,7 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
 
         // Save user data to the database
         const newUser = new User({
-            mid : generateMatrimonyId(sessionData.address.country),
+            mid: generateMatrimonyId(sessionData.address.country),
             profileCreatedBy: sessionData.profileCreatedBy,
             name: sessionData.name,
             gender: sessionData.gender,
@@ -271,23 +272,23 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
             languages: sessionData.languages,
             religion: sessionData.religion,
             password: {
-                hashed: passwordHash, 
+                hashed: passwordHash,
                 salt: passwordSalt
             },
             createdAt: new Date(),
-            age: sessionData.age ,
+            age: sessionData.age,
             enhancedSettings: {
                 blocked: [],
                 privacy: {},
                 notifications: {}
             }
         });
-        
+
         newUser.createPreference();
-       
+
 
         await newUser.save();
-       
+
         // Send registration success email
         authEmails.registrationSuccessEmail(newUser.email)
             .catch(error => console.error('registration Success Email sending Error'));
@@ -326,6 +327,91 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
     }
 });
 
+router.post('/is-registration-successfull', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        let schema = z.object({
+            userId: z.optional(_idValidator),
+            authToken: z.optional(authSessionValidation)
+        })
+            .refine(data => {
+                return !!data.userId || !!data.authToken
+            },
+                {
+                    message: "User Id or User Auth session is required",
+                    path: ['userId', 'authToken']
+                });
+        let { userId, authToken } = schema.parse(req.body);
+        let user;
+        if (userId) {
+            user = await User.findById(userId);
+            if (!user) {
+                res.status(400).json({
+                    success: false,
+                    message: 'No User is registered with this data ',
+                    data: null
+                });
+                return;
+            }
+
+            res.status(200).json({
+                success: true,
+                data: {
+                    name: user.name,
+                    _id: user._id
+                },
+                error: null,
+                message: 'User is registered'
+            })
+            return;
+        }
+        if (authToken) {
+            let session = await AuthSession.findOne({ key: authToken });
+            if (session) {
+                let userId = session?.value.userId;
+                user = await User.findById(userId);
+            }
+            if (!user) {
+                res.status(400).json({
+                    success: false,
+                    message: 'No User is registered with this data ',
+                    data: null
+                });
+                return;
+            }
+
+            res.status(200).json({
+                success: true,
+                data: {
+                    name: user.name,
+                    _id: user._id
+                },
+                error: null,
+                message: 'User is registered'
+            })
+            return;
+        }
+
+    } catch (error) {
+        console.error('[is-registration-successful api error]', error);
+
+        if (error instanceof ZodError) {
+            res.status(400).json({
+                success: false,
+                message: 'Invalid request parameters',
+                error: error.errors,
+                data: null
+            });
+            return;
+        }
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+})
+
+
 router.post('/login', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // Validate the request body using Zod schema
@@ -336,12 +422,12 @@ router.post('/login', async function (req: Request, res: Response): Promise<Resp
                 success: false,
                 message: "Invalid input data. Please check your email, phone, or password format.",
                 data: null,
-                error : loginValidationResult.error
+                error: loginValidationResult.error
             });
         }
 
         const loginData = loginValidationResult.data;
-      
+
         let existingUser: null | IUser = null;
 
         // Check for user based on login type
@@ -396,7 +482,7 @@ router.post('/login', async function (req: Request, res: Response): Promise<Resp
             value: {
                 email: existingUser.email,
                 userId: existingUser._id,
-                authToken : authToken
+                authToken: authToken
             }
         });
 
@@ -410,22 +496,22 @@ router.post('/login', async function (req: Request, res: Response): Promise<Resp
     }
 });
 
-router.post('/reset-password' , async function (req: Request, res: Response): Promise<Response | any> {
+router.post('/reset-password', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        let validationResult =await ResetPasswordSchema.safeParseAsync(req.body);
+        let validationResult = await ResetPasswordSchema.safeParseAsync(req.body);
 
         if (!validationResult.success) {
             return res.status(400).json({
                 success: false,
-                message:validationResult.error.errors[0].message,
+                message: validationResult.error.errors[0].message,
                 data: null,
-                error : validationResult.error
+                error: validationResult.error
             });
         }
 
-        let {userId  , password , newPassword } = validationResult.data;
+        let { userId, password, newPassword } = validationResult.data;
 
-        let existingUser =await User.findById(userId);
+        let existingUser = await User.findById(userId);
 
         if (!existingUser) {
             return res.status(401).json({
@@ -436,7 +522,7 @@ router.post('/reset-password' , async function (req: Request, res: Response): Pr
         }
 
         const isPasswordEqual = await comparePasswords({
-            password:password,
+            password: password,
             hashedPassword: existingUser.password.hashed,
             salt: existingUser.password.salt
         });
@@ -451,17 +537,17 @@ router.post('/reset-password' , async function (req: Request, res: Response): Pr
         }
 
         let newPasswordSalt = generateSalt();
-        let newPasswordHash = await hashPassword(newPassword , newPasswordSalt);
-      
-        existingUser.password.salt =newPasswordSalt;
-        existingUser.password.hashed =newPasswordHash;
+        let newPasswordHash = await hashPassword(newPassword, newPasswordSalt);
+
+        existingUser.password.salt = newPasswordSalt;
+        existingUser.password.hashed = newPasswordHash;
 
         await existingUser.save();
 
         return res.status(200).json({
-            success : true ,
-            message : "Password reset successfull",
-            data : null
+            success: true,
+            message: "Password reset successfull",
+            data: null
         })
 
 
@@ -479,7 +565,7 @@ router.post('/reset-password' , async function (req: Request, res: Response): Pr
 router.post("/create-forget-password-session", async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // Validate email
-        const validationResult = await emailValidatior.safeParseAsync(req.body.email || "" );
+        const validationResult = await emailValidatior.safeParseAsync(req.body.email || "");
 
         if (!validationResult.success) {
             return res.status(400).json({
@@ -490,7 +576,7 @@ router.post("/create-forget-password-session", async function (req: Request, res
             });
         }
 
-        const  email  = validationResult.data;
+        const email = validationResult.data;
 
         // Check if user exists
         const existingUser = await User.findOne({ email });
@@ -537,7 +623,7 @@ router.post("/create-forget-password-session", async function (req: Request, res
 router.post("/request-forget-password-otp", async function (req: Request, res: Response): Promise<Response | any> {
     try {
         let validationResult = await tempSessionValidation.safeParseAsync(req.body.sessionKey);
-        
+
         if (!validationResult.success) {
             return res.status(400).json({
                 success: false,
@@ -550,7 +636,7 @@ router.post("/request-forget-password-otp", async function (req: Request, res: R
         let sessionKey = validationResult.data;
 
         // Find the session
-        const session = await TemporarySession.findOne({ })
+        const session = await TemporarySession.findOne({})
             .where('key').equals(sessionKey)
             .where('name').equals(TemporarySessionNames.FORGET_PASSWORD_SESSION);
 
@@ -616,7 +702,7 @@ router.post("/request-forget-password-otp", async function (req: Request, res: R
 router.post("/verify-forget-password-otp", async function (req: Request, res: Response): Promise<Response | any> {
     try {
         let validationResult = await VerifyForgotPasswordOtpSchema.safeParseAsync(req.body);
-        
+
         if (!validationResult.success) {
             return res.status(400).json({
                 success: false,
@@ -629,7 +715,7 @@ router.post("/verify-forget-password-otp", async function (req: Request, res: Re
         const { sessionKey, otp, newPassword } = validationResult.data;
 
         // Find the session
-        const session = await TemporarySession.findOne({ })
+        const session = await TemporarySession.findOne({})
             .where('key').equals(sessionKey)
             .where('name').equals(TemporarySessionNames.FORGET_PASSWORD_SESSION);
 
@@ -687,7 +773,7 @@ router.post("/verify-forget-password-otp", async function (req: Request, res: Re
         // Delete the session
         await session.deleteOne();
 
-       
+
         return res.status(200).json({
             success: true,
             message: "Password reset successful",
@@ -706,15 +792,15 @@ router.post("/verify-forget-password-otp", async function (req: Request, res: Re
 
 
 // Verify forget password OTP and reset password
-router.post("/log-out", validateUser,async function (req: Request , res: Response): Promise<Response | any> {
+router.post("/log-out", validateUser, async function (req: Request, res: Response): Promise<Response | any> {
     try {
         await req.authSession?.deleteOne();
         res.status(200).json({
-            success : true ,
-            message : "Logout completed successfully",
-            data : null
+            success: true,
+            message: "Logout completed successfully",
+            data: null
         })
-        return ;
+        return;
     } catch (error) {
         console.error("Log out error:", error);
         return res.status(500).json({
