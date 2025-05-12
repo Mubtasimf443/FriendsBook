@@ -15,12 +15,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import HeaderSearch from './HeaderSearch';
+import { NavLink } from 'react-router';
 
-const Header = ({ user = {
-  name: "Admin",
-  role: "Super Admin",
-  image: "/avatars/admin-avatar.png"
-}}) => {
+const Header = ({ user = { name: "Admin", role: "Super Admin", image: "/avatars/admin-avatar.png" } }) => {
+  
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between px-4">
@@ -39,23 +37,23 @@ const Header = ({ user = {
         <div className="flex items-center gap-4">
           <HeaderLinksContainer>
               <HeaderLinks
-                href='/admin/feedback'
+                href='/dashboard/feedback'
                 Icon={MessageSquare}
-                BadgeNumber={12}
+                // BadgeNumber={12}
                 title='User Feedback'
             />
             
             {/* Contact Link */}
             <HeaderLinks
-                href='/admin/contact'
+                href='/dashboard/contact'
                 Icon={Mail}
-                BadgeNumber={5}
+                // BadgeNumber={0}
                 title='Contact Messages'
             />
           </HeaderLinksContainer>
 
           {/* User Profile Dropdown */}
-          {/* <DropdownMenu>
+          <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-fit gap-2 px-2">
                 <Avatar className="h-8 w-8">
@@ -78,24 +76,15 @@ const Header = ({ user = {
                   </p>
                 </div>
               </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem>
-                  <UserIcon className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
+             
+         
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-red-600">
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
+                <NavLink to={'/loggout'}>Log out</NavLink>
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu> */}
+          </DropdownMenu>
         </div>
       </div>
     </header>

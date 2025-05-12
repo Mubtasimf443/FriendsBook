@@ -2,154 +2,149 @@
 
 import React, { useId } from 'react';
 import { Separator } from "@/components/ui/separator";
-import SideBarNavLink from './SideBarNavLink';
-import { 
-    LayoutDashboard, 
-    Users, 
+import {
+    LayoutDashboard,
+
     UserCheck,
     MessageSquare,
     Mail,
     LogOut,
-    BarChart2,
+
     UserPlus,
     HeartHandshake,
     Star,
-    User2Icon,
     User,
     UserRoundSearch,
     UsersRound,
+    LayoutDashboardIcon,
+    ChartBarIcon,
+    StarIcon,
+
+    MessageCircleIcon,
+    InboxIcon,
+
 } from 'lucide-react';
 import SideBarLinksSection from './SideBarLinksSection';
+import SideBarNavLink from './SideBarNavLink';
 
 const Sidebar = () => {
     return (
         <div className="flex flex-col bg-white border-r w-64 h-dvh overflow-y-scroll scroll-smooth no-scrollbar">
             <div className="px-3 py-4 flex-1">
                 {/* Overview Section */}
-                <div className="space-y-1">
 
-                    <SideBarNavLink 
-                        label="Overview" 
-                        href="/dashboard/overview" 
-                        icon={LayoutDashboard}
-                        description="Dashboard overview"
-                    />
 
-                </div>
+                <SideBarNavLink
+                    icon={LayoutDashboard}
+                    label={"Dashboard overview"}
+                    href={"/dashboard/overview"}
+                    description={"Dashboard overview"}
+                />
 
                 <Separator className="my-4" />
 
                 {/* User Management Section */}
-
                 <SideBarLinksSection
                     icon={UsersRound}
-                    title={"USER MANAGEMENT"}
-                    route={'/users'}
+                    title="USER MANAGEMENT"
+                    route="/dashboard/users/all"
                     id={useId()}
-                    routes={
-                        [
-                            {
-                                label: "All Users",
-                                href: "users/all",
-                                icon: User,
-                                description: "Manage all users"
-                            },
-                            {
-                                label: "New Users",
-                                href: "users/new",
-                                icon:UserPlus,
-                                description: "Manage new users"
-                            },
-                            {
-                                label: "Search Users",
-                                href: "users/search-by-id",
-                                icon:UserRoundSearch,
-                                description: "Search Users By Id"
-                            },
-                        ]
-                    }
+                    routes={[
+                        {
+                            label: "All Users",
+                            href: "/dashboard/users/all",
+                            icon: User,
+                            description: "Manage all users"
+                        },
+
+                        {
+                            label: "Search Users",
+                            href: "/dashboard/users/search-by-id",
+                            icon: UserRoundSearch,
+                            description: "Search Users By Id"
+                        }
+                    ]}
                 />
 
-                <div className="space-y-1 mb-4">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2 px-3">
-                        USER MANAGEMENT
-                    </p>
-                 
-                </div>
-
                 {/* Membership Section */}
-                <div className="space-y-1 mb-4">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2 px-3">
-                        MEMBERSHIP
-                    </p>
-                    <SideBarNavLink 
-                        label="Membership Requests" 
-                        href="/dashboard/membership" 
-                        icon={UserCheck}
-                        badge={{
-                            text: "5",
-                            variant: "destructive"
-                        }}
-                        description="Pending requests"
-                    />
-                    <SideBarNavLink 
-                        label="Premium Members" 
-                        href="/dashboard/membership/premium" 
-                        icon={Star}
-                        description="Premium users"
-                    />
-                </div>
+                <SideBarLinksSection
+                    icon={StarIcon}
+                    title="MEMBERSHIP"
+                    route="/dashboard/membership"
+                    id={useId()}
+                    routes={[
+                        {
+                            label: "Membership Requests",
+                            href: "/dashboard/membership",
+                            icon: UserCheck,
+                            badge: {
+                                text: "5",
+                                variant: "destructive"
+                            },
+                            description: "Pending requests"
+                        },
+                        {
+                            label: "Premium Members",
+                            href: "/dashboard/membership/premium",
+                            icon: Star,
+                            description: "Premium users"
+                        }
+                    ]}
+                />
 
                 {/* Feedback Section */}
-                <div className="space-y-1 mb-4">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2 px-3">
-                        FEEDBACK
-                    </p>
-                    <SideBarNavLink 
-                        label="User Feedback" 
-                        href="/dashboard/feedback" 
-                        icon={MessageSquare}
-                        badge={{
-                            text: "New",
-                            variant: "default"
-                        }}
-                        description="User reviews and reports"
-                    />
-                </div>
+                <SideBarLinksSection
+                    icon={MessageCircleIcon}
+                    title="FEEDBACK"
+                    route="/dashboard/feedback"
+                    id={useId()}
+                    routes={[
+                        {
+                            label: "User Feedback",
+                            href: "/dashboard/feedback",
+                            icon: MessageSquare,
+                            badge: {
+                                text: "New",
+                                variant: "default"
+                            },
+                            description: "User reviews and reports"
+                        }
+                    ]}
+                />
 
                 {/* Contact Section */}
-                <div className="space-y-1 mb-4">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2 px-3">
-                        CONTACT
-                    </p>
-                    <SideBarNavLink 
-                        label="Messages" 
-                        href="/dashboard/contact" 
-                        icon={Mail}
-                        badge={{
-                            text: "3",
-                            variant: "destructive"
-                        }}
-                        description="User messages"
-                    />
-                    <SideBarNavLink 
-                        label="Support" 
-                        href="/dashboard/contact/support" 
-                        icon={HeartHandshake}
-                        description="Help and support"
-                    />
-                </div>
+                <SideBarLinksSection
+                    icon={InboxIcon}
+                    title="CONTACT"
+                    route="/dashboard/contact"
+                    id={useId()}
+                    routes={[
+                        {
+                            label: "All Contacts",
+                            href: "/dashboard/contact",
+                            icon: Mail,
+                            badge: {
+                                text: "3",
+                                variant: "destructive"
+                            },
+                            description: "User messages"
+                        },
+
+                    ]}
+                />
 
                 <Separator className="my-4" />
 
-                {/* Logout */}
-                <SideBarNavLink 
-                    label="Logout" 
-                    href="/loggout" 
+                {/* Logout Section */}
+              
+
+                 <SideBarNavLink
                     icon={LogOut}
-                    description="Sign out of admin panel"
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                    label={"Logout"}
+                    href={"/loggout"}
+                    description={"Sign out of admin panel"}
                 />
+
             </div>
         </div>
     );
