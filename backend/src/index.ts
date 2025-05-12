@@ -16,21 +16,25 @@ import AuthSession from './models/AuthSession';
 import { User } from './models/user';
 
 
-const port : number = Number(PORT ?? 4000) 
+
+
+
 async function main() {
 
     // Variables
     const app: express.Application = express();
+    const port: number = Number(PORT ?? 4000) 
+    const http = require('http')(app);
+    const io = require('socket.io')(http);
 
+    
     // Environmemt
     await connectDB();
     app.use(cookieParser());
     app.use(ExpressJsonMidleware());
     app.use(express.static('public'));
     app.use(cors)
-    
     NODE_ENV === 'developement' && app.use(morgan('dev'));
-
     
 
 
@@ -41,11 +45,12 @@ async function main() {
     app.use('/api/profile' , profileRouter);
     app.use('/api/data' , dataRouter);
     app.use('/api/cron-jobs' , cronJobsRouter);
+   
 
 
-
-    app.listen(port, () => {
-        console.log(`Server is Fire at http://localhost:${port}`);
-    });
+    
+    
+    console.log(`Server is Fire at http://localhost:${port}`);
+    
 }
 main();
