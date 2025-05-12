@@ -3,10 +3,11 @@
 import { IDistrict } from '../lib/types/location.types';
 import { Districts } from '../lib/data/districts';
 import { IAuthSession } from '../models/AuthSession';
+import countryFlagsEmoji from '../lib/data/CountryAndFlags';
 
 
 // Haversine formula
-function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+export function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const toRad = (value: number): number => (value * Math.PI) / 180;
   const R = 6371; // Radius of the Earth in km
   const dLat = toRad(lat2 - lat1);
@@ -45,10 +46,19 @@ export function searchHeightGenerator(min: number, max: number): string[] {
 // Add this at the top of search.ts
 export function getBaseSearchQuery(userData: IAuthSession['value']) {
   return {
-    // 'suspension.isSuspended': false,
-    // '_id': { $ne: userData.userId },
-    // 'enhancedSettings.blocked.userId': { $ne: userData.userId },
+    'suspension.isSuspended': false,
+    '_id': { $ne: userData.userId },
+    'enhancedSettings.blocked.userId': { $ne: userData.userId },
     // 'gender': { $ne: userData.gender },
-    religion: userData.religion
+    // religion: userData.religion
   };
+}
+
+
+export function getUserWithCountryFlagsEmoji(UserList:any[]) {
+  UserList = UserList.map(element => { 
+   element['flagEmoji'] = countryFlagsEmoji.find(country => country.name === element.address.country )?.flag;
+   return element;
+  });
+  return UserList;
 }
