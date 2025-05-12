@@ -1,8 +1,13 @@
 import React from 'react';
 import { Home, ArrowLeft, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { NavLink, useNavigate ,} from 'react-router';
 
 const NotFound = () => {
+    const navigate = useNavigate();
+    const goBack = () => {
+        navigate(-1); // This will take us back one step in the history
+    };
     return (
         <div className="min-h-screen bg-gradient-to-b from-background to-background/50 flex items-center justify-center p-4">
             <div className="max-w-md mx-auto text-center">
@@ -30,18 +35,23 @@ const NotFound = () => {
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                     <Button
+                    onClick={goBack}
                         variant="outline"
                         className="w-full sm:w-auto flex items-center gap-2 hover:bg-primary/5"
                     >
                         <ArrowLeft className="h-4 w-4" />
                         Go Back
                     </Button>
+
+                    <Button 
                     
-                    <Button
                         className="w-full sm:w-auto flex items-center gap-2 bg-primary hover:bg-primary/90"
                     >
-                        <Home className="h-4 w-4" />
-                        Dashboard
+                        <NavLink to={'/dashboard'} className={'h-full w-full flex flex-row gap-x-1 items-center justify-center'}>
+                            <Home className="h-4 w-4" />
+                            Dashboard
+                        </NavLink>
+
                     </Button>
 
                     <Button
@@ -58,7 +68,7 @@ const NotFound = () => {
                     {/* Animated Circles */}
                     <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary/5 rounded-full blur-3xl animate-pulse" />
                     <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-primary/10 rounded-full blur-2xl animate-pulse delay-300" />
-                    
+
                     {/* Grid Pattern */}
                     <div className="absolute inset-0 bg-grid-primary/5 [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)]" />
                 </div>

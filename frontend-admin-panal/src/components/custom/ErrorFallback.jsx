@@ -7,7 +7,7 @@ function ErrorFallback({ error, errorInfo, onReset }) {
     const navigate = useNavigate();
 
     const handleHomeClick = () => {
-        navigate('/admin/dashboard');
+        navigate('/dashboard');
         onReset();
     };
 

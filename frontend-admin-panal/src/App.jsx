@@ -12,6 +12,9 @@ import NotFound from './pages/NotFound'
 import Logout from './pages/Logout'
 import LoginPage from './pages/Login'
 import { Toaster } from '@/components/ui/sonner'
+import UserManagement from './pages/tabs/UserManagement'
+import AllUser from './pages/tabs/AllUser'
+import SearchUser from './pages/tabs/SearchUser'
 
 const LazyDashboard = Lazy(() => import('./pages/DashBoard'))
 
@@ -35,15 +38,36 @@ function App() {
         element: <Suspense fallback={<DashboardLoader />}>  <LazyDashboard />    </Suspense>,
         children: [
           {
+
+            path: '',
+            Component: Overview
+          },
+          {
+
             path: 'overview',
             Component: Overview
+          },
+          {
+
+            path: 'users',
+            Component: UserManagement,
+            children: [
+              {
+                path: 'all',
+                Component: AllUser
+              },
+              {
+                path: 'search',
+                Component: SearchUser
+              }
+            ]
           },
           {
             path: '*',
             Component: NotFoundTab
           }
         ],
-   
+
       },
       {
         path: "*",
