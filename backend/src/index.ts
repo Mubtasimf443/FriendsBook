@@ -12,9 +12,9 @@ import dataRouter from './main_routes/data';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import { cors } from './config/cors';
-import AuthSession from './models/AuthSession';
-import { User } from './models/user';
-
+import { createServer } from 'node:http';
+import {Server} from 'socket.io'
+import { SocketService } from './main_routes/socket.Service';
 
 
 
@@ -24,8 +24,17 @@ async function main() {
     // Variables
     const app: express.Application = express();
     const port: number = Number(PORT ?? 4000) 
-    const http = require('http')(app);
-    const io = require('socket.io')(http);
+    const server= createServer(app) ;
+    const io = new Server(server, {
+        cors: {
+            origin: '*',
+            methods: ['POST', 'GET', 'DELETE', 'PUT']
+        }
+    })
+
+    const socketService = new SocketService(io);
+
+
 
     
     // Environmemt

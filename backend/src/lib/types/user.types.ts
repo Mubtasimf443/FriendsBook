@@ -7,6 +7,8 @@ import { CountryNamesEnum } from './country_names.enum';
 import { IAboutMe  , IFamilyInfo , IEnhancedUserSettings } from './userProfile.types';
 import { IPartnerPreference } from './partnerPreference';
 
+
+
 export enum ProfileCreatedBy {
     SELF = 'self',
     PARENT = 'parent',
@@ -15,7 +17,7 @@ export enum ProfileCreatedBy {
     FRIEND = 'friend'
 }
 
-interface IUserImage {
+export interface IUserImage {
     url : String ,
     id : String 
 }
@@ -242,7 +244,7 @@ interface IPhone {
     number: string;  
 }
 
-interface IPassword {
+export interface IPassword {
     hashed : string ,
     salt : string
 }

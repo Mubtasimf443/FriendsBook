@@ -113,6 +113,7 @@ const AuthSessionValue = {
     userId: {
         type: mongoose.SchemaTypes.ObjectId,
         required: true,
+        ref : "User"
     },
     address: {
         type: {
