@@ -16,6 +16,7 @@ import { NODE_ENV } from "../config/env";
 import { CountryNamesEnum } from "../lib/types/country_names.enum";
 import generateMatrimonyId from "../lib/core/mid-geneator";
 import { z, ZodError } from "zod";
+import { listenerCount } from "stream";
 
 const router: Router = express.Router();
 declare global {
@@ -47,11 +48,19 @@ router.post("/create-registration-session", async function (req: Request, res: R
         const userData = validationResult.data;
 
 
-        const existingUser = await User.findOne({ email: userData.email });
+        let existingUser = await User.findOne({ email: userData.email });
         if (existingUser) {
             return res.status(400).json({
                 success: false,
                 message: "Email is already registered",
+                data: null
+            });
+        }
+        existingUser = await User.findOne({ "phoneInfo.number": userData.phoneInfo.number , "phoneInfo.country.phone_code" : userData.phoneInfo.country.phone_code });
+        if (existingUser) {
+            return res.status(400).json({
+                success: false,
+                message: "Phone number is already registered for the " +  userData.phoneInfo.country.name + " user's",
                 data: null
             });
         }
@@ -242,7 +251,7 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
         }
 
         // Check if email is already registered
-        const existingUser = await User.findOne({ email: sessionData.email });
+        let  existingUser = await User.findOne({ email: sessionData.email });
 
         if (existingUser) {
             return res.status(400).json({
@@ -251,6 +260,17 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
                 data: null
             });
         }
+
+
+        existingUser = await User.findOne({ "phoneInfo.number": sessionData.phoneInfo.number , "phoneInfo.country.phone_code" : sessionData.phoneInfo.country.phone_code });
+        if (existingUser) {
+            return res.status(400).json({
+                success: false,
+                message: "Phone number is already registered for the " +  sessionData.phoneInfo.country.name + " user's",
+                data: null
+            });
+        }
+
 
         let passwordSalt = generateSalt();
         let passwordHash = await hashPassword(sessionData.password, passwordSalt)

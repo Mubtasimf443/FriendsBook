@@ -24,12 +24,12 @@ async function main() {
     // Variables
     const app: express.Application = express();
     const port: number = Number(PORT ?? 4000) 
-    const server= createServer(app) ;
+    const server= createServer(app).listen(port) ;
     const io = new Server(server, {
-        cors: {
-            origin: '*',
-            methods: ['POST', 'GET', 'DELETE', 'PUT']
-        }
+        // cors: {
+        //     origin: '*',
+        //     methods: ['POST', 'GET', 'DELETE', 'PUT']
+        // }
     })
 
     const socketService = new SocketService(io);
@@ -58,8 +58,8 @@ async function main() {
 
 
     
-    
-    console.log(`Server is Fire at http://localhost:${port}`);
-    
+    // app.listen(port ,() =>   )
+   
+    console.log(`Server is Fire at http://localhost:${port}`)
 }
 main();
