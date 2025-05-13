@@ -3,7 +3,7 @@
 import express, { Router, Request, Response } from "express";
 import TemporarySession, { TemporarySessionNames } from "../models/temporarySession";
 import { registrationUserSchema, LoginEnum, LoginSchema, tempSessionValidation, VerifyOtpSchema, ResetPasswordSchema, VerifyForgotPasswordOtpSchema, authSessionValidation } from "../lib/schema/auth.schema";
-import { comparePasswords, GenerateOtp, giveAuthSessionId, generateSalt, hashPassword, giveAuthSession, giveAuthSessionValue } from "../controllers/auth.controller";
+import { comparePasswords, GenerateOtp, giveAuthSessionId, generateSalt, hashPassword, giveAuthSession, giveAuthSessionValue, validatePhoneNumber } from "../controllers/auth.controller";
 import crypto from 'crypto';
 import { User } from "../models/user";
 import { authEmails } from "../lib/mails/auth.emails";
@@ -414,56 +414,91 @@ router.post('/is-registration-successfull', async function (req: Request, res: R
 
 router.post('/login', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        // Validate the request body using Zod schema
-        const loginValidationResult = LoginSchema.safeParse(req.body);
+        let { credential, password } = req.body;
 
-        if (!loginValidationResult.success) {
+        if (!credential || !password) {
             return res.status(400).json({
                 success: false,
-                message: "Invalid input data. Please check your email, phone, or password format.",
-                data: null,
-                error: loginValidationResult.error
-            });
-        }
-
-        const loginData = loginValidationResult.data;
-
-        let existingUser: null | IUser = null;
-
-        // Check for user based on login type
-        if (loginData.loginType === LoginEnum.withEmail) {
-            existingUser = await User.findOne({ email: loginData.email });
-        } else if (loginData.loginType === LoginEnum.withPhone) {
-            existingUser = await User.findOne({})
-                .where("phoneInfo.number").equals(loginData.phoneInfo?.number)
-                .where("phoneInfo.country.phone_code").equals(loginData.phoneInfo?.phone_code);
-        }
-
-        // If user doesn't exist, return an error
-        if (!existingUser) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found. Please check your login credentials.",
+                message: "Credential and password are required",
                 data: null
             });
         }
 
-        // Verify the password
-        const isPasswordEqual = await comparePasswords({
-            password: loginData.password,
+         if (typeof credential !== 'string' || typeof password !== 'string') {
+            return res.status(400).json({
+                success: false,
+                message: "Credential and password are not string",
+                data: null
+            });
+        }
+        [credential, password] = [credential, password].map(el => el.trim());
+
+        // Email regex remains the same as it's already robust
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        let existingUser: IUser | null = null;
+        let loginType: LoginEnum;
+        const phoneRegex = /^\d{10,15}$/;
+
+        if (emailRegex.test(credential)) {
+            // Handle email login
+            loginType = LoginEnum.withEmail;
+            const validateEmail = await emailValidatior.safeParseAsync(credential);
+            
+            if (!validateEmail.success) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid email format",
+                    data: null
+                });
+            }
+
+            existingUser = await User.findOne({ email: credential });
+        } else {
+            if (phoneRegex.test(credential) === false) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid credential format. Please provide a valid email or phone number",
+                    data: null
+                });
+            }
+
+
+            loginType = LoginEnum.withPhone;
+            
+            existingUser = await User.findOne({
+                'phoneInfo.number': credential
+            });
+        }
+
+        // Rest of the login logic remains the same
+        if (!existingUser) {
+            return res.status(404).json({
+                success: false,
+                message: "No account found with these credentials",
+                data: null
+            });
+        }
+
+      
+        const isPasswordValid = await comparePasswords({
+            password: password,
             hashedPassword: existingUser.password.hashed,
             salt: existingUser.password.salt
         });
 
-        if (!isPasswordEqual) {
+        if (!isPasswordValid) {
+
+            
+            // Log failed attempts
+            console.warn(`[Failed Login] ${new Date().toISOString()} - Invalid password for user: ${existingUser._id}`);
             return res.status(401).json({
                 success: false,
-                message: "Invalid password. Please try again.",
+                message: "Invalid password",
                 data: null
             });
         }
 
-        // Generate an authentication token
+       
         const authToken = giveAuthSession();
 
         // Remove any previous auth session for the user
@@ -487,14 +522,16 @@ router.post('/login', async function (req: Request, res: Response): Promise<Resp
         });
 
     } catch (error) {
-        console.error("Login error:", error);
+        console.error('[Login API Error]:', error);
         return res.status(500).json({
             success: false,
-            message: "Internal server error. Please try again later.",
+            message: "An error occurred during login. Please try again.",
             data: null
         });
     }
 });
+
+
 
 router.post('/reset-password', async function (req: Request, res: Response): Promise<Response | any> {
     try {
