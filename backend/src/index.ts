@@ -26,17 +26,16 @@ async function main() {
     const port: number = Number(PORT ?? 4000) 
     const server= createServer(app).listen(port) ;
     const io = new Server(server, {
-        // cors: {
-        //     origin: '*',
-        //     methods: ['POST', 'GET', 'DELETE', 'PUT']
-        // }
+        cors: {
+            origin: '*',
+            methods: ['POST', 'GET', 'DELETE', 'PUT']
+        }
     })
 
     const socketService = new SocketService(io);
 
 
 
-    
     // Environmemt
     await connectDB();
     app.use(cookieParser());
