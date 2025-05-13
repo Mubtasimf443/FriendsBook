@@ -47,13 +47,13 @@ async function main() {
 
 
     // routes
-    app.use('/api/auth' , authRouter);
-    app.use('/api/search' , searchRouter);
-    app.use('/api/assets' , assetsRouter);
-    app.use('/api/profile' , profileRouter);
-    app.use('/api/data' , dataRouter);
-    app.use('/api/cron-jobs' , cronJobsRouter);
-   
+    app.use('/api/auth', authRouter);
+    app.use('/api/search', searchRouter);
+    app.use('/api/assets', assetsRouter);
+    app.use('/api/profile', profileRouter);
+    app.use('/api/data', dataRouter);
+    app.use('/api/cron-jobs', cronJobsRouter);
+
 
 
     
