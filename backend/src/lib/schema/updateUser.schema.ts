@@ -182,10 +182,7 @@ const phoneCountryNames =countryCodes.map(c => c.country) ;
 const phoneCountryPhoneCode =countryCodes.map(c => c.code);
 const phoneInfoSchema = z.object({
     number: z.string(),
-    country: z.object({
-        name: z.enum( [phoneCountryNames[0] , ...phoneCountryNames.filter((el , index) => (index > 0 && el))]),
-        phone_code: z.enum([phoneCountryPhoneCode[0] , ...phoneCountryPhoneCode.filter((el , index) => (index > 0 && el))])
-    })
+   
 }).optional();
 
 const annualIncomeSchema = z.object({
@@ -207,7 +204,7 @@ const aboutMeSchema = z.object({
 const familyInfoSchema = z.object({
     aboutFamily: z.string().max(1000).optional(),
     familyOrigin: z.string().optional(),
-    numberOfBrothers: z.number().min(0).optional(),
+    numberOfBrothers: z.number().min(0).max(5).optional(),
     numberOfSisters: z.number().min(0).optional(),
     numberOfMarriedBrothers: z.number().min(0).optional(),
     numberOfMarriedSisters: z.number().min(0).optional()
@@ -265,7 +262,7 @@ export const updateUserSchema = z.object({
 
     enhancedSettings: enhancedSettingsSchema,
 
-    fcmToken: z.string().min(20).max(300).optional()
+   
 })
 
 .refine(

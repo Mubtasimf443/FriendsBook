@@ -51,19 +51,11 @@ export const partnerPreferenceSchema = new Schema<IPartnerPreference>({
         enum: Object.values(BadHabits)
     }],
     locationPreference: {
-        preferredCountries: [{
-            type: String,
-            enum: Object.values(CountryNamesEnum),
-            required: false
-        }],
-        preferredRegions: [String],
-        preferredCities: [String],
-        locationType: {
-            type: String,
-            enum: Object.values(PreferredLocation),
-            required: false
-        },
-        willingToRelocate: Boolean
+       preferredDistrict :{
+        type : [{
+            type : Number
+        }]
+       }
     },
     education: {
         minimumLevel: {
@@ -123,42 +115,8 @@ export const partnerPreferenceSchema = new Schema<IPartnerPreference>({
         required: false,
         default: Date.now
     },
-    strictPreferences: {
-        type: Boolean,
-        default: false
-    },
-    priority: {
-        education: {
-            type: Number,
-            min: 1,
-            max: 5,
-            default: 3
-        },
-        profession: {
-            type: Number,
-            min: 1,
-            max: 5,
-            default: 3
-        },
-        location: {
-            type: Number,
-            min: 1,
-            max: 5,
-            default: 3
-        },
-        religion: {
-            type: Number,
-            min: 1,
-            max: 5,
-            default: 5
-        },
-        age: {
-            type: Number,
-            min: 1,
-            max: 5,
-            default: 3
-        }
-    }
+   
+ 
 });
 
 // Add validation for age range

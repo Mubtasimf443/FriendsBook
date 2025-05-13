@@ -1,3 +1,5 @@
+/* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
+
 import { z } from 'zod';
 import {
     ComplexionPreference,
@@ -11,64 +13,82 @@ import { PhysicalStatus, ReligiousBranch, BadHabits } from '../types/userProfile
 import { CurrencyCode } from '../types/currencyCodes.enum';
 import { CountryNamesEnum } from '../types/country_names.enum';
 
+
 export const partnerPreferenceSchema = z.object({
     ageRange: z.object({
-        min: z.number().min(18).max(70),
-        max: z.number().min(18).max(70)
-    }).refine(data => data.min <= data.max, {
-        message: "Minimum age must be less than or equal to maximum age"
-    }),
+        min: z.number().min(18).max(70).optional(),
+        max: z.number().min(18).max(70).optional()
+    })
+    .refine(
+        (data) => {
+            if (data?.min !== undefined && data?.max !== undefined) {
+                return data.min <= data.max;
+            }
+            return true; // If either min or max is undefined, the refine doesn't apply
+        },
+        {
+            message: "Minimum age must be less than or equal to maximum age"
+        }
+    ).optional(),
 
     heightRange: z.object({
-        min: z.nativeEnum(Height),
-        max: z.nativeEnum(Height)
-    }).refine(data => {
-        const minHeight = parseInt(data.min.split(' ')[0]);
-        const maxHeight = parseInt(data.max.split(' ')[0]);
-        return minHeight <= maxHeight;
-    }, {
-        message: "Minimum height must be less than or equal to maximum height"
-    }),
+        min: z.number().min(4).max(8).optional(),
+        max: z.number().min(5).max(9).optional()
+    }).refine(
+        ({ min, max }) => {
+            if ((!min && max) || (!max && min)) {
+                return false;
+            }
+            if (min && max ) return min < max; 
+        },
+        {
+            message: "Minimum height must be less than to maximum height"
+        }
+    ).optional(),
 
     weightRange: z.object({
-        min: z.number().min(30).max(200),
-        max: z.number().min(30).max(200)
-    }).refine(data => data.min <= data.max, {
-        message: "Minimum weight must be less than or equal to maximum weight"
-    }),
+        min: z.number().min(30).max(200).optional(),
+        max: z.number().min(30).max(200).optional()
+    }).refine(
+        (data) => {
+            if (data?.min !== undefined && data?.max !== undefined) {
+                return data.min <= data.max;
+            }
+            return true; // If either min or max is undefined, the refine doesn't apply
+        },
+        {
+            message: "Minimum weight must be less than or equal to maximum weight"
+        }
+    ).optional(),
 
-    maritalStatus: z.array(z.nativeEnum(MaritalStatus)).min(1),
+    maritalStatus: z.array(z.nativeEnum(MaritalStatus)).min(1).optional(),
     complexion: z.array(z.nativeEnum(ComplexionPreference)).optional(),
-    physicalStatus: z.array(z.nativeEnum(PhysicalStatus)).min(1),
+    physicalStatus: z.array(z.nativeEnum(PhysicalStatus)).min(1).optional(),
     religiousBranch: z.array(z.nativeEnum(ReligiousBranch)).optional(),
     dealBreakers: z.array(z.nativeEnum(BadHabits)).optional(),
 
     locationPreference: z.object({
-        preferredCountries: z.array(z.nativeEnum(CountryNamesEnum)).min(1),
-        preferredRegions: z.array(z.string()).optional(),
-        preferredCities: z.array(z.string()).optional(),
-        locationType: z.nativeEnum(PreferredLocation),
-        willingToRelocate: z.boolean().optional()
-    }),
+        preferredDistrictIds:z.array( z.number().min(1).max(64)).default([]).optional()
+    }).optional(),
 
     education: z.object({
-        minimumLevel: z.nativeEnum(EducationLevel),
+        minimumLevel: z.nativeEnum(EducationLevel).optional(),
         preferredLevels: z.array(z.nativeEnum(EducationLevel)).optional(),
-        mustBeEducated: z.boolean(),
+        mustBeEducated: z.boolean().optional(),
         preferredInstitutions: z.array(z.string()).optional()
-    }),
+    }).optional(),
 
     profession: z.object({
         acceptedOccupations: z.array(z.nativeEnum(Occupation)).optional(),
         preferredSectors: z.array(z.nativeEnum(EmploymentSector)).optional(),
         minimumAnnualIncome: z.object({
-            min: z.number(),
-            max: z.number(),
-            currency: z.nativeEnum(CurrencyCode)
+            min: z.number().optional(),
+            max: z.number().optional(),
+            currency: z.nativeEnum(CurrencyCode).optional()
         }).optional()
-    }),
+    }).optional(),
 
-    religion: z.array(z.nativeEnum(Religion)).min(1),
+    religion: z.array(z.nativeEnum(Religion)).min(1).optional(),
     motherTongue: z.array(z.nativeEnum(Language)).optional(),
     familyValues: z.array(z.nativeEnum(FamilyValues)).optional(),
 
@@ -77,15 +97,7 @@ export const partnerPreferenceSchema = z.object({
         preferredFamilyType: z.array(z.string()).optional(),
         preferredFamilyStatus: z.array(z.string()).optional()
     }).optional(),
-
-    strictPreferences: z.boolean().optional(),
-    priority: z.object({
-        education: z.number().min(1).max(5),
-        profession: z.number().min(1).max(5),
-        location: z.number().min(1).max(5),
-        religion: z.number().min(1).max(5),
-        age: z.number().min(1).max(5)
-    })
 });
+
 
 export type PartnerPreferenceInput = z.infer<typeof partnerPreferenceSchema>;

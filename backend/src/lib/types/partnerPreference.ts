@@ -68,11 +68,7 @@ export interface IPartnerPreference {
 
     // Location Preferences
     locationPreference: {
-        preferredCountries: CountryNamesEnum[];
-        preferredRegions?: string[]; // Division/State IDs
-        preferredCities?: string[]; // District/City IDs
-        locationType: PreferredLocation;
-        willingToRelocate?: boolean;
+        preferredDistrictIds: number[]; // District/City IDs
     };
 
     // Education & Career
@@ -103,12 +99,4 @@ export interface IPartnerPreference {
 
     // Metadata
     lastUpdated: Date;
-    strictPreferences: boolean; // If true, only show exact matches
-    priority: {
-        education: number; // 1-5 priority scale
-        profession: number;
-        location: number;
-        religion: number;
-        age: number;
-    };
 }

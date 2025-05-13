@@ -89,7 +89,7 @@ router.get('/user-details', async function (req: Request, res: Response): Promis
         console.error("[Profile Details API Error]", {
             timestamp: new Date().toISOString(),
             error: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined
+            
         });
 
         return res.status(500).json({
@@ -120,7 +120,7 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         if (updateData.weight) updatesData['weight'] = updateData.weight;
         if (updateData.height) updatesData['height'] = updateData.height;
         if (updateData.maritalStatus) updatesData['maritalStatus'] = updateData.maritalStatus;
-        if (updateData.phoneInfo) updatesData['phoneInfo'] = updateData.phoneInfo;
+        if (updateData.phoneInfo?.number) updatesData['phoneInfo.number'] = updateData.phoneInfo.number;
         if (updateData.address) updatesData['address'] = updateData.address;
 
         // Background Information
@@ -136,8 +136,8 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         if (updateData.familyInfo) updatesData['familyInfo'] = updateData.familyInfo;
         
         // Settings
-        if (updateData.fcmToken) updatesData['fcmToken'] = updateData.fcmToken;
-        if (updateData.enhancedSettings) updatesData['enhancedSettings'] = updateData.enhancedSettings;
+        if (updateData.enhancedSettings?.privacy) updatesData['enhancedSettings.privacy'] = updateData.enhancedSettings.privacy;
+        if (updateData.enhancedSettings?.notifications) updatesData['enhancedSettings.notifications'] = updateData.enhancedSettings.notifications;
 
 
         // Filter out undefined values
@@ -188,12 +188,9 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         });
 
     } catch (error: any) {
-        console.error('[User Details Update api error]', {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
-            timestamp: new Date().toISOString()
-        });
-
+        console.error('[User Details Update api error]' ,  { timestamp: new Date()});
+        console.error(error);
+        
         if (error instanceof z.ZodError) {
             return res.status(400).json({
                 success: false,
@@ -203,14 +200,6 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
             });
         }
 
-        if (error?.code === 11000) {
-            return res.status(409).json({
-                success: false,
-                message: 'MongoDB duplicate key error',
-                data: null,
-                error: Object.keys(error.keyPattern).join(', ') + ' already exists'
-            });
-        }
 
         return res.status(500).json({
             success: false,
@@ -295,7 +284,7 @@ router.put('/user-details/education', async function (req: Request, res: Respons
     } catch (error) {
         console.error('[Education Update API Error]', {
             error: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
+            
             timestamp: new Date().toISOString(),
             userId: req.authSession?.value?.userId
         });
@@ -319,103 +308,95 @@ router.put('/user-details/education', async function (req: Request, res: Respons
 });
 
 
-router.put('/user-details/partner-preferrence',  async function (req: Request, res: Response): Promise<Response | any> {
+router.put('/user-details/partner-preference', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        // Validate request body against schema
-        const validationResult = await partnerPreferenceSchema.safeParseAsync(req.body);
+        // 1. Parse and validate request body against the partnerPreferenceSchema
+        const updateData = await partnerPreferenceSchema.parseAsync(req.body);
 
-        if (!validationResult.success) {
+        // 2. Get user ID from auth session
+        const userId = req.authSession.value.userId;
+
+        // Check if any update parameters were provided
+       
+        let updatesData: any = {};
+
+        // Conditionally add fields to updatesData
+        if (updateData.ageRange) updatesData['partnerPreference.ageRange'] = updateData.ageRange;
+        if (updateData.heightRange) updatesData['partnerPreference.heightRange'] = updateData.heightRange;
+        if (updateData.weightRange) updatesData['partnerPreference.weightRange'] = updateData.weightRange;
+        if (updateData.maritalStatus) updatesData['partnerPreference.maritalStatus'] = updateData.maritalStatus;
+        if (updateData.complexion) updatesData['partnerPreference.complexion'] = updateData.complexion;
+        if (updateData.physicalStatus) updatesData['partnerPreference.physicalStatus'] = updateData.physicalStatus;
+        if (updateData.religiousBranch) updatesData['partnerPreference.religiousBranch'] = updateData.religiousBranch;
+        if (updateData.dealBreakers) updatesData['partnerPreference.dealBreakers'] = updateData.dealBreakers;
+        if (updateData.locationPreference) updatesData['partnerPreference.locationPreference'] = updateData.locationPreference;
+        if (updateData.education) updatesData['partnerPreference.education'] = updateData.education;
+        if (updateData.profession) updatesData['partnerPreference.profession'] = updateData.profession;
+        if (updateData.religion) updatesData['partnerPreference.religion'] = updateData.religion;
+        if (updateData.motherTongue) updatesData['partnerPreference.motherTongue'] = updateData.motherTongue;
+        if (updateData.familyValues) updatesData['partnerPreference.familyValues'] = updateData.familyValues;
+        if (updateData.familyBackground) updatesData['partnerPreference.familyBackground'] = updateData.familyBackground;
+
+        // Filter out undefined values (though Zod should handle this implicitly)
+        updatesData = Object.fromEntries(
+            Object.entries(updatesData).filter(([_, value]) => value !== undefined)
+        );
+
+        if (Object.keys(updatesData).length === 0) {
             return res.status(400).json({
                 success: false,
-                message: "Invalid request parameters",
-                error: validationResult.error.errors,
+                message: 'No partner preference parameters found to update',
                 data: null
             });
         }
 
-        let userId = req.authSession.value.userId;
+        // Add last update timestamp to the partnerPreference sub-document
+        updatesData['partnerPreference.lastUpdated'] = new Date();
 
-        // Find user and update preferences
-        let user :any= await User.findById(userId);
-        
-        if (!user) {
-            return res.status(404).json({
+        // Update the user's partner preferences
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: updatesData },
+            { new: true, runValidators: true } // 'new: true' returns the modified document, 'runValidators' ensures schema validation
+        );
+
+        if (!updatedUser) {
+            res.status(400).json({
                 success: false,
-                message: "User not found",
-                error: "USER_NOT_FOUND",
+                message: 'Failed to Update the User',
                 data: null
             });
+            return;
         }
-
-        // Additional validation for height range
-        if (validationResult.data.heightRange) {
-            const { min, max } = validationResult.data.heightRange;
-            const minHeight = parseInt(min.split(' ')[0]);
-            const maxHeight = parseInt(max.split(' ')[0]);
-
-            if (minHeight > maxHeight) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Invalid height range",
-                    error: "HEIGHT_RANGE_INVALID",
-                    data: null
-                });
-            }
-        }
-
-        // Update partner preferences
-        user.partnerPreference = {
-            ...user.partnerPreference,
-            ...validationResult.data,
-            lastUpdated: new Date()
-        };
-
-        // Save the updated user
-        await user.save();
-
-        user =user.toObject();
-
-        // Remove sensitive data before sending response
-        const sanitizedPreferences = {
-            ...user.partnerPreference,
-            _id: undefined,
-            __v: undefined
-        };
-
-        // Set cache control headers
-        res.set('Cache-Control', 'private, no-cache, no-store, must-revalidate');
-        res.set('Pragma', 'no-cache');
-        res.set('Expires', '0');
-
         return res.status(200).json({
             success: true,
-            message: "Partner preferences updated successfully",
-            data: {
-                preferences: sanitizedPreferences,
-                lastUpdated: user.partnerPreference.lastUpdated
-            }
+            message: 'Partner preference updated successfully',
+            data: { updatedPreference: updatedUser.partnerPreference }
         });
 
-    } catch (error) {
-        // Log the error for debugging
-        console.error('[Partner Preferences Update API Error]', {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
-            timestamp: new Date().toISOString(),
-            userId: req.authSession?.value?.userId
-        });
+    } catch (error: any) {
+        console.error('[Partner Preference Update api error]', { timestamp: new Date() });
+        console.error(error);
 
-        // Handle other errors
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation error',
+                data: null,
+                errors: error.errors
+            });
+        }
+
         return res.status(500).json({
             success: false,
-            message: "Internal server error",
-            error: "INTERNAL_SERVER_ERROR",
+            message: 'Internal server error',
             data: null
         });
     }
 });
 
-router.post('/membership-request', async function (req: Request, res: Response): Promise<any> {
+
+router.post('/user-details/membership-request', async function (req: Request, res: Response): Promise<any> {
     try {
         const userId = req.authSession.value.userId;
 
@@ -491,7 +472,7 @@ router.post('/membership-request', async function (req: Request, res: Response):
     } catch (error) {
         console.error('[Membership Request API Error]', {
             error: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
+            
             timestamp: new Date().toISOString()
         });
 
@@ -512,7 +493,7 @@ router.post('/membership-request', async function (req: Request, res: Response):
     }
 });
 
-router.post('/update-photo', async function (req: Request, res: Response): Promise<any> {
+router.post('/user-details/update-photo', async function (req: Request, res: Response): Promise<any> {
     try {
         enum PhotoType {
             Profile = 'profileImage',
@@ -600,9 +581,15 @@ router.post('/update-photo', async function (req: Request, res: Response): Promi
             res.status(200).json({
                 success: true,
                 data: {
-                    photoType,
-                    totalPhotos: db_user.userImages.length,
-                    remainingSlots: 10 - db_user.userImages.length
+                    photoData: {
+                        photoType,
+                        totalPhotos: db_user.userImages.length,
+                        remainingSlots: 10 - db_user.userImages.length
+                    },
+                    userData :{
+                        userImages :db_user.userImages 
+                    }
+
                 },
                 error: null,
                 message: 'Photo successfully added to your gallery'
@@ -619,7 +606,6 @@ router.post('/update-photo', async function (req: Request, res: Response): Promi
         const updatedUser = await User.findByIdAndUpdate(
             req.authSession.value.userId,
             updateQuery,
-            { new: true }
         );
 
         if (!updatedUser) {
@@ -641,8 +627,13 @@ router.post('/update-photo', async function (req: Request, res: Response): Promi
         res.status(200).json({
             success: true,
             data: {
-                photoType,
-                url: url
+                photoData: {
+                    photoType,
+                    url: url
+                },
+                user :{
+                    ...(photoType === 'coverImage' ? ({'coverImage' :updatedUser.coverImage   }) : ({ 'profileImage' : updatedUser.profileImage}))
+                }
             },
             error: null,
             message: `${photoTypeMessages[photoType]} updated successfully`
@@ -652,7 +643,7 @@ router.post('/update-photo', async function (req: Request, res: Response): Promi
     } catch (error) {
         console.error('[Update photo api error]', {
             error: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
+            
             timestamp: new Date().toISOString(),
             userId: req.authSession?.value?.userId
         });
@@ -666,7 +657,7 @@ router.post('/update-photo', async function (req: Request, res: Response): Promi
     }
 });
 
-router.delete('/user-image', async function (req: Request, res: Response): Promise<any> {
+router.delete('/user-details/user-photo', async function (req: Request, res: Response): Promise<any> {
     try {
         // Define photo types enum
         enum PhotoType {
@@ -763,7 +754,7 @@ router.delete('/user-image', async function (req: Request, res: Response): Promi
     } catch (error) {
         console.error('[Delete user image API Error]', {
             error: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
+            
             timestamp: new Date().toISOString()
         });
 
@@ -845,7 +836,7 @@ router.get('/membership-request', validateUser, async function (req: Request, re
     } catch (error) {
         console.error('[Get Membership History API Error]', {
             error: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
+            
             timestamp: new Date().toISOString(),
             userId: req.authSession?.value?.userId
         });
@@ -896,7 +887,7 @@ router.put('/membership-request/cancel', validateUser, async function (req: Requ
     } catch (error) {
         console.error('[Cancel Membership Request API Error]', {
             error: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
+            
             timestamp: new Date().toISOString()
         });
 
@@ -936,7 +927,7 @@ router.delete('/membership-request', validateUser, async function (req: Request,
     } catch (error) {
         console.error('[Delete Membership Request API Error]', {
             error: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
+            
             timestamp: new Date().toISOString()
         });
 

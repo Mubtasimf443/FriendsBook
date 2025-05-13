@@ -91,23 +91,13 @@ const familyInfoSchema = new Schema({
         type: Number,
         min: 0,
         default: 0,
-        validate: {
-            validator: function (this: any, val: number) {
-                return val <= this.numberOfBrothers;
-            },
-            message: 'Number of married brothers cannot exceed total brothers'
-        }
+       
     },
     numberOfMarriedSisters: {
         type: Number,
         min: 0,
         default: 0,
-        validate: {
-            validator: function (this: any, val: number) {
-                return val <= this.numberOfSisters;
-            },
-            message: 'Number of married sisters cannot exceed total sisters'
-        }
+       
     }
 });
 
@@ -122,6 +112,57 @@ const blockedProfileSchema = new Schema({
     reason: String
 });
 
+const enhancedSettingsSchema = {
+    blocked: [blockedProfileSchema],
+    privacy: {
+        whoCanViewProfile: {
+            type: String,
+            enum: Object.values(SettingsPermissionType),
+            default: SettingsPermissionType.EVERYONE
+        },
+        whoCanContactMe: {
+            type: String,
+            enum: Object.values(SettingsPermissionType),
+            default: SettingsPermissionType.EVERYONE
+        },
+        showShortlistedNotification: {
+            type: Boolean,
+            default: true
+        },
+        showProfileViewNotification: {
+            type: Boolean,
+            default: true
+        }
+    },
+    notifications: {
+        dailyRecommendations: {
+            type: Boolean,
+            default: true
+        },
+        todaysMatch: {
+            type: Boolean,
+            default: true
+        },
+        profileViews: {
+            type: Boolean,
+            default: true
+        },
+        shortlists: {
+            type: Boolean,
+            default: true
+        },
+        messages: {
+            type: Boolean,
+            default: true
+        },
+        connectionRequests: {
+            type: Boolean,
+            default: true
+        }
+    }
+};
+
+
 const userMembershipSchema = new Schema<IUserMembership>({
     currentMembership: {
         requestId: {
@@ -132,7 +173,6 @@ const userMembershipSchema = new Schema<IUserMembership>({
         membership_exipation_date: Date
     }
 });
-
 
 const suspensionEntrySchema = new Schema({
     reason: {
@@ -192,55 +232,7 @@ const onlineStatusSchema = new Schema({
         default: Date.now,
     }
 });
-const enhancedSettingsSchema = {
-    blocked: [blockedProfileSchema],
-    privacy: {
-        whoCanViewProfile: {
-            type: String,
-            enum: Object.values(SettingsPermissionType),
-            default: SettingsPermissionType.EVERYONE
-        },
-        whoCanContactMe: {
-            type: String,
-            enum: Object.values(SettingsPermissionType),
-            default: SettingsPermissionType.EVERYONE
-        },
-        showShortlistedNotification: {
-            type: Boolean,
-            default: true
-        },
-        showProfileViewNotification: {
-            type: Boolean,
-            default: true
-        }
-    },
-    notifications: {
-        dailyRecommendations: {
-            type: Boolean,
-            default: true
-        },
-        todaysMatch: {
-            type: Boolean,
-            default: true
-        },
-        profileViews: {
-            type: Boolean,
-            default: true
-        },
-        shortlists: {
-            type: Boolean,
-            default: true
-        },
-        messages: {
-            type: Boolean,
-            default: true
-        },
-        connectionRequests: {
-            type: Boolean,
-            default: true
-        }
-    }
-};
+
 
 const addressSchema = new Schema({
     division: {
@@ -318,7 +310,7 @@ const addressSchema = new Schema({
     }
 
 
-});
+ } , { _id : false}) ;
 
 const phoneInfoSchema = new Schema({
     number: {
@@ -913,7 +905,7 @@ userSchema.index({ age: 1 });
 userSchema.index({ createdAt: -1 });
 userSchema.index({ 'education.level': 1 });
 userSchema.index({ dateOfBirth: 1 });
-userSchema.index({ 'address.country': 1, 'address.district.id': 1 });
+userSchema.index({  'address.district.id': 1 });
 userSchema.index({"suspension.isSuspended": 1 });
 userSchema.index({ 'onlineStatus.lastActive': -1 });
 userSchema.index({ maritalStatus: 1 });

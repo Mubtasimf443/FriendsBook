@@ -83,9 +83,7 @@ export interface IAuthSessionValue {
         religion: Religion[];
         occupation?: Occupation[];
         location?: {
-            preferredCountries: string[];
-            preferredRegions?: string[];
-            preferredCities?: string[];
+            prefferedDistrictIds : number[]
         };
     };
 

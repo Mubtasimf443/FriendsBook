@@ -145,12 +145,7 @@ export function giveAuthSessionValue(user: IUser): IAuthSessionValue {
             religion: user.partnerPreference?.religion || [user.religion],
             occupation: user.partnerPreference?.profession?.acceptedOccupations,
             location: {
-                preferredCountries: user.partnerPreference?.locationPreference?.preferredCountries || 
-                    [user.address.country],
-                preferredRegions: user.partnerPreference?.locationPreference?.preferredRegions || 
-                    (user.address.division ? [user.address.division.id] : undefined),
-                preferredCities: user.partnerPreference?.locationPreference?.preferredCities || 
-                    (user.address.district ? [user.address.district.id] : undefined)
+              prefferedDistrictIds: user.partnerPreference.locationPreference.preferredDistrictIds
             }
         },
 
