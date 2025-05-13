@@ -4,7 +4,7 @@ import { z } from "zod";
 import { ProfileCreatedBy, Gender, Height, Religion, Language, EducationLevel, SettingsType, IAddress } from "../types/user.types";
 import { countryCodes } from "../data/countryCodes";
 import { _idValidator, emailValidatior, passwordValidator } from "./schemaComponents";
-import { CountryNamesEnum as CountryNamesEnumForAdressField} from "../types/country_names.enum";
+import { CountryNamesEnum, CountryNamesEnum as CountryNamesEnumForAdressField} from "../types/country_names.enum";
 import { Divisions } from "../data/divisions";
 import { Districts } from "../data/districts";
 import { Upazilas } from "../data/upazilas";
@@ -48,24 +48,6 @@ export const educationSchema =  z.object({
         
 
 const AddressSchema = z.object({
-    country: z.enum(
-        [
-            CountryNamesForCountryField[0],
-            ...CountryNamesForCountryField.map((el, i) => i !== 0 && el) as readonly string[]
-        ],
-        {
-            invalid_type_error: 'country value is not in the allowed Country List',
-            required_error: "address.country field is required",
-        }
-    ),
-
-    // Optional state field for non-Bangladesh addresses
-    state: z.object({
-        name: z.string().optional(),
-        // Add any other IState properties here
-    }).optional(),
-
-    // Optional division field for Bangladesh addresses
     division: z.optional(
         z.object({
             id: z.number({
@@ -79,7 +61,6 @@ const AddressSchema = z.object({
             bd_name: z.string().optional(),
         })),
 
-    // Optional district field for Bangladesh addresses
     district: z.optional(
         z.object({
             id: z.number({
@@ -94,7 +75,6 @@ const AddressSchema = z.object({
             bn_name: z.string().optional(),
         })),
 
-    // Optional upazila field for Bangladesh addresses
     upazila: z.optional(
         z.object({
             id: z.number({
@@ -110,7 +90,6 @@ const AddressSchema = z.object({
         })
     ),
 
-    // Optional union/city field for Bangladesh addresses
     union: z.optional(
         z.object({
             id: z.number({
@@ -127,41 +106,18 @@ const AddressSchema = z.object({
     )
 })
     .refine(
-        (data) => {
-            if (data.country === CountryNamesEnumForAdressField.BANGLADESH) {
-                return !!data.division?.id && !!data.district?.id && !!data.upazila?.id && !!data.union?.id;
-            }
-            return true;
-        },
+        (data) => !!data.division?.id && !!data.district?.id && !!data.upazila?.id && !!data.union?.id,
         {
             message: "address.division.id, address.district.id, address.upazila.id, address.union.id are required for Bangladesh addresses"
         }
     )
-    .refine(
-        function (data) {
-            if (data.country !== CountryNamesEnumForAdressField.BANGLADESH) {
-                // For Bangladesh, require division and district
-                return !!data.state;
-            }
-            return true;
-        },
-        {
-            message: "State is required for non-Bangladesh addresses",
-        }
-    )
+   
     .transform(
         function (data) {
-            if (data.country === CountryNamesEnumForAdressField.BANGLADESH) {
-                data.division = Divisions.find(element => element.id == data.division?.id);
-                data.district = Districts.find(element => element.id == data.district?.id);
-                data.upazila = Upazilas.find(element => element.id == data.upazila?.id);
-                data.union = Unions.find(element => element.id == data.union?.id);
-            } else {
-                (data.division) && (delete data.division);
-                (data.district) && (delete data.district);
-                (data.upazila) && (delete data.upazila);
-                (data.union) && (delete data.union);
-            }
+            data.division = Divisions.find(element => element.id == data.division?.id);
+            data.district = Districts.find(element => element.id == data.district?.id);
+            data.upazila = Upazilas.find(element => element.id == data.upazila?.id);
+            data.union = Unions.find(element => element.id == data.union?.id);
             return data;
         },
        
@@ -228,15 +184,26 @@ export const registrationUserSchema = z.object({
         number: z.string()
             .regex(/^\d{10,15}$/, "Phone number must be between 10 and 15 digits"),
         country: z.object({
-            name: CountryNameEnum.describe("Country name must be from the provided list"),
-            phone_code: CountryPhoneCodeEnum.describe("Phone code must be from the provided list")
-        }).refine((data) => {
-            // Verify that the country name and phone code match
-            const countryCode = countryCodes.find(c => c.country === data.name);
-            return countryCode?.code === data.phone_code;
-        }, {
-            message: "Country name and phone code do not match"
+            name: CountryNameEnum
+                .default(CountryNamesEnumForAdressField.BANGLADESH)
+                .describe("Country name must be from the provided list"),
+            phone_code: CountryPhoneCodeEnum
+                .default(countryCodes.find(c => c.country === CountryNamesEnumForAdressField.BANGLADESH)?.code || '+88')
+                .describe("Phone code must be from the provided list")
         })
+        .default({
+            name : CountryNamesEnumForAdressField.BANGLADESH ,
+            phone_code : "+88"
+        })
+            .refine(
+                (data) => {
+                    const countryCode = countryCodes.find(c => c.country === data.name);
+                    return countryCode?.code === data.phone_code;
+                },
+                {
+                    message: "Country name and phone code do not match"
+                }
+            )
     }),
 
     languages: z.array(
@@ -255,7 +222,6 @@ export const registrationUserSchema = z.object({
 
     confirmPassword: z.string().trim(),
 })
-    // Age Checking By Gender
     .refine(
         function (data) {
             const age = data.age;
@@ -270,7 +236,6 @@ export const registrationUserSchema = z.object({
             path: ["age"],
         }
     )
-    // Age Checking By dateOfBirth
     .refine(
         function (data) {
             return data.age == calculateAge(data.dateOfBirth);
@@ -280,7 +245,6 @@ export const registrationUserSchema = z.object({
             path: ["dateOfBirth"],
         }
     )
-    // password Checking By confirmPassword
     .refine(
         (data) => data.password === data.confirmPassword,
         {
@@ -288,39 +252,33 @@ export const registrationUserSchema = z.object({
             path: ["confirmPassword"],
         }
     )
-    // Division Id Check Districts
     .refine(
         function (data) {
-            if (data.address.country === CountryNamesEnumForAdressField.BANGLADESH) {
+           
                 return data.address.district?.division_id === data.address.division?.id;
-            }
-            return true;
+           
         },
         {
             message: "Selected district does not belong to the selected division",
             path: ["address.district.division_id"]
         }
     )
-    // Districts Id Check Upazillas
     .refine(
         function (data) {
-            if (data.address.country === CountryNamesEnumForAdressField.BANGLADESH) {
+           
                 return data.address.upazila?.district_id === data.address.district?.id;
-            }
-            return true;
+        
         },
         {
             message: "Selected upazila does not belong to the selected district",
             path: ["address.upazila.district_id"]
         }
     )
-    // Upazilla Id Check Unions
     .refine(
         function (data) {
-            if (data.address.country === CountryNamesEnumForAdressField.BANGLADESH) {
+         
                 return data.address.union?.upazilla_id === data.address.upazila?.id
-            }
-            return true;
+            
         },
         {
             message: "Selected union does not belong to the selected upazila",
@@ -416,7 +374,8 @@ export const zodOTPValidation = z.string({
     .trim()
     .length(6, "OTP must be exactly 6 digits")
     .regex(/^[0-9]{6}$/, "OTP must contain only numbers")
-    .transform((val) => parseInt(val, 10)); // Convert to number after validation
+    .transform((val) => parseInt(val, 10));
+    
 
 // Session key validation
 export const tempSessionValidation = z.string({
@@ -426,7 +385,7 @@ export const tempSessionValidation = z.string({
     .trim()
     .min(64, "Invalid session key length")
     .max(64, "Invalid session key length")
-    .regex(/^[0-9a-fA-F]{64}$/, "Session key must be a valid hex string")
+    .regex(/^[0-9a-fA-F]{64}$/, "Session key must be a valid hex string");
 
 
 // Session key validation
@@ -437,7 +396,7 @@ export const authSessionValidation = z.string({
     .trim()
     .min(64, "Invalid session key length")
     .max(64, "Invalid session key length")
-    .regex(/^[0-9a-fA-F]{64}$/, "Session key must be a valid hex string")
+    .regex(/^[0-9a-fA-F]{64}$/, "Session key must be a valid hex string");
 
 
 export const VerifyOtpSchema = z.object({

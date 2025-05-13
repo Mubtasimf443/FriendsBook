@@ -243,72 +243,37 @@ const enhancedSettingsSchema = {
 };
 
 const addressSchema = new Schema({
-
-    country: {
-        type: String,
-        required: true,
-        minlength: 2,
-        maxlength: 100,
-        default: "Bangladesh",
-        enum: countryNames
-    },
-    state: {
-        name: {
-            type: String,
-            trim: true
-        },
-        id: {
-            type: String
-        },
-        country_name: {
-            type: String
-        }
-    },
     division: {
         id: {
             type: String,
-            required: function (this: any) {
-                return this.country === "Bangladesh";
-            }
+            required: true           
         },
         name: {
             type: String,
-            required: function (this: any) {
-                return this.country === "Bangladesh";
-            }
+            required: true  
         },
         bd_name: {
             type: String,
-            required: function (this: any) {
-                return this.country === "Bangladesh";
-            }
+            required: true
         }
     },
     district: {
         id: {
             type: String,
-            required: function (this: any) {
-                return this.country === "Bangladesh";
-            }
+            required: true
         },
         division_id: {
             type: String,
-            required: function (this: any) {
-                return this.country === "Bangladesh";
-            },
+            required: true,
 
         },
         name: {
             type: String,
-            required: function (this: any) {
-                return this.country === "Bangladesh";
-            }
+            required: true
         },
         bn_name: {
             type: String,
-            required: function (this: any) {
-                return this.country === "Bangladesh";
-            }
+            required: true
         },
         lat: Number,
         long: Number
@@ -316,22 +281,16 @@ const addressSchema = new Schema({
     upazila: {
         id: {
             type: String,
-            required: function (this: any) {
-                return this.country === "Bangladesh";
-            }
+            required:true
         },
         district_id: {
             type: String,
-            required: function (this: any) {
-                return this.country === "Bangladesh";
-            },
+            required: true
 
         },
         name: {
             type: String,
-            required: function (this: any) {
-                return this.country === "Bangladesh";
-            }
+            required: true
         },
         bn_name: {
             type: String,
@@ -341,28 +300,20 @@ const addressSchema = new Schema({
     union: {
         id: {
             type: String,
-            required: function (this: any) {
-                return this.country === "Bangladesh";
-            }
+            required: true
         },
         upazilla_id: {
             type: String,
-            required: function (this: any) {
-                return this.country === "Bangladesh";
-            },
+            required: true
 
         },
         name: {
             type: String,
-            required: function (this: any) {
-                return this.country === "Bangladesh";
-            }
+            required: true
         },
         bn_name: {
             type: String,
-            required: function (this: any) {
-                return this.country === "Bangladesh";
-            }
+            required: true
         }
     }
 
@@ -619,10 +570,7 @@ const userSchema = new Schema<IUser>({
         required : true ,
     },
     membership: userMembershipSchema,
-    fcmToken: {
-        type: String,
-        required: false
-    },
+   
 
     /**
      * Connections & Network
@@ -642,11 +590,7 @@ const userSchema = new Schema<IUser>({
         ref: 'ConnectionRequest'
     }],
 
-    /**
-     * Account Status & Moderation
-     * ------------------------
-     * Information about account status and any moderation actions
-     */
+
     suspension: {
         isSuspended: {
             type: Boolean,

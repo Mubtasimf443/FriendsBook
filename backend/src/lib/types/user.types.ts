@@ -23,7 +23,7 @@ export interface IUserImage {
 }
 
 export interface IAddress {
-    country: string;
+    country: CountryNamesEnum.BANGLADESH;
     state ?: IState;
     division ?: IDivision ;
     district ?: IDistrict;
@@ -417,7 +417,7 @@ export interface IUserMembership {
 export interface IUser extends Document {
     // Basic Profile Information
     mid: string;                           // Unique matrimony ID
-    name: CountryNamesEnum;                // User's full name
+    name: string;                // User's full name
     email: string;                         // User's email address
     gender: Gender;                        // User's gender
     dateOfBirth: Date;                     // User's date of birth
@@ -466,10 +466,6 @@ export interface IUser extends Document {
     
     // Membership Management
     membership?: IUserMembership;          // Premium membership details
-    
-    // Push Notification Management
-    fcmToken?: string;                     // Firebase Cloud Messaging token
-
 
     // connections 
     connections: mongoose.Types.ObjectId[];
@@ -480,8 +476,6 @@ export interface IUser extends Document {
     createPreference(): IUser;          // Generate partner preferences
     createMID(): string;                   // Generate matrimony ID
     hasActiveMembership(): boolean;        // Check membership status
-    addFCMToken(token: string, device: string): Promise<void>;    // Add notification token
-    removeFCMToken(token: string): Promise<void>;                 // Remove notification token
 }
 
 

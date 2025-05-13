@@ -2,6 +2,7 @@
 
 import mongoose, { Document, Mongoose, ObjectId, Schema, } from 'mongoose';
 import { EducationLevel, Gender, Height, Language, MaritalStatus, Occupation, Religion } from '../lib/types/user.types';
+import { CountryNamesEnum } from '../lib/types/country_names.enum';
 
 
 
@@ -12,7 +13,7 @@ interface IAddress {
     district?: string;
     upazilla?: string;
     union?: string;
-    country?: string;
+   
 }
 
 interface IPhone {
@@ -141,10 +142,7 @@ const AuthSessionValue = {
                 type: String,
                 required: false
             },
-            country: {
-                type: String,
-                required: false
-            }
+           
         },
         _id: false // Prevents MongoDB from creating an _id for this subdocument
     },

@@ -271,13 +271,12 @@ router.post("/verify-registration-otp", async function (req: Request, res: Respo
             });
         }
 
-
         let passwordSalt = generateSalt();
         let passwordHash = await hashPassword(sessionData.password, passwordSalt)
 
         // Save user data to the database
         const newUser = new User({
-            mid: generateMatrimonyId(sessionData.address.country),
+            mid: generateMatrimonyId(),
             profileCreatedBy: sessionData.profileCreatedBy,
             name: sessionData.name,
             gender: sessionData.gender,

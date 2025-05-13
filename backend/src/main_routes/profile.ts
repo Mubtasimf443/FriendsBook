@@ -100,6 +100,8 @@ router.get('/user-details', async function (req: Request, res: Response): Promis
         });
     }
 });
+
+
 router.put('/user-details', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // 1. Parse and validate request body
@@ -118,8 +120,6 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         if (updateData.weight) updatesData['weight'] = updateData.weight;
         if (updateData.height) updatesData['height'] = updateData.height;
         if (updateData.maritalStatus) updatesData['maritalStatus'] = updateData.maritalStatus;
-
-
         if (updateData.phoneInfo) updatesData['phoneInfo'] = updateData.phoneInfo;
         if (updateData.address) updatesData['address'] = updateData.address;
 
@@ -131,12 +131,9 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         if (updateData.occupation) updatesData['occupation'] = updateData.occupation;
         if (updateData.annualIncome) updatesData['annualIncome'] = updateData.annualIncome;
 
-
         // Additional Information
         if (updateData.aboutMe) updatesData['aboutMe'] = updateData.aboutMe;
         if (updateData.familyInfo) updatesData['familyInfo'] = updateData.familyInfo;
-
-       
         
         // Settings
         if (updateData.fcmToken) updatesData['fcmToken'] = updateData.fcmToken;
@@ -160,11 +157,10 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         updatesData['lastUpdated'] = new Date();
 
         // Update the user and return the new document
-        const updatedUser = await User.findByIdAndUpdate(
+        let updatedUser:any = await User.findByIdAndUpdate(
             userId,
             { $set: updatesData , },
             {
-                new: true, // Return the updated document
                 runValidators: true // Run model validators
             }
         );
@@ -178,10 +174,17 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         }
 
 
+        updatedUser = updatedUser.toObject();
+
+        let updatedFields :any = {}
+        for (const [key, value] of Object.entries(updateData)) {
+           updatedFields[key] = updatedUser[key];
+        }
+
         return res.status(200).json({
             success: true,
             message: 'User details updated successfully',
-            data: null
+            data: { updatedFields }
         });
 
     } catch (error: any) {
@@ -216,6 +219,8 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
         });
     }
 });
+
+
 
 router.put('/user-details/education', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -314,7 +319,7 @@ router.put('/user-details/education', async function (req: Request, res: Respons
 });
 
 
-router.put('/partner-preferrence',  async function (req: Request, res: Response): Promise<Response | any> {
+router.put('/user-details/partner-preferrence',  async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // Validate request body against schema
         const validationResult = await partnerPreferenceSchema.safeParseAsync(req.body);

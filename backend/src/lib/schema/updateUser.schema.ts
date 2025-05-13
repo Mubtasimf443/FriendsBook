@@ -24,7 +24,13 @@ import { EducationLevel } from '../types/userEducation.types';
 import { countryCodes } from '../data/countryCodes';
 import countryNames from '../data/countryNames';
 import { educationSchema } from './auth.schema';
+import { Divisions } from '../data/divisions';
+import { Districts } from '../data/districts';
+import { Upazilas } from '../data/upazilas';
+import { Unions } from '../data/unions';
+import { CountryNamesEnum as CountryNamesEnumForAdressField} from "../types/country_names.enum";
 
+import { countryNames as CountryNamesForCountryField} from '../data/countryNames'
 
 
 
@@ -92,40 +98,85 @@ const educationPreferenceSchema = z.object({
 
 
 
-const addressSchema = z.object({
-    country: z.enum([countryNames[0] , ...countryNames.filter((el , index) => (index > 0 && el))]),
-    state: z.object({
-        name: z.string(),
-        id: z.string(),
-        country_name: z.string()
-    }).optional(),
-    division: z.object({
-        id: z.string(),
-        name: z.string(),
-        bd_name: z.string()
-    }).optional(),
-    district: z.object({
-        id: z.string(),
-        division_id: z.string(),
-        name: z.string(),
-        bn_name: z.string(),
-        lat: z.number().optional(),
-        long: z.number().optional()
-    }).optional(),
-    upazila: z.object({
-        id: z.string(),
-        district_id: z.string(),
-        name: z.string(),
-        bn_name: z.string().optional()
-    }).optional(),
-    union: z.object({
-        id: z.string(),
-        upazilla_id: z.string(),
-        name: z.string(),
-        bn_name: z.string()
-    }).optional()
-}).optional();
+        
+CountryNamesEnumForAdressField
+const AddressSchema = z.object({
+    division: z.optional(
+        z.object({
+            id: z.number({
+                required_error: "Division ID is required",
+                invalid_type_error: "Division ID must be a number"
+            })
+            .gte(1, "Division ID must be between 1 and 8")
+            .lte(8, "Division ID must be between 1 and 8")
+            .transform(data => data.toString()),
+            name: z.string().optional(),
+            bd_name: z.string().optional(),
+        })),
 
+    district: z.optional(
+        z.object({
+            id: z.number({
+                required_error: "District ID is required",
+                invalid_type_error: "District ID must be a number"
+            })
+            .gte(1, "District ID must be between 1 and 64")
+            .lte(64, "District ID must be between 1 and 64")
+            .transform(data => data.toString()),
+            division_id: z.string().optional(),
+            name: z.string().optional(),
+            bn_name: z.string().optional(),
+        })),
+
+    upazila: z.optional(
+        z.object({
+            id: z.number({
+                required_error: "Upazila ID is required",
+                invalid_type_error: "Upazila ID must be a number"
+            })
+            .gte(1, "Upazila ID must be between 1 and 494")
+            .lte(494, "Upazila ID must be between 1 and 494")
+            .transform(data => data.toString()),
+            district_id: z.string().optional(),
+            name: z.string().optional(),
+            bn_name: z.string().optional(),
+        })
+    ),
+
+    union: z.optional(
+        z.object({
+            id: z.number({
+                required_error: "Union ID is required",
+                invalid_type_error: "Union ID must be a number"
+            })
+            .gte(1, "Union ID must be between 1 and 4540")
+            .lte(4540, "Union ID must be between 1 and 4540")
+            .transform(data => data.toString()),
+            upazilla_id: z.string().optional(),
+            name: z.string().optional(),
+            bn_name: z.string().optional(),
+        })
+    )
+})
+
+   
+    .refine(
+        (data) => !!data.division?.id && !!data.district?.id && !!data.upazila?.id && !!data.union?.id,
+        {
+            message: "address.division.id, address.district.id, address.upazila.id, address.union.id are required "
+        }
+    )
+
+    .transform(
+        function (data) {
+            data.division = Divisions.find(element => element.id == data.division?.id);
+            data.district = Districts.find(element => element.id == data.district?.id);
+            data.upazila = Upazilas.find(element => element.id == data.upazila?.id);
+            data.union = Unions.find(element => element.id == data.union?.id);
+            return data;
+        },
+       
+    );
 
 const phoneCountryNames =countryCodes.map(c => c.country) ;
 const phoneCountryPhoneCode =countryCodes.map(c => c.code);
@@ -197,7 +248,7 @@ export const updateUserSchema = z.object({
     annualIncome: annualIncomeSchema,
 
     // Location & Contact
-    address: addressSchema,
+    address: AddressSchema,
     phoneInfo: phoneInfoSchema,
 
     // Personal Background
@@ -216,6 +267,30 @@ export const updateUserSchema = z.object({
 
     fcmToken: z.string().min(20).max(300).optional()
 })
+
+.refine(
+        (data) => {
+            if (data.age && !data.dateOfBirth) {
+                return false;
+            }
+            return true;
+        },
+        {
+            message: " DateBirth is Required for updating the user"
+        }
+    )
+    .refine(
+        (data) => {
+           
+            if (data.dateOfBirth && !data.age) {
+                return false;
+            }
+            return true;
+        },
+        {
+            message: "Age is required for Updating the User"
+        }
+    )
     .refine(
         (data) => {
             // Additional validation to ensure age matches dateOfBirth if both are provided
@@ -260,9 +335,7 @@ export const updateUserEducationSchema = z.object({
     {
         message :'If User is not educated Than education details is not required',
         path: ['isEducated', 'education[0].level', 'education[0].certificate', 'education[0].yearOfCompletion']
-    })
-
-;
+    });
 
 
 
