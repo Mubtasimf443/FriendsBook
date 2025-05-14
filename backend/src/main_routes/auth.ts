@@ -11,28 +11,19 @@ import AuthSession, { IAuthSession } from "../models/AuthSession";
 import rateLimiter from "../config/rateRimiter";
 import { IUser, Language } from "../lib/types/user.types";
 import { _idValidator, emailValidatior, passwordValidator } from "../lib/schema/schemaComponents";
-import { AuthenticatedRequest, validateUser, validateVideoProfile } from "../lib/middlewares/auth.middleware";
+import { validateUser, validateVideoProfile } from "../lib/middlewares/auth.middleware";
 import { NODE_ENV } from "../config/env";
 import { CountryNamesEnum } from "../lib/types/country_names.enum";
 import generateMatrimonyId from "../lib/core/mid-geneator";
 import { z, ZodError } from "zod";
 import countryNames from "../lib/data/countryNames";
 import VideoProfile, { IVideoProfile } from "../models/VideoProfile";
-
+import '../lib/types/express.decratation'
 const router: Router = express.Router();
-declare global {
-    namespace Express {
-        interface Request {
-            authSession: IAuthSession;
-            bearerAccessToken?: string;
-            videoProfileData ?: IVideoProfile
-        }
-    }
-}
+
 
 
 router.use(rateLimiter(600 * 100, 100));
-
 
 // Create registration session endpoint
 router.post("/create-registration-session", async function (req: Request, res: Response): Promise<Response | any> {
@@ -864,6 +855,16 @@ router.post("/verify-forget-password-otp", async function (req: Request, res: Re
 // Verify forget password OTP and reset password
 router.post("/log-out", validateUser, async function (req: Request, res: Response): Promise<Response | any> {
     try {
+
+        if (!req.authSession || !req.authSession?.value) {
+            res.status(401).json({
+                success: false,
+                message: 'Failed to authorize the user',
+                
+                data: null
+            });
+            return;
+        }
         await req.authSession?.deleteOne();
         res.status(200).json({
             success: true,
@@ -1664,17 +1665,27 @@ router.post("/reset-password/video-profile", async function (req: Request, res: 
 
 router.post("/log-out/video-profile", validateVideoProfile, async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        if (req.videoProfileData) {
+
+        if (!req.videoProfile && !req.videoProfile?._id) {
+            res.status(401).json({
+                success: false,
+                message: 'Invalid request parameters',
+            
+                data: null
+            });
+            return;
+        }
             let updatedUser = await VideoProfile.updateOne(
                 {
-                _id : req.videoProfileData._id , 
+                _id : req.videoProfile._id , 
                 "auth.session_exp_date"   : { $gt : new Date()}
             } , 
             { 
                 "auth.authSession" : undefined ,
                  "auth.session_exp_date" : new Date(),
                  status : "offline"
-                })
+                }
+            );
     
             if (!updatedUser) {
                 res.status(400).json({
@@ -1689,7 +1700,7 @@ router.post("/log-out/video-profile", validateVideoProfile, async function (req:
                 message: "Logout completed successfully",
                 data: null
             });
-        }
+        
       
     } catch (error) {
         console.error("Video profile log out error:", error);

@@ -2,8 +2,12 @@
 
 import { IDistrict } from '../lib/types/location.types';
 import { Districts } from '../lib/data/districts';
-import { IAuthSession } from '../models/AuthSession';
+import { IAuthSession, IAuthSessionValue } from '../models/AuthSession';
 import countryFlagsEmoji from '../lib/data/CountryAndFlags';
+import { Request } from 'express';
+import { BASE_URL } from '../config/env';
+import { Gender, IUser } from '../lib/types/user.types';
+import { IVideoProfile } from '../models/VideoProfile';
 
 
 // Haversine formula
@@ -46,9 +50,9 @@ export function searchHeightGenerator(min: number, max: number): string[] {
 // Add this at the top of search.ts
 export function getBaseSearchQuery(userData: IAuthSession['value']) {
   return {
-    'suspension.isSuspended': false,
-    '_id': { $ne: userData.userId },
-    'enhancedSettings.blocked.userId': { $ne: userData.userId },
+    // 'suspension.isSuspended': false,
+    // '_id': { $ne: userData.userId },
+    // 'enhancedSettings.blocked.userId': { $ne: userData.userId },
     // 'gender': { $ne: userData.gender },
     // religion: userData.religion
   };
@@ -57,8 +61,55 @@ export function getBaseSearchQuery(userData: IAuthSession['value']) {
 
 export function getUserWithCountryFlagsEmoji(UserList:any[]) {
   UserList = UserList.map(element => { 
-   element['flagEmoji'] = countryFlagsEmoji.find(country => country.name === element.address.country )?.flag;
+   element['lag'] = BASE_URL + ( countryFlagsEmoji.find(country => country.name === element.location.country )?.flag ||  "/static/flags/other-country.png") ;
    return element;
   });
   return UserList;
+}
+
+
+interface IUserData {
+  gender : string;
+  languages:string[]
+}
+
+export function getUserDataFromRequest(req : Request)  :IUserData |never {
+  if (req.profileType === 'videoProfile' && req.videoProfile) {
+    let user :IVideoProfile= req.videoProfile
+    return {
+      gender : user.gender ,
+      languages : user.languages 
+    };
+  }
+  if (req.profileType === 'matrimony_profile' && req.authSession?.value) {
+    let user :IAuthSessionValue = req.authSession.value;
+    return {
+      gender : user.gender ,
+      languages : user.languages
+    };
+  }
+  throw new Error("Failed to get User Data from Request");
+}
+
+
+export function shuffleArray<T>(array: T[] | null | undefined): T[] {
+  if (!array) {
+    return []; // Return an empty array for null or undefined input
+  }
+
+  let currentIndex = array.length, randomIndex:number;
+ 
+  let newArray :T[]=[]
+  // While there remain elements to shuffle...
+  while (currentIndex != 0) {
+    
+    // Pick a remaining element...
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    newArray.push( array[randomIndex]);
+    array = array.filter((e , i) => i !== randomIndex && e);
+    currentIndex =array.length;
+
+  }
+
+  return newArray;
 }

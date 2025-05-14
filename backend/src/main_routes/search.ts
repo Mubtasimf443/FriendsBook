@@ -1,11 +1,11 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-import { Router, Request, Response, } from "express";
+import { Router, Request, Response, RequestHandler, } from "express";
 import rateLimiter from "../config/rateRimiter";
-import { validateUser } from "../lib/middlewares/auth.middleware";
+import { validateBothProfiledUser, validateUser } from "../lib/middlewares/auth.middleware";
 import { IAuthSession } from "../models/AuthSession";
 import { CountryNamesEnum } from "../lib/types/country_names.enum";
-import { findNearestDistricts, getBaseSearchQuery, getDistance, getUserWithCountryFlagsEmoji, searchHeightGenerator } from "../controllers/search.controller";
+import { findNearestDistricts, getBaseSearchQuery, getDistance, getUserDataFromRequest, getUserWithCountryFlagsEmoji, searchHeightGenerator, shuffleArray } from "../controllers/search.controller";
 import { User } from "../models/user";
 import { FilterUsersQueryParams, filterUsersSchema, getUserByMIDSchema, justJoinedSchema, preferredEducationSearchSchema, preferredLocationSearchSchema, preferredOccupationSearchSchema, paginationSchema, todaysMatchSchema, searchHistorySchema, exploreByCountrySchema, exploreByDivisionSchema } from "../lib/schema/search.schema";
 import { IProfileView, ProfileView } from "../models/ProfileView";
@@ -26,28 +26,33 @@ import { UserRecord } from "firebase-admin/lib/auth/user-record";
 import { randomDataFromArray } from "../lib/core/randomInt";
 import { calculateDistance, countryCoordinates, getCountriesNearby } from "../lib/data/countryWithLatLong";
 import countryNames from "../lib/data/countryNames";
+import VideoProfile, { IVideoProfile } from "../models/VideoProfile";
+import '../lib/types/express.decratation'
+
 
 const router: Router = Router();
 
 router.use(rateLimiter(120 * 1000, 200));
-router.use(validateUser);
 router.use(queryMiddleware)
-
-declare global {
-    namespace Express {
-        interface Request {
-            authSession: IAuthSession;
-            bearerAccessToken?: string;
-        }
+router.use(validateBothProfiledUser )
+router.use(async function (req , res , next) {
+    try {
+        // console.log(req.authSession);
+        console.log(req.profileType);
+        console.log(req.bearerAccessToken);
+        // console.log(req.videoProfile);
+        next()
+    } catch (error) {
+        
     }
-}
+})
 
-let userField = 'name _id email profileImage.url gender age address.country onlineStatus';
 
 
 router.get('/users/explore/country',
     async function (req: Request, res: Response): Promise<any> {
         try {
+           
             const getOnlineUsersSchema = z.object({
                 country: z.nativeEnum(CountryNamesEnum).optional(),
                 page: z.string().regex(/^\d+$/).transform(Number).pipe(
@@ -70,25 +75,22 @@ router.get('/users/explore/country',
 
             const { country, page, limit } = validation.data;
             const skip = (page - 1) * limit;
-            const userData = req.authSession.value;
+         
 
             // Base query using your existing helper
             const baseQuery: any = {
-                // 'suspension.isSuspended': false,
-                ...getBaseSearchQuery(userData)
+                
             };
 
             // Handle country filtering
             if (country && country.toLowerCase() !== 'any') {
-                baseQuery['address.country'] = country;
+                baseQuery['location.country'] = country;
             }
 
             // Get list of all unique countries where users have signed up
             let userCountries: any[] = [];
             if (!country || country.toLowerCase() === 'any') {
-                userCountries = await User.distinct('address.country', {
-                    'suspension.isSuspended': false
-                });
+                userCountries = await VideoProfile.distinct('location.country');
             }
 
             // Fetch users with sorting by online status
@@ -98,7 +100,7 @@ router.get('/users/explore/country',
                     $addFields: {
                         onlineSortOrder: {
                             $cond: [
-                                "$onlineStatus.isOnline",
+                                { $eq: ["$status", "online"] },
                                 0,  // Online users first
                                 1   // Offline users second
                             ]
@@ -108,28 +110,28 @@ router.get('/users/explore/country',
                 {
                     $sort: {
                         onlineSortOrder: 1,
-                        "onlineStatus.lastActive": -1
+                        "lastActive": -1
                     }
                 },
                 { $skip: skip },
                 { $limit: limit },
                 {
                     $project: {
-                        mid: 1,
                         name: 1,
                         email: 1,
                         'profileImage.url': 1,
-                        onlineStatus: 1,
+                        status: 1,
+                        lastActive: 1,
                         age: 1,
                         gender: 1,
-                        "address.country": 1
+                        "location.country": 1
                     }
                 }
             ];
 
             const [users, totalCount] = await Promise.all([
-                User.aggregate(aggregationPipeline),
-                User.countDocuments(baseQuery)
+                VideoProfile.aggregate(aggregationPipeline),
+                VideoProfile.countDocuments(baseQuery)
             ]);
 
             // Prepare response data
@@ -148,7 +150,7 @@ router.get('/users/explore/country',
 
             // Add countries list if 'any' was requested
             if (!country || country.toLowerCase() === 'any') {
-                responseData.data.countries = userCountries;
+                responseData.data.countries =shuffleArray( userCountries);
             } else {
                 responseData.data.country = country;
             }
@@ -169,7 +171,7 @@ router.get('/users/explore/country',
     }
 );
 
-router.get('/users/explore/country/near-by-me', async function (req: Request, res: Response): Promise<any> {
+router.get('/users/explore/country/near-by-me',async function (req: Request, res: Response): Promise<any> {
     try {
         const getOnlineUsersSchema = z.object({
             country_count: z.string()
@@ -177,14 +179,30 @@ router.get('/users/explore/country/near-by-me', async function (req: Request, re
                 .transform(Number)
                 .pipe(z.number().min(1).max(countryCoordinates.length - 1))
                 .optional()
-                .default('10'),
+                .default('50'),
             page: z.string()
                 .regex(/^\d+$/)
                 .transform(Number)
                 .pipe(z.number().min(1).max(100))
                 .optional()
                 .default('1'),
-            limit: limitValidation
+            limit: limitValidation,
+            latitude: z.string()
+            .transform(Number)
+            .refine((val) => !isNaN(val), { // Add validation after transform
+              message: "Latitude must be a valid number",
+            })
+            .refine((val) => val >= -90 && val <= 90, {
+              message: "Latitude must be between -90 and 90",
+            }),
+          longitude: z.string()
+            .transform(Number)
+            .refine((val) => !isNaN(val), { // Add validation after transform
+              message: "Longitude must be a valid number",
+            })
+            .refine((val) => val >= -180 && val <= 180, {
+              message: "Longitude must be between -180 and 180",
+            }),
         });
 
         // Validate query parameters
@@ -198,31 +216,30 @@ router.get('/users/explore/country/near-by-me', async function (req: Request, re
             });
         }
 
-
-        const { page, limit, country_count } = validation.data;
-        let country = req.authSession.value.address.country;
+        const { page, limit, country_count, latitude, longitude } = validation.data;
         const skip = (page - 1) * limit;
-        const userData = req.authSession.value;
+
 
         // Base query using your existing helper
-        const baseQuery: any = getBaseSearchQuery(req.authSession.value)
+        const baseQuery: any = {};
 
-        // Get user's country coordinates
-        const userCountry = countryCoordinates.find(c => c.name === country);
-        if (userCountry === undefined) {
-            throw new Error("Could not find User Country Longitude and Latitude");
-        }
-        let neerByCountries = countryCoordinates
+        // Get coordinates - either from request or from user's country
+         let  userLat = latitude;
+         let  userLong = longitude;
+       
+        // Find nearby countries based on coordinates
+        let nearbyCountries = countryCoordinates
             .map(({ name, latitude, longitude }) => ({
                 name,
-                distance: getDistance(userCountry.latitude, userCountry.longitude, latitude, longitude)
+                distance: getDistance(userLat, userLong, latitude, longitude)
             }))
             .sort((a, b) => a.distance - b.distance)
             .slice(0, country_count)
             .map(el => el.name);
 
-        baseQuery['address.country'] = { $in: neerByCountries };
+        baseQuery['location.country'] = { $in: nearbyCountries };
 
+        // Build aggregation pipeline
         let aggregate: any = [];
 
         aggregate.push({ $match: baseQuery });
@@ -231,7 +248,7 @@ router.get('/users/explore/country/near-by-me', async function (req: Request, re
                 $addFields: {
                     onlineSortOrder: {
                         $cond: [
-                            "$onlineStatus.isOnline",
+                            { $eq: ["$status", "online"] },
                             0,  // Online users first
                             1   // Offline users second
                         ]
@@ -242,48 +259,52 @@ router.get('/users/explore/country/near-by-me', async function (req: Request, re
         aggregate.push({
             $sort: {
                 onlineSortOrder: 1,
-                "onlineStatus.lastActive": -1
+                "lastActive": -1
             }
-        })
+        });
         aggregate.push({ $skip: skip });
         aggregate.push({ $limit: limit });
         aggregate.push({
             $project: {
-                mid: 1,
                 name: 1,
                 email: 1,
                 'profileImage.url': 1,
-                onlineStatus: 1,
+                status: 1,
+                lastActive: 1,
                 age: 1,
                 gender: 1,
-                "address.country": 1
+                "location.country": 1
             }
         });
-
-
         const [users, totalCount] = await Promise.all([
-            User.aggregate(aggregate),
-            User.countDocuments(baseQuery)
+            VideoProfile.aggregate(aggregate),
+            VideoProfile.countDocuments(baseQuery)
         ]);
 
         // Set cache control headers
+        let responseUsers = getUserWithCountryFlagsEmoji(users);
         res.set('Cache-Control', 'public, max-age=60');
 
         return res.status(200).json({
+            success: true,
             data: {
-                users: getUserWithCountryFlagsEmoji(users),
+                users:responseUsers ,
                 pagination: {
                     currentPage: page,
                     pageSize: limit,
                     totalPages: Math.ceil(totalCount / limit),
                     totalUsers: totalCount
                 },
-                neerByCountries
+                nearbyCountries: nearbyCountries,
+                coordinates: {
+                    latitude: userLat,
+                    longitude: userLong
+                }
             }
         });
 
     } catch (error) {
-        console.error('[Online Users API Error]:', error);
+        console.error('[Nearby Users API Error]:', error);
         return res.status(500).json({
             success: false,
             message: 'Internal server error',
@@ -292,9 +313,14 @@ router.get('/users/explore/country/near-by-me', async function (req: Request, re
     }
 });
 
+
+let userField = 'name _id email profileImage.url gender age onlineStatus';
+
+
 router.get('/users/just-joined', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         const validationResult = justJoinedSchema.safeParse(req.query);
+        
         if (!validationResult.success) {
             return res.status(400).json({
                 success: false,
@@ -303,39 +329,48 @@ router.get('/users/just-joined', async function (req: Request, res: Response): P
                 data: null
             });
         }
-
         const { timeRange, limit, page, count: shouldCount } = validationResult.data;
-        const userData = req.authSession.value;
-
+       
         // Calculate the date range
-
         const daysAgo = parseInt(timeRange);
         const startDate = new Date(Date.now() - (daysAgo * 24 * 60 * 60 * 1000));
-
+        let userInfo = getUserDataFromRequest(req) ;
         // Calculate pagination
         const skip = (page - 1) * limit;
 
         // Base query for finding users
         const baseQuery = {
-            'address.country': userData.address.country,
             createdAt: { $gte: startDate },
-            ...getBaseSearchQuery(req.authSession.value),
+            gender : { $ne : userInfo.gender },
         };
 
-        // Find users
-        let users = await User.find(baseQuery, userField)
-            .sort({ createdAt: -1 }) // Sort by newest first
-            .skip(skip)
-            .limit(limit)
-            .lean()
-            .maxTimeMS(20000);
+        // Find users using aggregation
+        let aggregate: any = [
+            { $match: baseQuery },
+            { $sort: { 
+                'onlineStatus.isOnline': -1,
+                'onlineStatus.lastActive': 1,
+                createdAt: -1 
+            }},
+            { $skip: skip },
+            { $limit: limit },
+            { $project: {
+                name: 1,
+                _id: 1,
+                email: 1,
+                'profileImage.url': 1,
+                gender: 1,
+                age: 1,
+                onlineStatus: 1
+            }}
+        ];
+
+        let users = await User.aggregate(aggregate);
 
         // Get total count if requested
         let totalCount: number | undefined = undefined;
         if (shouldCount === 'yes') {
-            totalCount = await User.find(baseQuery)
-                .countDocuments()
-                .maxTimeMS(10000);
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
         }
 
         // Prepare pagination info
@@ -355,7 +390,7 @@ router.get('/users/just-joined', async function (req: Request, res: Response): P
         return res.status(200).json({
             success: true,
             data: {
-                users: getUserWithCountryFlagsEmoji(users),
+                users,
                 pagination,
                 timeRange: `${timeRange} days`,
             }
@@ -373,6 +408,8 @@ router.get('/users/just-joined', async function (req: Request, res: Response): P
 
 router.get('/users/online', async function (req: Request, res: Response): Promise<Response | any> {
     try {
+        let userInfo = getUserDataFromRequest(req);
+        
         // Validate query parameters
         const validationResult = paginationSchema.safeParse(req.query);
 
@@ -386,29 +423,34 @@ router.get('/users/online', async function (req: Request, res: Response): Promis
         }
 
         const { page, limit, count: shouldCount } = validationResult.data;
-        const userData = req.authSession.value;
-
-        // Calculate the active time threshold
-
 
         // Base query for finding online users
         const baseQuery = {
-            'address.country': userData.address.country,
-
             'onlineStatus.isOnline': true,
-            ...getBaseSearchQuery(req.authSession.value),
+            gender: { $ne: userInfo.gender }
         };
 
         // Calculate pagination
         const skip = (page - 1) * limit;
 
-        // Find online users with pagination
-        let users = await User.find(baseQuery, userField)
-            .sort({ 'onlineStatus.lastActive': -1 }) // Sort by most recently active
-            .skip(skip)
-            .limit(limit)
-            .lean()
-            .maxTimeMS(20000);
+        // Find online users with aggregation
+        let aggregate:any = [
+            { $match: baseQuery },
+            { $sort: { 'onlineStatus.lastActive': 1 }}, // Sort by most recently active
+            { $skip: skip },
+            { $limit: limit },
+            { $project: {
+                name: 1,
+                _id: 1,
+                email: 1,
+                'profileImage.url': 1,
+                gender: 1,
+                age: 1,
+                onlineStatus: 1
+            }}
+        ];
+
+        let users = await User.aggregate(aggregate);
 
         // Get total count if requested
         let totalCount: number | undefined = undefined;
@@ -451,95 +493,9 @@ router.get('/users/online', async function (req: Request, res: Response): Promis
     }
 });
 
-router.get('/users/matching/location', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        let userData = req.authSession.value;
-        const validationResult = paginationSchema.safeParse(req.query);
-        if (!validationResult.success) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid query parameters",
-                error: validationResult.error.errors,
-                data: null
-            });
-        }
-
-        const { page, limit, count: shouldCount } = validationResult.data;
-
-
-        if (userData.address.country !== CountryNamesEnum.BANGLADESH || !userData.address.lat || !userData.address.long) {
-            return res.status(400).json({
-                success: false,
-                message: "Matching Users are only available for Bangladeshi Users",
-                data: null,
-            });
-        }
-
-        let lat = userData.address.lat, long = userData.address.long;
-        let nearestDistricts = findNearestDistricts(lat, long, 7);
-
-
-        const skip = (page - 1) * limit;
-
-        const baseQuery = {
-            ...getBaseSearchQuery(userData),
-            'address.country': CountryNamesEnum.BANGLADESH,
-            'address.district.id': { $in: nearestDistricts.map(district => district.id) },
-        };
-
-        console.log(baseQuery)
-
-        let users = await User.find(baseQuery, userField)
-            .skip(skip)
-            .limit(limit)
-            .lean()
-            .maxTimeMS(20000);
-
-        let totalCount: number | undefined = undefined;
-        if (shouldCount === 'yes') {
-            totalCount = await User.find(baseQuery).countDocuments().maxTimeMS(10000)
-        }
-
-        let pagination: object = {
-            currentPage: page,
-            pageSize: limit,
-        };
-
-        if (totalCount !== undefined) {
-            pagination = {
-                ...pagination,
-                totalPages: Math.ceil(totalCount / limit),
-                totalUsers: totalCount
-            }
-        }
-
-        users = users.filter((user: IUser) => {
-            if (!user.enhancedSettings.blocked.some((u) => u.userId === req.authSession.value.userId)) return user;
-        });
-
-
-        return res.status(200).json({
-            success: false,
-            data: {
-                districts: nearestDistricts.map(({ name, bn_name }) => ({ name, bn_name })),
-                pagination,
-                users,
-            }
-        });
-
-    } catch (error) {
-        console.error(`match suggestion api error:`, error);
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error",
-            data: null
-        });
-    }
-});
-
 router.get('/users/premium', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        let userData = req.authSession.value;
+        let userInfo = getUserDataFromRequest(req);
 
         const validationResult = paginationSchema.safeParse(req.query);
         if (!validationResult.success) {
@@ -554,21 +510,39 @@ router.get('/users/premium', async function (req: Request, res: Response): Promi
         const { page, limit, count: shouldCount } = validationResult.data;
 
         const baseQuery = {
-            ...getBaseSearchQuery(req.authSession.value),
+            gender: { $ne: userInfo.gender },
             'membership.currentMembership.requestId': { $exists: true },
             'membership.currentMembership.membership_exipation_date': { $exists: true }
         };
 
         const skip = (page - 1) * limit;
-        let users: any[] = await User.find(baseQuery, userField + ' membership')
-            .skip(skip)
-            .limit(limit)
-            .lean();
+        
+        // Use aggregation to prioritize online users
+        let aggregate:any = [
+            { $match: baseQuery },
+            { $sort: { 
+                'onlineStatus.isOnline': -1,
+                'onlineStatus.lastActive': 1
+            }},
+            { $skip: skip },
+            { $limit: limit },
+            { $project: {
+                name: 1,
+                _id: 1,
+                email: 1,
+                'profileImage.url': 1,
+                gender: 1,
+                age: 1,
+                onlineStatus: 1,
+                membership: 1
+            }}
+        ];
 
+        let users = await User.aggregate(aggregate);
 
         let totalCount: number | undefined = undefined;
         if (shouldCount === 'yes') {
-            totalCount = await User.find(baseQuery).countDocuments().maxTimeMS(10000)
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
         }
 
 
@@ -608,8 +582,422 @@ router.get('/users/premium', async function (req: Request, res: Response): Promi
     }
 });
 
+router.get('/users/preferred-education', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        let userInfo = getUserDataFromRequest(req);
+        
+        Array.isArray(req.query.educationLevels) === false && (req.query.educationLevels = [req.query.educationLevels || EducationLevel.BACHELORS_DEGREE]);
+        const validationResult = preferredEducationSearchSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const {
+            page,
+            limit,
+            count: shouldCount,
+            educationLevels
+        } = validationResult.data;
+
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+
+        // Base query for finding users
+        const baseQuery = {
+            gender: { $ne: userInfo.gender },
+            isEducated: true,
+            "education.level": { $in: educationLevels }
+        };
+
+        // Use aggregation to prioritize online users
+        let aggregate:any = [
+            { $match: baseQuery },
+            { $sort: { 
+                'onlineStatus.isOnline': -1,
+                'onlineStatus.lastActive': 1
+            }},
+            { $skip: skip },
+            { $limit: limit },
+            { $project: {
+                name: 1,
+                _id: 1,
+                email: 1,
+                'profileImage.url': 1,
+                gender: 1,
+                age: 1,
+                onlineStatus: 1
+            }}
+        ];
+
+        let users = await User.aggregate(aggregate);
+
+        // Get total count if requested
+        let totalCount: number | undefined = undefined;
+
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+                searchCriteria: {
+                    educationLevels
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Preferred education API error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+router.get('/users/preferred-location', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        let userInfo = getUserDataFromRequest(req);
+        
+        (typeof req.query.countries === "string") && (req.query.countries = [req.query.countries]);
+        (typeof req.query.division_ids === "string") && (req.query.division_ids = [req.query.division_ids]);
+        const validationResult = preferredLocationSearchSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const {
+            page,
+            limit,
+            count: shouldCount,
+            countries,
+            division_ids
+        } = validationResult.data;
+
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+
+        // Base query for finding users
+        const baseQuery: any = {
+            gender: { $ne: userInfo.gender },
+            'address.country': { $in: countries }
+        };
+
+        // Add division filter if country includes Bangladesh
+        if (countries.includes(CountryNamesEnum.BANGLADESH) && division_ids.length > 0) {
+            baseQuery['address.division.id'] = { $in: division_ids.map(e => e.toString()) };
+        }
+        console.log(baseQuery)
+        
+        // Use aggregation to prioritize online users
+        let aggregate:any = [
+            { $match: baseQuery },
+            { $sort: { 
+                'onlineStatus.isOnline': -1,
+                'onlineStatus.lastActive': 1
+            }},
+            { $skip: skip },
+            { $limit: limit },
+            { $project: {
+                name: 1,
+                _id: 1,
+                email: 1,
+                'profileImage.url': 1,
+                gender: 1,
+                age: 1,
+                onlineStatus: 1
+            }}
+        ];
+
+        let users = await User.aggregate(aggregate);
+
+        // Get total count if requested
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        // Prepare pagination info
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            };
+        }
+
+        res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                users,
+                pagination,
+                searchCriteria: {
+                    countries,
+                    divisions_ids: division_ids || []
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Preferred location API error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+
+
+
+router.get('/users/matching/daily', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+
+        if (req.profileType !== 'matrimony_profile' || !req.authSession?.value ) {
+            res.status(400).json({
+                success: false,
+                message: 'This Api is Only Availble for Matrimony Account Users',
+        
+                data: null
+            });
+            return;
+        }
+        
+        const validationResult = todaysMatchSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { limit } = validationResult.data;
+
+        let userData = req.authSession.value;
+        if (userData.address.country !== CountryNamesEnum.BANGLADESH || !userData.address.lat || !userData.address.long) {
+            return res.status(400).json({
+                success: false,
+                message: "Todays Match are only available for Bangladeshi Users",
+                data: null,
+            });
+        }
+        let lat = userData.address.lat, long = userData.address.long;
+        let nearestDistricts = findNearestDistricts(lat, long, 7);
+
+        const baseQuery = {
+            'address.country': CountryNamesEnum.BANGLADESH,
+            'address.district.id': { $in: nearestDistricts.map(district => district.id) },
+            ...getBaseSearchQuery(req.authSession.value),
+        };
+
+        let totalCount = await User.countDocuments(baseQuery).maxTimeMS(5000);
+
+        let skip = Math.floor(Math.random() * ((totalCount || limit) - limit));
+
+        // Use aggregation to prioritize online users
+        let aggregate:any = [
+            { $match: baseQuery },
+            { $sort: { 
+                'onlineStatus.isOnline': -1,
+                'onlineStatus.lastActive': 1
+            }},
+            { $skip: skip },
+            { $limit: limit },
+            { $project: {
+                name: 1,
+                _id: 1,
+                email: 1,
+                'profileImage.url': 1,
+                gender: 1,
+                age: 1,
+                onlineStatus: 1
+            }}
+        ];
+
+        let users = await User.aggregate(aggregate);
+
+        return res.status(200).json({
+            success: true,
+            data: { users }
+        })
+
+    } catch (error) {
+        console.error(`daily match recommendation api error:`, error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
+router.get('/users/matching/location', async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+
+        if (!req.authSession || !req.authSession?.value) {
+            res.status(401).json({
+                success: false,
+                message: 'Failed to authorize the user',
+                
+                data: null
+            });
+            return;
+        }
+
+        let userId = req.authSession.value.userId;
+        let userData = req.authSession.value;
+        const validationResult = paginationSchema.safeParse(req.query);
+        if (!validationResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid query parameters",
+                error: validationResult.error.errors,
+                data: null
+            });
+        }
+
+        const { page, limit, count: shouldCount } = validationResult.data;
+
+
+        if (userData.address.country !== CountryNamesEnum.BANGLADESH || !userData.address.lat || !userData.address.long) {
+            return res.status(400).json({
+                success: false,
+                message: "Matching Users are only available for Bangladeshi Users",
+                data: null,
+            });
+        }
+
+        let lat = userData.address.lat, long = userData.address.long;
+        let nearestDistricts = findNearestDistricts(lat, long, 7);
+
+
+        const skip = (page - 1) * limit;
+
+        const baseQuery = {
+            ...getBaseSearchQuery(userData),
+            'address.country': CountryNamesEnum.BANGLADESH,
+            'address.district.id': { $in: nearestDistricts.map(district => district.id) },
+        };
+
+        console.log(baseQuery)
+
+        // Use aggregation to prioritize online users
+        let aggregate:any = [
+            { $match: baseQuery },
+            { $sort: { 
+                'onlineStatus.isOnline': -1,
+                'onlineStatus.lastActive': 1
+            }},
+            { $skip: skip },
+            { $limit: limit },
+            { $project: {
+                name: 1,
+                _id: 1,
+                email: 1,
+                'profileImage.url': 1,
+                gender: 1,
+                age: 1,
+                onlineStatus: 1,
+                enhancedSettings: 1
+            }}
+        ];
+
+        let users = await User.aggregate(aggregate);
+
+        let totalCount: number | undefined = undefined;
+        if (shouldCount === 'yes') {
+            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+        }
+
+        let pagination: object = {
+            currentPage: page,
+            pageSize: limit,
+        };
+
+        if (totalCount !== undefined) {
+            pagination = {
+                ...pagination,
+                totalPages: Math.ceil(totalCount / limit),
+                totalUsers: totalCount
+            }
+        }
+
+        users = users.filter((user: IUser) => {
+            if (!user.enhancedSettings.blocked.some((u) => u.userId === userId)) return user;
+        });
+
+
+        return res.status(200).json({
+            success: false,
+            data: {
+                districts: nearestDistricts.map(({ name, bn_name }) => ({ name, bn_name })),
+                pagination,
+                users,
+            }
+        });
+
+    } catch (error) {
+        console.error(`match suggestion api error:`, error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            data: null
+        });
+    }
+});
+
+
 router.get('/users/mutual', async function (req: Request, res: Response): Promise<Response | any> {
     try {
+        if (!req.authSession || !req.authSession?.value) {
+            res.status(401).json({
+                success: false,
+                message: 'Failed to authorize the user',
+                
+                data: null
+            });
+            return;
+        }
         // Validate query parameters
         const validationResult = paginationSchema.safeParse(req.query);
         if (!validationResult.success) {
@@ -647,12 +1035,27 @@ router.get('/users/mutual', async function (req: Request, res: Response): Promis
         // Calculate pagination
         const skip = (page - 1) * limit;
 
-        // Find connected users with pagination
-        let users = await User.find(baseQuery, userField)
-            .skip(skip)
-            .limit(limit)
-            .lean()
-            .maxTimeMS(20000);
+        // Use aggregation to prioritize online users
+        let aggregate:any = [
+            { $match: baseQuery },
+            { $sort: { 
+                'onlineStatus.isOnline': -1,
+                'onlineStatus.lastActive': 1
+            }},
+            { $skip: skip },
+            { $limit: limit },
+            { $project: {
+                name: 1,
+                _id: 1,
+                email: 1,
+                'profileImage.url': 1,
+                gender: 1,
+                age: 1,
+                onlineStatus: 1
+            }}
+        ];
+
+        let users = await User.aggregate(aggregate);
 
         // Get total count if requested
         let totalCount: number | undefined = undefined;
@@ -704,6 +1107,15 @@ router.get('/users/mutual', async function (req: Request, res: Response): Promis
 
 router.get('/users/viewed-not-contact', async function (req: Request, res: Response): Promise<Response | any> {
     try {
+        if (!req.authSession || !req.authSession?.value) {
+            res.status(401).json({
+                success: false,
+                message: 'Failed to authorize the user',
+                
+                data: null
+            });
+            return;
+        }
         // Validate query parameters
         const validationResult = paginationSchema.safeParse(req.query);
         if (!validationResult.success) {
@@ -741,12 +1153,40 @@ router.get('/users/viewed-not-contact', async function (req: Request, res: Respo
         // Calculate pagination
         const skip = (page - 1) * limit;
 
-        // Find users with pagination
-        let users = await User.find(baseQuery, userField)
-            .skip(skip)
-            .limit(limit)
-            .lean()
-            .maxTimeMS(20000);
+        // Use aggregation to prioritize online users and get view timestamps
+        const viewerDetails = await ProfileView.find(
+            {
+                viewerId: { $in: viewerIds },
+                viewedId: userId
+            },
+            'viewerId viewedAt'
+        )
+            .sort({ viewedAt: -1 })
+            .lean();
+
+        const viewerIdsWithTimestamps = viewerDetails.map(v => v.viewerId.toString());
+
+        // Use aggregation to prioritize online users
+        let aggregate:any = [
+            { $match: baseQuery },
+            { $sort: { 
+                'onlineStatus.isOnline': -1,
+                'onlineStatus.lastActive': 1
+            }},
+            { $skip: skip },
+            { $limit: limit },
+            { $project: {
+                name: 1,
+                _id: 1,
+                email: 1,
+                'profileImage.url': 1,
+                gender: 1,
+                age: 1,
+                onlineStatus: 1
+            }}
+        ];
+
+        let users = await User.aggregate(aggregate);
 
         // Get total count if requested
         let totalCount: number | undefined = undefined;
@@ -769,32 +1209,17 @@ router.get('/users/viewed-not-contact', async function (req: Request, res: Respo
             };
         }
 
-        // Add viewer details with timestamps
-        let viewerDetails: IProfileView[] = await ProfileView.find(
-            {
-                viewerId: { $in: users.map(u => u._id) },
-                viewedId: userId
-            },
-            'viewerId viewedAt'
-        )
-            .sort({ viewedAt: -1 })
-            .lean();
-
         // Enhance user objects with view timestamps
-
-        let notContactedUsers = viewerDetails.map(function (element) {
-            let viewInfo: any = users.find(user => user._id.toString() === element.viewerId.toString())
+        let notContactedUsers = users.map(function (user) {
+            const viewInfo = viewerDetails.find(v => v.viewerId.toString() === user._id.toString());
             if (viewInfo) {
-                viewInfo = {
-                    ...viewInfo,
-                    viewedAt: viewInfo.viewedAt[0]
-                }
-                return viewInfo;
+                return {
+                    ...user,
+                    viewedAt: viewInfo.viewedAt
+                };
             }
-            else return undefined;
-        }).filter(user => !!user && user);
-
-
+            return user;
+        });
 
         // Set cache headers
         res.set('Cache-Control', 'private, max-age=60'); // Cache for 1 minute, private because it's user-specific
@@ -822,238 +1247,6 @@ router.get('/users/viewed-not-contact', async function (req: Request, res: Respo
         });
     }
 });
-
-router.get('/users/matching/daily', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        const validationResult = todaysMatchSchema.safeParse(req.query);
-        if (!validationResult.success) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid query parameters",
-                error: validationResult.error.errors,
-                data: null
-            });
-        }
-
-        const { limit } = validationResult.data;
-
-        let userData = req.authSession.value;
-        if (userData.address.country !== CountryNamesEnum.BANGLADESH || !userData.address.lat || !userData.address.long) {
-            return res.status(400).json({
-                success: false,
-                message: "Todays Match are only available for Bangladeshi Users",
-                data: null,
-            });
-        }
-        let lat = userData.address.lat, long = userData.address.long;
-        let nearestDistricts = findNearestDistricts(lat, long, 7);
-
-        const baseQuery = {
-            'address.country': CountryNamesEnum.BANGLADESH,
-            'address.district.id': { $in: nearestDistricts.map(district => district.id) },
-            ...getBaseSearchQuery(req.authSession.value),
-        };
-
-        let totalCount = await User.find(baseQuery).countDocuments().maxTimeMS(5000);
-
-        let skip = Math.floor(Math.random() * ((totalCount || limit) - limit));
-
-
-
-        let users = await User.find(baseQuery, userField)
-            .skip(skip)
-            .limit(limit)
-            .lean();
-
-        return res.status(200).json({
-            success: true,
-            data: { users }
-        })
-
-    } catch (error) {
-        console.error(`daily match recommendation api error:`, error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
-
-router.get('/users/preferred-education', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        Array.isArray(req.query.educationLevels) === false && (req.query.educationLevels = [req.query.educationLevels || EducationLevel.BACHELORS_DEGREE]);
-        const validationResult = preferredEducationSearchSchema.safeParse(req.query);
-        if (!validationResult.success) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid query parameters",
-                error: validationResult.error.errors,
-                data: null
-            });
-        }
-
-        const {
-            page,
-            limit,
-            count: shouldCount,
-            educationLevels
-        } = validationResult.data;
-
-        const userData = req.authSession.value;
-
-        // Calculate pagination
-        const skip = (page - 1) * limit;
-
-        // Base query for finding users
-        const baseQuery = {
-            ...getBaseSearchQuery(req.authSession.value),
-            isEducated: true,
-            "education.level": { $in: educationLevels }
-        };
-
-        // Find users with aggregation to get highest matching education level
-        const users = await User.find(baseQuery, userField)
-            .skip(skip)
-            .limit(limit)
-            .lean();
-
-        // Get total count if requested
-        let totalCount: number | undefined = undefined;
-
-        if (shouldCount === 'yes') {
-            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
-        }
-
-        // Prepare pagination info
-        let pagination: object = {
-            currentPage: page,
-            pageSize: limit,
-        };
-
-        if (totalCount !== undefined) {
-            pagination = {
-                ...pagination,
-                totalPages: Math.ceil(totalCount / limit),
-                totalUsers: totalCount
-            };
-        }
-
-        res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
-
-        return res.status(200).json({
-            success: true,
-            data: {
-                users,
-                pagination,
-                searchCriteria: {
-                    educationLevels
-                }
-            }
-        });
-
-    } catch (error) {
-        console.error('Preferred education API error:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
-
-router.get('/users/preferred-location', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        (typeof req.query.countries === "string") && (req.query.countries = [req.query.countries]);
-        (typeof req.query.division_ids === "string") && (req.query.division_ids = [req.query.division_ids]);
-        const validationResult = preferredLocationSearchSchema.safeParse(req.query);
-        if (!validationResult.success) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid query parameters",
-                error: validationResult.error.errors,
-                data: null
-            });
-        }
-
-        const {
-            page,
-            limit,
-            count: shouldCount,
-            countries,
-            division_ids
-        } = validationResult.data;
-
-        const userData = req.authSession.value;
-
-        // Calculate pagination
-        const skip = (page - 1) * limit;
-
-        // Base query for finding users
-        const baseQuery: any = {
-            ...getBaseSearchQuery(req.authSession.value),
-            'address.country': { $in: countries }
-        };
-
-
-
-        // Add division filter if country includes Bangladesh
-        if (countries.includes(CountryNamesEnum.BANGLADESH) && division_ids.length > 0) {
-            baseQuery['address.division.id'] = { $in: division_ids.map(e => e.toString()) };
-        }
-        console.log(baseQuery)
-        // Find users
-        let users = await User.find(baseQuery, userField)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .lean()
-            .maxTimeMS(20000);
-
-        // Get total count if requested
-        let totalCount: number | undefined = undefined;
-        if (shouldCount === 'yes') {
-            totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
-        }
-
-        // Prepare pagination info
-        let pagination: object = {
-            currentPage: page,
-            pageSize: limit,
-        };
-
-        if (totalCount !== undefined) {
-            pagination = {
-                ...pagination,
-                totalPages: Math.ceil(totalCount / limit),
-                totalUsers: totalCount
-            };
-        }
-
-        res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
-
-        return res.status(200).json({
-            success: true,
-            data: {
-                users,
-                pagination,
-                searchCriteria: {
-                    countries,
-                    divisions_ids: division_ids || []
-                }
-            }
-        });
-
-    } catch (error) {
-        console.error('Preferred location API error:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
-
 
 
 // router.get('/users/not-viewed', 

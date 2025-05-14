@@ -17,7 +17,7 @@ import { membershipRequestQuerySchema, membershipRequestSchema } from "../lib/sc
 import { Asset } from "../models/asset";
 import { log } from "console";
 import { partnerPreferenceSchema } from "../lib/schema/partnerPreference.schema";
-
+import "../lib/types/express.decratation";
 const router: Router = Router();
 
 // Constants
@@ -29,14 +29,6 @@ router.use(rateLimiter(RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX_REQUESTS));
 router.use(validateUser);
 router.use(queryMiddleware)
 
-declare global {
-    namespace Express {
-        interface Request {
-            authSession: IAuthSession;
-            bearerAccessToken?: string;
-        }
-    }
-}
 
 router.get('/user-details', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -46,7 +38,17 @@ router.get('/user-details', async function (req: Request, res: Response): Promis
         const { fields } = await userDetailsQuerySchema.parseAsync(req.query);
         console.log(fields)
         // Parse and validate user ID
-      
+       
+
+        if (!req.authSession || !req.authSession?.value) {
+            res.status(401).json({
+                success: false,
+                message: 'Failed to authorize the user',
+                
+                data: null
+            });
+            return;
+        }
         const userId = req.authSession.value.userId;
 
         // Default fields if none specified
@@ -106,7 +108,15 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
     try {
         // 1. Parse and validate request body
         const updateData = await updateUserSchema.parseAsync(req.body);
-
+        if (!req.authSession || !req.authSession?.value) {
+            res.status(401).json({
+                success: false,
+                message: 'Failed to authorize the user',
+                
+                data: null
+            });
+            return;
+        }
         // 2. Get user ID from auth session
         const userId = req.authSession.value.userId;
 
@@ -214,7 +224,19 @@ router.put('/user-details', async function (req: Request, res: Response): Promis
 router.put('/user-details/education', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // Get user ID from auth session
+
+        if (!req.authSession || !req.authSession?.value) {
+            res.status(401).json({
+                success: false,
+                message: 'Failed to authorize the user',
+                
+                data: null
+            });
+            return;
+        }
         const userId = req.authSession.value.userId;
+
+      
         // Validate the request body using the schema
         const updateData = await updateUserEducationSchema.parseAsync(req.body);
 
@@ -312,7 +334,15 @@ router.put('/user-details/partner-preference', async function (req: Request, res
     try {
         // 1. Parse and validate request body against the partnerPreferenceSchema
         const updateData = await partnerPreferenceSchema.parseAsync(req.body);
-
+        if (!req.authSession || !req.authSession?.value) {
+            res.status(401).json({
+                success: false,
+                message: 'Failed to authorize the user',
+                
+                data: null
+            });
+            return;
+        }
         // 2. Get user ID from auth session
         const userId = req.authSession.value.userId;
 
@@ -398,8 +428,17 @@ router.put('/user-details/partner-preference', async function (req: Request, res
 
 router.post('/user-details/membership-request', async function (req: Request, res: Response): Promise<any> {
     try {
+        
+        if (!req.authSession || !req.authSession?.value) {
+            res.status(401).json({
+                success: false,
+                message: 'Failed to authorize the user',
+                
+                data: null
+            });
+            return;
+        }
         const userId = req.authSession.value.userId;
-
         // Check if user exists
         const user = await User.findById(userId);
         if (!user) {
@@ -495,6 +534,16 @@ router.post('/user-details/membership-request', async function (req: Request, re
 
 router.post('/user-details/update-photo', async function (req: Request, res: Response): Promise<any> {
     try {
+        if (!req.authSession || !req.authSession?.value) {
+            res.status(401).json({
+                success: false,
+                message: 'Failed to authorize the user',
+                
+                data: null
+            });
+            return;
+        }
+
         enum PhotoType {
             Profile = 'profileImage',
             Cover = 'coverImage',
@@ -659,6 +708,15 @@ router.post('/user-details/update-photo', async function (req: Request, res: Res
 
 router.delete('/user-details/user-photo', async function (req: Request, res: Response): Promise<any> {
     try {
+        if (!req.authSession || !req.authSession?.value) {
+            res.status(401).json({
+                success: false,
+                message: 'Failed to authorize the user',
+                
+                data: null
+            });
+            return;
+        }
         // Define photo types enum
         enum PhotoType {
             Profile = 'profileImage',
@@ -768,6 +826,15 @@ router.delete('/user-details/user-photo', async function (req: Request, res: Res
 
 router.get('/membership-request', validateUser, async function (req: Request, res: Response): Promise<Response | any> {
     try {
+        if (!req.authSession || !req.authSession?.value) {
+            res.status(401).json({
+                success: false,
+                message: 'Failed to authorize the user',
+                
+                data: null
+            });
+            return;
+        }
         const userId = req.authSession.value.userId;
 
         // Validate query parameters
@@ -860,6 +927,15 @@ router.get('/membership-request', validateUser, async function (req: Request, re
 
 router.put('/membership-request/cancel', validateUser, async function (req: Request, res: Response): Promise<any> {
     try {
+        if (!req.authSession || !req.authSession?.value) {
+            res.status(401).json({
+                success: false,
+                message: 'Failed to authorize the user',
+                
+                data: null
+            });
+            return;
+        }
         const userId = req.authSession.value.userId;
 
         const membershipRequest = await MembershipRequest.findOne({
@@ -901,6 +977,15 @@ router.put('/membership-request/cancel', validateUser, async function (req: Requ
 
 router.delete('/membership-request', validateUser, async function (req: Request, res: Response): Promise<any> {
     try {
+        if (!req.authSession || !req.authSession?.value) {
+            res.status(401).json({
+                success: false,
+                message: 'Failed to authorize the user',
+                
+                data: null
+            });
+            return;
+        }
         const userId = req.authSession.value.userId;
 
         const membershipRequest = await MembershipRequest.findOne({

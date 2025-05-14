@@ -1,10 +1,11 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-import mongoose, { Document, Schema, model } from 'mongoose';
+import mongoose, { Document, Mongoose, Schema, model } from 'mongoose';
 import { IPassword, IUserImage, Language } from '../lib/types/user.types';
 
 
 export interface IVideoProfile extends Document {
+    _id : mongoose.Types.ObjectId;
     name: string;
     email: string;
     phone : string ;

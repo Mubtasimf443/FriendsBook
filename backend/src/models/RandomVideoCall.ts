@@ -1,6 +1,7 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 import mongoose, { Schema, Document } from 'mongoose';
+import { Language } from '../lib/types/user.types';
 
 export interface IRandomVideoCall extends Document {
   userId: mongoose.Types.ObjectId;
@@ -9,14 +10,7 @@ export interface IRandomVideoCall extends Document {
     type: string;
     coordinates: number[];
   };
-  preferences: {
-    gender?: string;
-    ageRange?: {
-      min: number;
-      max: number;
-    };
-    maxDistance?: number;
-  };
+  languages : string[],
   connectedWith?: mongoose.Types.ObjectId;
   sessionId?: string;
   createdAt: Date;
@@ -28,14 +22,16 @@ const RandomVideoCallSchema: Schema = new Schema(
   {
     userId: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'VideoProfile',
       required: true,
     },
+
     status: {
       type: String,
       enum: ['searching', 'connected', 'ended'],
       default: 'searching',
     },
+
     location: {
       type: {
         type: String,
@@ -47,34 +43,23 @@ const RandomVideoCallSchema: Schema = new Schema(
         required: true,
       },
     },
-    preferences: {
-      gender: {
-        type: String,
-        enum: ['male', 'female', 'any'],
-        default: 'any',
-      },
-      ageRange: {
-        min: {
-          type: Number,
-          default: 18,
-        },
-        max: {
-          type: Number,
-          default: 99,
-        },
-      },
-      maxDistance: {
-        type: Number,
-        default: 50, // in kilometers
-      },
-    },
+    
     connectedWith: {
       type: Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'VideoProfile',
     },
+
     sessionId: {
       type: String,
     },
+
+    languages : [
+      {
+      type : String , 
+      enum : Object.values(Language)
+    }  
+  ], 
+
     socketId: {
       type: String,
       required: true,

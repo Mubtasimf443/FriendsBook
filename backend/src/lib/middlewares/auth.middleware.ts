@@ -3,12 +3,10 @@
 import { Request, Response, NextFunction, } from 'express';
 import { authSessionValidation } from '../schema/auth.schema';
 import AuthSession, { IAuthSession } from '../../models/AuthSession';
-import VideoProfile from '../../models/VideoProfile';
+import VideoProfile, { IVideoProfile } from '../../models/VideoProfile';
+import '../types/express.decratation'
 
-export interface AuthenticatedRequest extends Request {
-  authSession: IAuthSession;
-  bearerAccessToken: string
-}
+
 
 // Utility function to extract token
 export const extractBearerToken = (header: string | undefined): string | null => {
@@ -20,7 +18,7 @@ export const extractBearerToken = (header: string | undefined): string | null =>
 };
 
 // Middleware to extract and validate bearer token
-export async function validateUser(req: AuthenticatedRequest | any | Request, res: Response, next: NextFunction) :Promise<void | any> {
+export async function validateUser(req: Request | any | Request, res: Response, next: NextFunction) :Promise<void | any> {
   try {
     const authHeader = req.headers.authorization;
     const token = extractBearerToken(authHeader);
@@ -69,7 +67,7 @@ export async function validateUser(req: AuthenticatedRequest | any | Request, re
   }
 };
 
-export async function validateVideoProfile(req: AuthenticatedRequest | any | Request, res: Response, next: NextFunction) :Promise<void | any> {
+export async function validateVideoProfile(req: Request | any | Request, res: Response, next: NextFunction) :Promise<void | any> {
   try {
     const authHeader = req.headers.authorization;
     const token = extractBearerToken(authHeader);
@@ -119,7 +117,7 @@ export async function validateVideoProfile(req: AuthenticatedRequest | any | Req
 };
 
 
-export async function validateBothProfileType(req: AuthenticatedRequest | any | Request, res: Response, next: NextFunction) {
+export async function validateBothProfiledUser(req: Request | any,res: Response,next: NextFunction) :Promise<void | any> {
   try {
     const authHeader = req.headers.authorization;
     const token = extractBearerToken(authHeader);
@@ -127,52 +125,56 @@ export async function validateBothProfileType(req: AuthenticatedRequest | any | 
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: 'Authorization token is required'
+        message: 'Authorization token is required',
       });
     }
 
-
-    let validationResult = await authSessionValidation.safeParseAsync(token);
+    const validationResult = await authSessionValidation.safeParseAsync(token);
 
     if (!validationResult.success) {
       return res.status(401).json({
         success: false,
-        message: 'Bearer access token is failed to validate',
-        error: validationResult.error
+        message: 'Bearer access token failed to validate',
+        error: validationResult.error,
       });
     }
 
-    let matrimonyUserAuthSession = await AuthSession.findOne({ key : token , expiration_date : { $gt :new Date()} }); 
-
+    const matrimonyUserAuthSession = await AuthSession.findOne({
+      key: token,
+      expiration_date: { $gt: new Date() },
+    });
 
     if (matrimonyUserAuthSession) {
       req.authSession = matrimonyUserAuthSession;
       req.bearerAccessToken = token;
-      next()
-    } else {
-      let user :any= await VideoProfile.findOne({ 'auth.authSession' : token , "auth.session_exp_date" : { $gt : new Date()} });
- 
-      if (user) {
-        user = user?.toObject();
-        delete user.passwordDetails;
-        req.videoProfileData =user;
-        next()
-      }
-      res.status(400).json({
-          success: false,
-          message: 'Failed to find User Account',
-          data: null
-      });
-      return;
+      req.profileType = 'matrimony_profile';
+      return next();
     }
+
+    let user: any = await VideoProfile.findOne({
+      'auth.authSession': token,
+      'auth.session_exp_date': { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Failed to find User Account',
+        data: null,
+      });
+    }
+
+    user = user?.toObject();
+    delete user.passwordDetails;
+    req.videoProfile = user;
+    req.bearerAccessToken = token;
+    req.profileType = 'videoProfile';
+    return next();
   } catch (error) {
-    console.error(`[Bearer access Token Validation error]` , error);
-    
+    console.error('[Bearer access Token Validation error]', error);
     return res.status(401).json({
       success: false,
-      message: 'Invalid authorization token'
+      message: 'Invalid authorization token',
     });
   }
 }
-
-

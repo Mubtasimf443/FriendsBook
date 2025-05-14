@@ -1,6 +1,6 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-import express, { Request, Response,  json as ExpressJsonMidleware , urlencoded} from 'express';
+import express, { Request, Response,  json as ExpressJsonMidleware , urlencoded, RequestHandler } from 'express';
 import { NODE_ENV, PORT } from './config/env';
 import { connectDB } from './config/connectDB';
 import authRouter from './main_routes/auth';
@@ -15,6 +15,7 @@ import { cors } from './config/cors';
 import { createServer } from 'node:http';
 import {Server} from 'socket.io'
 import { SocketService } from './main_routes/socket.Service';
+import { validateBothProfiledUser } from './lib/middlewares/auth.middleware';
 
 
 
@@ -43,6 +44,7 @@ async function main() {
     app.use(ExpressJsonMidleware());
     app.use(express.static('public'));
     app.use(cors)
+   
     NODE_ENV === 'developement' && app.use(morgan('dev'));
     
 
