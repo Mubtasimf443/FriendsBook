@@ -4,7 +4,9 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export enum TemporarySessionNames {
     FORGET_PASSWORD_SESSION = "forget_password_session",
-    REGISTRATION_SESSION = 'registration_session'
+    REGISTRATION_SESSION = 'registration_session',
+    VIDEO_PROFILE_REGISTATION = "video_profile_regirstation_session",
+    VIDEO_PROFILE_FORGET_PASSWORD = "video_profile_forget_password"
 }
 
 interface ITemporarySession extends Document {

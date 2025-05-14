@@ -150,12 +150,15 @@ export const registrationUserSchema = z.object({
         .refine((date) => date < new Date(), {
             message: "Date of birth cannot be in the future"
         })
-        .refine((date) => {
+        .refine(
+            (date) => {
             const age = Math.floor((new Date().getTime() - date.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
             return age >= 18;
-        }, {
+        },
+        {
             message: "You must be at least 18 years old"
-        }),
+        }
+    ),
 
     email: emailValidatior,
 

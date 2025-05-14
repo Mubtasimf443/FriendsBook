@@ -8,95 +8,105 @@ import {
     COMPANY_LOGO,
     COMPANY_NAME,
     EMAIL_PRIMARY_COLOR,
-    EMAIL_SECONDARY_COLOR,
+    EMAIL_BACKGROUND_COLOR,
 } from '../../config/env';
 import transporter from '../../config/transporter';
 
-// Email templates
+// // Email templates
 export default function generateEmailTemplate(content: string): string {
     return `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: ${EMAIL_BACKGROUND_COLOR}; border: 1px solid #ddd; padding: 20px; border-radius: 12px;">
           <div style="text-align: center; margin-bottom: 20px;">
-              <img src="${COMPANY_LOGO}" alt="${COMPANY_NAME} Logo" style="max-width: 200px;">
+              <img src="${COMPANY_LOGO}" alt="${COMPANY_NAME} Logo" style="max-width: 180px;">
           </div>
-          <div style="background-color: ${EMAIL_PRIMARY_COLOR}; color: white; padding: 15px; text-align: center; border-radius: 8px;">
-              <h1>${COMPANY_NAME}</h1>
+          <div style="background-color: ${EMAIL_PRIMARY_COLOR}; color: #ffffff; padding: 18px; text-align: center; border-radius: 8px;">
+              <h1 style="margin: 0;">${COMPANY_NAME}</h1>
           </div>
-          <div style="padding: 20px; color: #333;">
+          <div style="padding: 25px 20px; color: #333;">
               ${content}
           </div>
-          <hr style="border: 1px solid ${EMAIL_SECONDARY_COLOR}; margin: 20px 0;">
+          <hr style="border: none; border-top: 1px solid ${EMAIL_PRIMARY_COLOR}; margin: 30px 0;">
           <div style="font-size: 12px; color: #666; text-align: center;">
-              <p>${COMPANY_NAME}</p>
+              <p><strong>${COMPANY_NAME}</strong></p>
               <p>${COMPANY_CONTACT_ADDRESS}</p>
-              <p>Email: ${COMPANY_CONTACT_EMAIL}</p>
-              <p>Phone: ${COMPANY_CONTACT_PHONE}</p>
+              <p>Email: <a href="mailto:${COMPANY_CONTACT_EMAIL}" style="color: ${EMAIL_PRIMARY_COLOR}; text-decoration: none;">${COMPANY_CONTACT_EMAIL}</a></p>
+              <p>Phone: <a href="tel:${COMPANY_CONTACT_PHONE}" style="color: ${EMAIL_PRIMARY_COLOR}; text-decoration: none;">${COMPANY_CONTACT_PHONE}</a></p>
           </div>
       </div>
     `;
 }
 
-// Sign-Up OTP Email
-async function signUpOtpEmail(otp: number, email: string): Promise<boolean> {
+// Registration OTP Email
+async function registrationOtpEmail(otp: number, email: string): Promise<boolean> {
     try {
         const content = `
-        <h2>Sign-Up Verification</h2>
-        <p>Thank you for signing up for ${COMPANY_NAME}. Use the following OTP to complete your registration:</p>
-        <div style="background-color: ${EMAIL_SECONDARY_COLOR}; padding: 15px; text-align: center; margin: 20px 0; border-radius: 8px;">
-            <h1 style="margin: 0;">${otp}</h1>
+        <div style="background-color: ${EMAIL_BACKGROUND_COLOR}; padding: 20px;">
+            <h2 style="color: ${EMAIL_PRIMARY_COLOR};">Email Verification</h2>
+            <p>This is your registration OTP from <strong>FriendsBook</strong> app. Please use the following code to verify your email and complete your registration:</p>
+            <div style="background-color: ${EMAIL_PRIMARY_COLOR}; color: white; padding: 15px; text-align: center; margin: 20px 0; border-radius: 8px;">
+                <h1 style="margin: 0;">${otp}</h1>
+            </div>
+            <p>This code will expire in 10 minutes. If you didn't initiate this request, please ignore this email.</p>
         </div>
-        <p>This code will expire in 10 minutes.</p>
-      `;
+        `;
         const info = await transporter.sendMail({
             from: COMPANY_MAIL,
             to: email,
-            subject: `Sign-Up Verification - ${COMPANY_NAME}`,
+            subject: `Registration OTP - FriendsBook`,
             html: generateEmailTemplate(content),
         });
-        console.log('Sign-Up OTP email sent:', info.messageId);
+        console.log('Registration OTP email sent:', info.messageId);
         return true;
     } catch (error) {
-        console.error('Error sending Sign-Up OTP email:', error);
+        console.error('Error sending Registration OTP email:', error);
         return false;
     }
 }
 
-// Registration Success Email
+
+// Registration Successful Email
 async function registrationSuccessEmail(email: string): Promise<boolean> {
     try {
         const content = `
-        <h2>Registration Successful</h2>
-        <p>Congratulations! You have successfully registered with ${COMPANY_NAME}. We wish you the best in finding your life partner.</p>
-      `;
+        <div style="background-color: ${EMAIL_BACKGROUND_COLOR}; padding: 20px;">
+            <h2 style="color: ${EMAIL_PRIMARY_COLOR};">Welcome to FriendsBook!</h2>
+            <p>Your registration was successful. We're excited to have you on board.</p>
+            <p>You can now log in to the <strong>FriendsBook</strong> app and start exploring!</p>
+            <p>If you have any questions or need help, feel free to contact our support team.</p>
+        </div>
+        `;
         const info = await transporter.sendMail({
             from: COMPANY_MAIL,
             to: email,
-            subject: `Welcome to ${COMPANY_NAME}`,
+            subject: `Registration Successful - FriendsBook`,
             html: generateEmailTemplate(content),
         });
-        console.log('Registration success email sent:', info.messageId);
+        console.log('Registration Success email sent:', info.messageId);
         return true;
     } catch (error) {
-        console.error('Error sending registration success email:', error);
+        console.error('Error sending Registration Success email:', error);
         return false;
     }
 }
+
 
 // Forgot Password OTP Email
 async function forgotPasswordOtpEmail(otp: number, email: string): Promise<boolean> {
     try {
         const content = `
-        <h2>Password Reset</h2>
-        <p>You requested to reset your password for ${COMPANY_NAME}. Use the following OTP to proceed:</p>
-        <div style="background-color: ${EMAIL_SECONDARY_COLOR}; padding: 15px; text-align: center; margin: 20px 0; border-radius: 8px;">
-            <h1 style="margin: 0;">${otp}</h1>
+        <div style="background-color: ${EMAIL_BACKGROUND_COLOR}; padding: 20px;">
+            <h2 style="color: ${EMAIL_PRIMARY_COLOR};">Password Reset</h2>
+            <p>You requested to reset your password for <strong>FriendsBook</strong> app. Use the following OTP to proceed:</p>
+            <div style="background-color: ${EMAIL_PRIMARY_COLOR}; color: white; padding: 15px; text-align: center; margin: 20px 0; border-radius: 8px;">
+                <h1 style="margin: 0;">${otp}</h1>
+            </div>
+            <p>This code will expire in 10 minutes. If you didn't request this, please contact our support team immediately.</p>
         </div>
-        <p>This code will expire in 10 minutes. If you didn't request this, please contact support immediately.</p>
-      `;
+        `;
         const info = await transporter.sendMail({
             from: COMPANY_MAIL,
             to: email,
-            subject: `Password Reset - ${COMPANY_NAME}`,
+            subject: `Password Reset - FriendsBook`,
             html: generateEmailTemplate(content),
         });
         console.log('Forgot Password OTP email sent:', info.messageId);
@@ -107,9 +117,12 @@ async function forgotPasswordOtpEmail(otp: number, email: string): Promise<boole
     }
 }
 
+
+
+
 // Export emails
 export const authEmails = {
-    signUpOtpEmail,
-    registrationSuccessEmail,
-    forgotPasswordOtpEmail,
+    registrationOtpEmail ,
+    registrationSuccessEmail ,
+    forgotPasswordOtpEmail
 };

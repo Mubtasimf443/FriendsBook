@@ -30,6 +30,7 @@ async function main() {
             origin: '*',
             methods: ['POST', 'GET', 'DELETE', 'PUT']
         }
+       
     })
 
     const socketService = new SocketService(io);
