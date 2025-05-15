@@ -7,7 +7,7 @@ class RandomVideoController {
     constructor() {
         
     }
-
+    
     public async CheckVideoCallsOfUsersActive(latitude: number, longitude: number, language: string[]): Promise<null | IRandomVideoCall> {
         // Find users who are searching for a call, not connected yet, and within 2km distance
         // Also match at least one language preference
@@ -46,7 +46,7 @@ class RandomVideoController {
         else return null;
     }
 
-
+   
     static GetIntance() {
         return (new RandomVideoController())
     }

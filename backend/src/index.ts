@@ -16,6 +16,7 @@ import { createServer } from 'node:http';
 import {Server} from 'socket.io'
 import { SocketService } from './main_routes/socket.Service';
 import { validateBothProfiledUser } from './lib/middlewares/auth.middleware';
+import { randomVideoCallSocketService } from './sockets/randomVideoCall.socket';
 
 
 
@@ -31,12 +32,15 @@ async function main() {
             origin: '*',
             methods: ['POST', 'GET', 'DELETE', 'PUT']
         }
-       
-    })
-
-    const socketService = new SocketService(io);
+    });
 
 
+
+
+
+    randomVideoCallSocketService.getIntance(io.of('/random-video-call'));
+    
+    let notificationIo = io.of('/notifications');
 
     // Environmemt
     await connectDB();
@@ -44,6 +48,7 @@ async function main() {
     app.use(ExpressJsonMidleware());
     app.use(express.static('public'));
     app.use(cors)
+    app.set('view engine' , 'ejs')
    
     NODE_ENV === 'developement' && app.use(morgan('dev'));
     
@@ -59,6 +64,9 @@ async function main() {
 
 
 
+    app.get('/video-call' , async function (req , res ) {
+        res.render('index')
+    })
     
     // app.listen(port ,() =>   )
    

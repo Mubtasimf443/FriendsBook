@@ -23,7 +23,7 @@ import { MembershipRequestStatus } from "../lib/types/memberdship.types";
 import { RequestMobileNumberView } from "../models/RequestMobileNumberView";
 import { addDays } from "date-fns";
 import { validateUser } from "../lib/middlewares/auth.middleware";
-import connectionRequestSubRouter from '../sub_routes/connectionRequest'
+import connectionRequestSubRouter from './connectionRequest'
 import { IBlockedProfile } from "../lib/types/userProfile.types";
 import AuthSession from "../models/AuthSession";
 import { MatchScoreService } from "../lib/core/matchScore.service";
