@@ -1,6 +1,6 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-import { Router, Request, Response, RequestHandler, } from "express";
+import { Router, Request, Response, RequestHandler, NextFunction, } from "express";
 import rateLimiter from "../config/rateRimiter";
 import { validateBothProfiledUser, validateUser } from "../lib/middlewares/auth.middleware";
 import { IAuthSession } from "../models/AuthSession";
@@ -35,7 +35,7 @@ const router: Router = Router();
 router.use(rateLimiter(120 * 1000, 200));
 router.use(queryMiddleware)
 router.use(validateBothProfiledUser )
-router.use(async function (req , res , next) {
+router.use(async function (req :Request, res:Response, next : NextFunction) {
     try {
         // console.log(req.authSession);
         console.log(req.profileType);

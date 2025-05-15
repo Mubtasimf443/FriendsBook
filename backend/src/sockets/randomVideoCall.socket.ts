@@ -59,6 +59,8 @@ export class randomVideoCallSocketService {
                 }
             });
 
+
+
             socket.on('connect-video-call', async (roomId) => {
                 try {
                     let roomIdSchema = z.string().uuid();
@@ -147,6 +149,7 @@ export class randomVideoCallSocketService {
 
     private async connectUser(request1: IRandomVideoCall, request2: IRandomVideoCall, socket: Socket) {
         try {
+
             request1.status = 'connected';
             request1.connectedWith = request2.userId;
             await request1.save();

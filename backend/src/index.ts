@@ -6,8 +6,8 @@ import { connectDB } from './config/connectDB';
 import authRouter from './main_routes/auth';
 import searchRouter from './main_routes/search';
 import assetsRouter from './main_routes/assets';
-import profileRouter from './main_routes/profile';
-import cronJobsRouter from './main_routes/cron-jobs';
+// import profileRouter from './main_routes/profile';
+// import cronJobsRouter from './main_routes/cron-jobs';
 import dataRouter from './main_routes/data';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
@@ -57,9 +57,9 @@ async function main() {
     app.use('/api/auth', authRouter);
     app.use('/api/search', searchRouter);
     app.use('/api/assets', assetsRouter);
-    app.use('/api/profile', profileRouter);
+    // app.use('/api/profile', profileRouter);
     app.use('/api/data', dataRouter);
-    app.use('/api/cron-jobs', cronJobsRouter);
+    // app.use('/api/cron-jobs', cronJobsRouter);
 
 
 
