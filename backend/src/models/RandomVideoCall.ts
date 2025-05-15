@@ -8,17 +8,13 @@ export interface IRandomVideoCall extends Document {
   userId: mongoose.Types.ObjectId;
   id : string ;
   status: 'searching' | 'connected' | 'ended';
-  location: {
-    type: string;
-    coordinates: number[];
-  };
-  languages : string[],
   connectedWith?: mongoose.Types.ObjectId;
-  sessionId?: string;
+  peerId : string;
   createdAt: Date;
   updatedAt: Date;
   socketId: string;
   roomId: string;
+  gender : string ;
 }
 
 const RandomVideoCallSchema: Schema = new Schema(
@@ -38,42 +34,19 @@ const RandomVideoCallSchema: Schema = new Schema(
       enum: ['searching', 'connected', 'ended'],
       default: 'searching',
     },
-
-    location: {
-      type: {
-        type: String,
-        enum: ['Point'],
-        default: 'Point',
-      },
-      coordinates: {
-        type: [Number],
-        required: true,
-      },
-    },
-    
     connectedWith: {
       type: Schema.Types.ObjectId,
       ref: 'VideoProfile',
     },
-
-    sessionId: {
-      type: String,
+    peerId : {
+      type : String ,
+      required : true
     },
-
-    languages : [
-      {
-      type : String , 
-      enum : Object.values(Language)
-    }  
-  ], 
-  socketId :{
-    type: String,
-    required: true,
-  },
-    roomId: {
-      type: String,
-      required: true,
+    roomId : {
+      type : String
     },
+    gender : String 
+
   },
   { timestamps: true }
 );

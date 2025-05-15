@@ -72,6 +72,8 @@
             let localStream;
             let remoteStream;
             let currentCall = null;
+            let remotePeerId ;
+            let peerCall ;
             let callData = {
                 requestId: null,
                 sessionId: null,
@@ -80,6 +82,7 @@
                 timeLeft: 20,
                 timer: null
             };
+            let isVideoCall = true;
             
             // Initialize call
             startCallBtn.addEventListener('click', async () => {
@@ -91,243 +94,66 @@
                 }
                 
                 try {
+
+                    navigator.mediaDevices.getUserMedia({ video: isVideoCall, audio: true })
+                    .then(stream => {
+                        const video = document.getElementById('localVideo');
+                        video.srcObject = stream;
+                        video.play();
+                        setupPanel.style.display ='none';
+                        roomPanel.style.display ='block';
+                        localStream = stream;
+                    });
+                
                     // Connect to socket
                     socket = io('/random-video-call', {
                         auth: { token }
                     });
-                    
-                    setupSocketListeners();
-                    
-                    // Get user media based on call type
-                    const isVideo = callTypeSelect.value === 'video';
-                    localStream = await navigator.mediaDevices.getUserMedia({
-                        video: isVideo,
-                        audio: true
+
+                    peer = new Peer({});
+
+                    peer.on('open', function(id) {
+                      socket.emit('create-video-call' , id);
+                      socket.on('room-created' , function (roomid) {
+                        socket.emit('connect-video-call' , roomid)
+                      })
                     });
-                    
-                    // Display local video
-                    const localVideo = document.getElementById('localVideo');
-                    localVideo.srcObject = localStream;
-                    
-                    // Get user location
-                    navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                            // Create call request
-                            socket.emit('/create-video-request', {
-                                latitude: position.coords.latitude,
-                                longitude: position.coords.longitude,
-                                maxDistance: 50000 // 50km
-                            });
-                            
-                            statusElement.textContent = 'Looking for someone to chat with...';
-                            setupPanel.style.display = 'none';
-                            roomPanel.style.display = 'block';
-                        },
-                        (error) => {
-                            alert('Error getting location: ' + error.message);
-                        }
-                    );
+
+                    socket.on('started', bool => {
+                        document.getElementById('timer').innerText = "Started finding User..."
+                    })
+
+                    socket.on('call-user' , (peerId) => {
+                        alert('caller')
+                        let call= peer.call(peerId , localStream);
+                        call.on('stream',  (stream) => {
+                            console.log(stream);
+                            document.getElementById('remoteVideo').srcObject = stream;
+                        });
+                        peerCall = call;
+                    });
+
+                    peer.on('call' , (call) => {
+                        alert('reciever')
+                        call.answer(localStream);
+                        call.on('stream', function (stream) {
+                            document.getElementById('remoteVideo').srcObject = stream;
+                        });
+                        peerCall = call;
+                    })
+
+
+
+                    socket.on('error' , data => alert(data.text));
                 } catch (error) {
+                    console.log(error);
                     alert('Error accessing camera/microphone: ' + error.message);
                 }
             });
-            
-            function setupSocketListeners() {
-                // Request created successfully
-                socket.on('request-created', (data) => {
-                    callData.requestId = data.requestId;
-                    callData.roomId = data.roomId;
-                    
-                    // Initialize peer connection
-                    peer = new Peer();
-                    setupPeerListeners();
-                    
-                    // Check for users
-                    checkForUsers();
-                });
-                
-                // No users found
-                socket.on('no-users-found', (data) => {
-                    statusElement.textContent = data.message;                    
-                    // Try again after a short delay
-                    setTimeout(checkForUsers, 1000);
-                });
-                
-                // User found for video call
-                socket.on('user-found', (data) => {
-                    callData.sessionId = data.sessionId;
-                    statusElement.textContent = `Found a match! Starting call with ${data.userInfo.name || 'someone'}`;
-                    
-                    // Join the call
-                    socket.emit('/join-video-call', {
-                        sessionId: callData.sessionId,
-                        signal: { type: 'initial' }
-                    });
-                });
-                
-                // Incoming call
-                socket.on('incoming-call', (data) => {
-                    callData.sessionId = data.sessionId;
-                    callData.roomId = data.roomId;
-                    statusElement.textContent = `Incoming call from ${data.userInfo.name || 'someone'}`;
-                    
-                    // Join the call
-                    socket.emit('/join-video-call', {
-                        sessionId: callData.sessionId,
-                        signal: { type: 'answer' }
-                    });
-                });
-                
-                // User joined the call
-                socket.on('user-joined', (data) => {
-                    // Handle the incoming connection with peer
-                    if (peer && data.userId) {
-                        currentCall = peer.call(data.userId, localStream);
-                        handleCallConnection(currentCall);
-                    }
-                });
-                
-                // Call ended
-                socket.on('call-ended', (data) => {
-                    statusElement.textContent = `Call ended: ${data.message}`;
-                    endCurrentCall();
-                });
-                
-                // Error handling
-                socket.on('error', (data) => {
-                    statusElement.textContent = `Error: ${data.message}`;
-                });
-            }
-            
-            function setupPeerListeners() {
-                peer.on('open', (id) => {
-                    console.log('My peer ID is: ' + id);
-                });
-                
-                // Handle incoming calls
-                peer.on('call', (call) => {
-                    call.answer(localStream);
-                    currentCall = call;
-                    handleCallConnection(call);
-                });
-                
-                peer.on('error', (err) => {
-                    console.error('Peer error:', err);
-                    statusElement.textContent = `Connection error: ${err.message}`;
-                });
-            }
-            
-            function handleCallConnection(call) {
-                call.on('stream', (stream) => {
-                    // Display remote video
-                    const remoteVideo = document.getElementById('remoteVideo');
-                    remoteVideo.srcObject = stream;
-                    remoteStream = stream;
-                    
-                    // Start the timer
-                    startTimer();
-                    callData.connected = true;
-                });
-                
-                call.on('close', () => {
-                    endCurrentCall();
-                });
-            }
-            
-            function checkForUsers() {
-                if (!callData.requestId) return;
-                
-                socket.emit('/check-users-request', {
-                    requestId: callData.requestId,
-                    maxDistance: 50000
-                });
-            }
-            
-            function startTimer() {
-                callData.timeLeft = 20;
-                updateTimer();
-                
-                callData.timer = setInterval(() => {
-                    callData.timeLeft--;
-                    updateTimer();
-                    
-                    if (callData.timeLeft <= 0) {
-                        clearInterval(callData.timer);
-                        endCurrentCall();
-                    }
-                }, 1000);
-            }
-            
-            function updateTimer() {
-                if (callData.timeLeft > 0) {
-                    timerElement.textContent = `Time left: ${callData.timeLeft}s`;
-                } else {
-                    timerElement.textContent = 'Time expired';
-                }
-            }
-            
-            function endCurrentCall() {
-                // Stop timer
-                if (callData.timer) {
-                    clearInterval(callData.timer);
-                }
-                
-                // Close peer connection
-                if (currentCall) {
-                    currentCall.close();
-                }
-                
-                // Notify server
-                if (socket && callData.sessionId) {
-                    socket.emit('/leave-video-call', {
-                        sessionId: callData.sessionId
-                    });
-                }
-                
-                // Stop remote stream
-                if (remoteStream) {
-                    remoteStream.getTracks().forEach(track => track.stop());
-                    document.getElementById('remoteVideo').srcObject = null;
-                }
-                
-                // Reset call data
-                callData.connected = false;
-                callData.sessionId = null;
-                currentCall = null;
-                
-                // Return to setup panel
-                roomPanel.style.display = 'none';
-                setupPanel.style.display = 'block';
-            }
-            
-            // UI Controls
-            endCallBtn.addEventListener('click', endCurrentCall);
 
-            
-            muteBtn.addEventListener('click', () => {
-                if (localStream) {
-                    const audioTracks = localStream.getAudioTracks();
-                    if (audioTracks.length > 0) {
-                        const isMuted = !audioTracks[0].enabled;
-                        audioTracks[0].enabled = isMuted;
-                        muteBtn.textContent = isMuted ? 'Mute' : 'Unmute';
-                    }
-                }
+            document.querySelector('#call-type').addEventListener('change' , function (event ) {
+                isVideoCall = event.target.value === 'video' ;
             });
-
-            
-            videoToggleBtn.addEventListener('click', () => {
-                if (localStream) {
-                    const videoTracks = localStream.getVideoTracks();
-                    if (videoTracks.length > 0) {
-                        const isHidden = !videoTracks[0].enabled;
-                        videoTracks[0].enabled = isHidden;
-                        videoToggleBtn.textContent = isHidden ? 'Hide Video' : 'Show Video';
-                    }
-                }
-            });
-
-
         });
     </script>
 

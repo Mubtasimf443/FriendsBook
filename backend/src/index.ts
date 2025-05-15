@@ -14,7 +14,6 @@ import morgan from 'morgan';
 import { cors } from './config/cors';
 import { createServer } from 'node:http';
 import {Server} from 'socket.io'
-import { SocketService } from './main_routes/socket.Service';
 import { validateBothProfiledUser } from './lib/middlewares/auth.middleware';
 import { randomVideoCallSocketService } from './sockets/randomVideoCall.socket';
 
@@ -38,7 +37,7 @@ async function main() {
 
 
 
-    randomVideoCallSocketService.getIntance(io.of('/random-video-call'));
+    randomVideoCallSocketService.getInstance(io.of('/random-video-call'));
     
     let notificationIo = io.of('/notifications');
 

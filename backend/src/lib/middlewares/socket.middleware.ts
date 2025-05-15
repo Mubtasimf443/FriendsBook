@@ -34,12 +34,14 @@ export async function socketMiddlewaresVideoProfile(socket :Socket, next : (erro
      
         const token = socket.handshake.auth.token;
 
-        let user = await VideoProfile.findOne({
-            'auth.authSession': token,
-            'auth.session_exp_date': { $gt: new Date() }
-        }, 
-        'name email gender languages status languages lastActive profileImage coverImage' )
-        .lean();
+        let user = await VideoProfile.findOne(
+            {  
+                'auth.authSession': token,    
+                'auth.session_exp_date': { $gt: new Date() }  
+            }, 
+            'name email gender languages status languages lastActive profileImage coverImage' 
+        )
+            .lean();
     
         if (!user) {
             return next(new Error("Socket authentication Failed"))

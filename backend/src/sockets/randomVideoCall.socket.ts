@@ -7,7 +7,7 @@ import { Socket } from 'socket.io';
 import { RandomVideoCall, IRandomVideoCall } from '../models/RandomVideoCall';
 import { z } from 'zod';
 import mongoose from 'mongoose';
-import VideoProfile from '../models/VideoProfile';
+import { randomUUID } from 'crypto';
 
 // Constants
 const VIDEO_CALL_DURATION = 20 * 1000; // 20 seconds in milliseconds
@@ -24,257 +24,101 @@ export class randomVideoCallSocketService {
 
     private async initializeListeners() {
         this.io.on('connection', (socket: Socket) => {
-            console.log(`User connected: ${socket.user?._id || 'Unknown'}, Socket ID: ${socket.id}`);
-            
-            // First, clean up any existing requests or active calls for this user
+            console.log('User connected to random video call socket', socket.user?._id);
+           
             this.cleanupUserSessions(socket.user?._id);
 
-            // Handler for creating a new video call request
-            socket.on('/create-video-request', async (data) => {
+            socket.on('create-video-call', async (peerId) => {
                 try {
-                    // Validate incoming data
-                    const schema = z.object({
-                        latitude: z.number().min(-90).max(90),
-                        longitude: z.number().min(-180).max(180),
-                        maxDistance: z.number().min(2000).max(100000).positive().optional().default(50000), // Distance in meters, default 50km
-                        languages: z.array(z.string()).optional(),
-                    });
-                    
-                    const validationResult = schema.safeParse(data);
-                    
-                    if (!validationResult.success) {
-                        socket.emit('error', { 
-                            message: 'Invalid request data', 
-                            errors: validationResult.error.errors 
-                        });
-                        return;
+                    let peerIdSchema = z.string().min(10).max(512);
+                  
+                    if (!peerIdSchema.safeParse(peerId).success) {
+                        return socket.emit('error', { text: 'Failed to validate' });
                     }
-                    
-                    const { latitude, longitude, languages } = validationResult.data;
-                    
-                    // Generate a unique room ID
-                    const roomId = `room_${socket.user._id}_${Date.now()}`;
-                    
-                    // Create a new random video call entry
+
+                    peerId = peerIdSchema.parse(peerId);
+                    let roomId = randomUUID();
+            
+
                     const randomVideoCall = new RandomVideoCall({
                         userId: socket.user._id,
                         status: 'searching',
-                        location: {
-                            type: 'Point',
-                            coordinates: [longitude, latitude]
-                        },
-                        languages: languages || socket.user.languages || [],
-                        socketId: socket.id,
-                        roomId: roomId
+                        peerId: peerId,
+                        roomId: roomId,
+                        gender : socket.user.gender
                     });
                     
-                    await randomVideoCall.save();
-                    
-                    // Emit that the request was created successfully
-                    socket.emit('request-created', {
-                        success: true,
-                        message: 'Video call request created successfully',
-                        requestId: randomVideoCall.id.toString(), // Convert ObjectId to string
-                        roomId: roomId
-                    });
-                    
-                    // Join socket to a room with the same ID as the request
                     socket.join(roomId);
-                    
+
+                    await randomVideoCall.save();
+
+                    socket.emit('room-created', roomId); // Fixed event name (removed leading slash)
                 } catch (error) {
                     console.error('Error creating video request:', error);
                     socket.emit('error', { message: 'Failed to create video call request' });
                 }
             });
 
-            // Handler for checking available users for a video call
-            socket.on('/check-users-request', async (data) => {
+            socket.on('connect-video-call', async (roomId) => {
                 try {
-                    // Validate the request
-                    const schema = z.object({
-                        requestId: z.string().uuid().min(1), // MongoDB ObjectId as string
-                        maxDistance: z.number().min(2000).max(100000).optional().default(50000),
-                    });
-                    
-                    const validationResult = schema.safeParse(data);
-                    if (!validationResult.success) {
-                        socket.emit('error', { 
-                            message: 'Invalid check request', 
-                            errors: validationResult.error.errors 
-                        });
-                        return;
+                    let roomIdSchema = z.string().uuid();
+                    if (!roomIdSchema.safeParse(roomId).success) {
+                        return socket.emit('error', { text: 'Invalid room ID' });
                     }
                     
-                    const { requestId, maxDistance } = validationResult.data;
-                    
-                    // Find the user's own request
-                    const myRequest = await RandomVideoCall.findOne({
-                        id:requestId, // Use _id instead of id
-                        userId: socket.user._id,
-                        status: 'searching'
-                    });
-                    
-                    if (!myRequest) {
-                        socket.emit('error', { message: 'No active search request found' });
-                        return;
+                    let randomVideoCall = await RandomVideoCall.findOne({ roomId: roomIdSchema.parse(roomId) });
+
+                    if (!randomVideoCall) {
+                        throw new Error("Cannot find Random video call created in the database");
                     }
-                    
-                    // Find a matching user based on location
-                    const matchingUser = await RandomVideoCall.findOne({
-                        userId: { $ne: socket.user._id },
-                        status: 'searching',
-                        location: {
-                            $near: {
-                                $geometry: myRequest.location,
-                                $maxDistance: maxDistance
-                            }
-                        }
-                    })
-                    .populate('userId');
-                    
-                    if (!matchingUser) {
-                        socket.emit('no-users-found', { message: 'No users found nearby, try again later' });
-                        return;
-                    }
-                    
-                    // Update both users' statuses to connected
-                    myRequest.status = 'connected';
-                    myRequest.connectedWith = matchingUser.userId;
-                    myRequest.sessionId = `session_${Date.now()}`;
-                    await myRequest.save();
-                    
-                    matchingUser.status = 'connected';
-                    matchingUser.connectedWith = socket.user._id;
-                    matchingUser.sessionId = myRequest.sessionId;
-                    await matchingUser.save();
-                    
-                    // Get other user's profile info (limited for privacy)
-                    const otherUserProfile = await VideoProfile.findById(matchingUser.userId).select('name gender status');
-                    
-                    // Notify both users about the match
-                    socket.emit('user-found', {
-                        success: true,
-                        message: 'User found for video call',
-                        sessionId: myRequest.sessionId,
-                        roomId: myRequest.roomId,
-                        userInfo: {
-                            name: otherUserProfile?.name,
-                            gender: otherUserProfile?.gender
-                        }
-                    });
-                    
-                    // Notify the other user through their socket
-                    this.io.to(matchingUser.socketId).emit('incoming-call', {
-                        success: true,
-                        message: 'Someone wants to video chat with you',
-                        sessionId: myRequest.sessionId,
-                        roomId: myRequest.roomId,
-                        userInfo: {
-                            name: socket.user.name,
-                            gender: socket.user.gender
-                        }
-                    });
-                    
-                    // Add the other user to the room
-                    const otherSocket = this.io.sockets.get(matchingUser.socketId);
-                    if (otherSocket) {
-                        otherSocket.join(myRequest.roomId);
-                    }
-                    
-                    // Start the 20-second timer for this call
-                    this.startCallTimer(myRequest.roomId, myRequest.sessionId);
-                    
-                } catch (error) {
-                    console.error('Error checking for users:', error);
-                    socket.emit('error', { message: 'Failed to check for available users' });
-                }
-            });
+
+                    socket.emit('started' , true)
+                    let arr: number[] = [1, 2, 1, 2];
+
+                    let startSearchNow: boolean = ((arr: number[]) => {
+                        let randomNum = Math.floor(arr.length * Math.random());
+                        return arr[randomNum] === 1;
+                    })(arr);
             
-            // Handler for joining a video call
-            socket.on('/join-video-call', async (data) => {
-                try {
-                    const schema = z.object({
-                        sessionId: z.string().min(1),
-                        signal: z.any() // WebRTC signal data
-                    });
-                    
-                    const validationResult = schema.safeParse(data);
-                    if (!validationResult.success) {
-                        socket.emit('error', { message: 'Invalid join request' });
-                        return;
+                    if (startSearchNow) {
+                        let request2 = await this.searchUser(socket.user._id, socket.user.gender);
+                        if (request2) {
+                            this.connectUser(randomVideoCall, request2, socket);
+                        } else {
+                            socket.emit('searching', { message: 'Looking for a match...' });
+                        }
+                    } else {
+                        let timeOut = setTimeout(async () => {
+                            let request2 = await this.searchUser(socket.user._id, socket.user.gender);
+                            if (request2) {
+                                this.connectUser(randomVideoCall, request2, socket);
+                            } else {
+                                socket.emit('searching', { message: 'Looking for a match...' });
+                            }
+                            clearTimeout(timeOut);
+                        }, 1500);
                     }
-                    
-                    const { sessionId, signal } = validationResult.data;
-                    
-                    // Find the call session
-                    const callSession = await RandomVideoCall.findOne({
-                        userId: socket.user._id,
-                        sessionId: sessionId,
-                        status: 'connected'
-                    });
-                    
-                    if (!callSession) {
-                        socket.emit('error', { message: 'Call session not found or not active' });
-                        return;
-                    }
-                    
-                    // Broadcast the WebRTC signal to the room (excluding sender)
-                    socket.to(callSession.roomId).emit('user-joined', {
-                        userId: socket.user._id.toString(), // Convert ObjectId to string
-                        signal: signal
-                    });
-                    
-                    socket.emit('join-success', { roomId: callSession.roomId });
-                    
                 } catch (error) {
-                    console.error('Error joining video call:', error);
-                    socket.emit('error', { message: 'Failed to join video call' });
+                    console.error(error);
+                    socket.emit('error', {
+                        type: 'video-connection-failed',
+                        message: 'Failed to connect User in 20s video call'
+                    });
+                }
+            });
+           
+            socket.on('stop-video-call' ,async  function () {
+                let call2 =await RandomVideoCall.findOne({ connectedWith : socket.user._id , status : 'connected'});
+                if (call2) {
+                    socket.to(call2.roomId).emit('call-cancelled')
                 }
             });
 
-            // Handler for leaving a video call
-            socket.on('/leave-video-call', async (data) => {
-                try {
-                    const schema = z.object({
-                        sessionId: z.string().min(1)
-                    });
-                    
-                    const validationResult = schema.safeParse(data);
-                    if (!validationResult.success) {
-                        return;
-                    }
-                    
-                    const { sessionId } = validationResult.data;
-                    
-                    await this.endCallSession(sessionId, socket.user._id, 'user-left');
-                    
-                } catch (error) {
-                    console.error('Error leaving video call:', error);
-                }
-            });
-
-            // WebRTC signaling
-            socket.on('signal', (data) => {
-                try {
-                    const { roomId, signal } = data;
-                    // Validate room ID
-                    if (!roomId || typeof roomId !== 'string') {
-                        return;
-                    }
-                    
-                    socket.to(roomId).emit('signal', {
-                        userId: socket.user._id.toString(), // Convert ObjectId to string
-                        signal: signal
-                    });
-                } catch (error) {
-                    console.error('Error processing signal:', error);
-                }
-            });
-
-            // Handle disconnection
             socket.on('disconnect', async () => {
                 try {
-                    await this.handleUserDisconnect(socket.user?._id, socket.id);
+                    await RandomVideoCall.deleteOne({
+                        userId : socket.user._id
+                    });
                 } catch (error) {
                     console.error('Error handling disconnect:', error);
                 }
@@ -282,110 +126,66 @@ export class randomVideoCallSocketService {
         });
     }
     
-    // Helper method to start the 20-second timer for a call
-    private startCallTimer(roomId: string, sessionId: string) {
-        // Clear any existing timer for this room
-        if (this.activeCallTimers.has(roomId)) {
-            clearTimeout(this.activeCallTimers.get(roomId));
+    private async searchUser(id: mongoose.Types.ObjectId, gender: string) {
+        // Fixed query to properly search for users of opposite gender
+        const matchingUser = await RandomVideoCall.findOne({
+            userId: { $ne: id },
+            status: 'searching',
+            gender : { $ne :gender }
+        })
+        .populate({
+            path: 'userId',
+        });
+        
+        // If userId doesn't match our criteria after population, return null
+        if (!matchingUser || !matchingUser.userId) {
+            return null;
         }
         
-        // Set a new timer
-        const timer = setTimeout(async () => {
-            // End the call after 20 seconds
-            await this.endCallByRoomId(roomId, 'time-expired');
-            this.activeCallTimers.delete(roomId);
-        }, VIDEO_CALL_DURATION);
-        
-        this.activeCallTimers.set(roomId, timer);
+        return matchingUser;
     }
-    
-    // Helper method to end a call by room ID
-    private async endCallByRoomId(roomId: string, reason: string) {
+
+    private async connectUser(request1: IRandomVideoCall, request2: IRandomVideoCall, socket: Socket) {
         try {
-            // Find all sessions in this room
-            const sessions = await RandomVideoCall.find({ roomId: roomId, status: 'connected' });
+            request1.status = 'connected';
+            request1.connectedWith = request2.userId;
+            await request1.save();
+
+            request2.status = 'connected';
+            request2.connectedWith = request1.userId;
+            await request2.save();
+
+            // Notify both users about the connection
+            socket.emit('call-user', request2.peerId);
             
-            // Update all sessions to ended
-            for (const session of sessions) {
-                session.status = 'ended';
-                await session.save();
-            }
-            
-            // Notify all users in the room that the call has ended
-            this.io.to(roomId).emit('call-ended', { 
-                message: 'Video call has ended',
-                reason: reason
-            });
-            
-            // Clear the room
-            this.io.in(roomId).socketsLeave(roomId);
-            
-        } catch (error) {
-            console.error('Error ending call by room ID:', error);
-        }
-    }
-    
-    // Helper method to end a specific call session
-    private async endCallSession(sessionId: string, userId: mongoose.Types.ObjectId, reason: string) {
-        try {
-            // Find the user's session
-            const userSession = await RandomVideoCall.findOne({
-                userId: userId,
-                sessionId: sessionId,
-                status: 'connected'
-            });
-            
-            if (!userSession) return;
-            
-            // End the call for all users in this session
-            await this.endCallByRoomId(userSession.roomId, reason);
-            
-        } catch (error) {
-            console.error('Error ending call session:', error);
-        }
-    }
-    
-    // Helper method to handle user disconnect
-    private async handleUserDisconnect(userId: mongoose.Types.ObjectId, socketId: string) {
-        if (!userId) return;
-        
-        try {
-            // Find any active sessions for this user
-            const activeSessions = await RandomVideoCall.find({
-                userId: userId,
-                status: { $in: ['searching', 'connected'] },
-                socketId: socketId
-            });
-            
-            for (const session of activeSessions) {
-                if (session.status === 'connected') {
-                    // End active calls
-                    await this.endCallByRoomId(session.roomId, 'user-disconnected');
-                } else {
-                    // Just mark searching sessions as ended
-                    session.status = 'ended';
-                    await session.save();
+            let timeOut =setTimeout(() => {
+                try {
+                    socket.to(request1.roomId).emit('end-call'  );
+                    socket.to(request2.roomId).emit('end-call'  );
+                    clearTimeout(timeOut)
+                } catch (error) {
+                    console.error(error);
                 }
-            }
+            }, VIDEO_CALL_DURATION + 2500);
+            // Join both users to the same room for easier communication
+            socket.join(request1.roomId);
+           
         } catch (error) {
-            console.error('Error handling user disconnect:', error);
+            console.error('Error connecting users:', error);
+            socket.emit('error', { message: 'Failed to establish connection' });
         }
     }
-    
+
+
     // Helper method to clean up existing sessions for a user
     private async cleanupUserSessions(userId: mongoose.Types.ObjectId) {
-        if (!userId) return;
-        
         try {
-            // End any existing 'searching' or 'connected' sessions for this user
-            await RandomVideoCall.updateMany(
+            if (!userId) return;
+            await RandomVideoCall.deleteMany(
                 { 
                     userId: userId,
                     status: { $in: ['searching', 'connected'] }
                 },
-                { 
-                    $set: { status: 'ended' }
-                }
             );
         } catch (error) {
             console.error('Error cleaning up user sessions:', error);
@@ -393,7 +193,7 @@ export class randomVideoCallSocketService {
     }
 
     // Static method to get instance
-    static getIntance(io: Namespace) {
+    static getInstance(io: Namespace) { // Fixed typo in method name
         return new randomVideoCallSocketService(io);
     }
 }
