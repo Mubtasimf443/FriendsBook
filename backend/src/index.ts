@@ -1,6 +1,6 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-import express, { Request, Response,  json as ExpressJsonMidleware , urlencoded, RequestHandler } from 'express';
+import express, { Request, Response,  json as ExpressJsonMidleware , urlencoded, RequestHandler, NextFunction } from 'express';
 import { NODE_ENV, PORT } from './config/env';
 import { connectDB } from './config/connectDB';
 import authRouter from './main_routes/auth';
@@ -16,7 +16,8 @@ import { createServer } from 'node:http';
 import {Server} from 'socket.io'
 import { validateBothProfiledUser } from './lib/middlewares/auth.middleware';
 import { randomVideoCallSocketService } from './sockets/randomVideoCall.socket';
-
+import { NotificationSocketService } from './sockets/notification.socket';
+import './lib/types/express.decratation';
 
 
 
@@ -39,7 +40,11 @@ async function main() {
 
     randomVideoCallSocketService.getInstance(io.of('/random-video-call'));
     
-    let notificationIo = io.of('/notifications');
+    const NotificationService = NotificationSocketService.getInstance(io.of('/notifications'));
+    app.use(async function (req:Request , res : Response , next : NextFunction) {
+        req.notifications = NotificationService;
+    })
+
 
     // Environmemt
     await connectDB();
@@ -60,6 +65,7 @@ async function main() {
     // app.use('/api/profile', profileRouter);
     app.use('/api/data', dataRouter);
     // app.use('/api/cron-jobs', cronJobsRouter);
+
 
 
 

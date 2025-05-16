@@ -35,7 +35,4 @@ router.put('/membership-request' ,async function (req : Request , res : Response
 
 
 
-
-
-
 export default  router;

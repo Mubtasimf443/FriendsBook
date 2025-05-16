@@ -55,7 +55,7 @@ export async function socketMiddlewaresVideoProfile(socket :Socket, next : (erro
     }
 }
 
-async function verifiyToken(auth:{profileType :any, token :any}  ):Promise<any> {
+export async function verifiyToken(auth:{profileType :any, token :any}  ):Promise<any> {
     try {
         let Schema = z.object({
             profileType : z.enum(['videoProfile' , 'matrimonyProfile'] ),
