@@ -35,7 +35,7 @@ const Header = ({ user = { name: "Admin", role: "Super Admin", image: "/avatars/
 
         {/* Right side - Notifications and User Profile */}
         <div className="flex items-center gap-4">
-          <HeaderLinksContainer>
+          {/* <HeaderLinksContainer>
               <HeaderLinks
                 href='/dashboard/feedback'
                 Icon={MessageSquare}
@@ -43,14 +43,14 @@ const Header = ({ user = { name: "Admin", role: "Super Admin", image: "/avatars/
                 title='User Feedback'
             />
             
-            {/* Contact Link */}
+           
             <HeaderLinks
                 href='/dashboard/contact'
                 Icon={Mail}
                 // BadgeNumber={0}
                 title='Contact Messages'
             />
-          </HeaderLinksContainer>
+          </HeaderLinksContainer> */}
 
           {/* User Profile Dropdown */}
           <DropdownMenu>

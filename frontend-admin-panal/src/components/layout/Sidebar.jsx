@@ -22,6 +22,8 @@ import {
 
     MessageCircleIcon,
     InboxIcon,
+    Bell,
+    DollarSign,
 
 } from 'lucide-react';
 import SideBarLinksSection from './SideBarLinksSection';
@@ -44,101 +46,62 @@ const Sidebar = () => {
                 <Separator className="my-4" />
 
                 {/* User Management Section */}
-                <SideBarLinksSection
-                    icon={UsersRound}
-                    title="USER MANAGEMENT"
-                    route="/dashboard/users/all"
-                    id={useId()}
-                    routes={[
-                        {
-                            label: "All Users",
-                            href: "/dashboard/users/all",
-                            icon: User,
-                            description: "Manage all users"
-                        },
+               
 
-                        {
-                            label: "Search Users",
-                            href: "/dashboard/users/search-by-id",
-                            icon: UserRoundSearch,
-                            description: "Search Users By Id"
-                        }
-                    ]}
+                <SideBarNavLink
+                    icon={User}
+                    label={"All Users"}
+                    href={"/dashboard/users/all"}
+                    description={"Manage all users"}
                 />
 
-                {/* Membership Section */}
-                <SideBarLinksSection
+                <SideBarNavLink
+                    icon={UserRoundSearch}
+                    label={"Search Users"}
+                    href={"/dashboard/users/search-by-id"}
+                    description={"Search Users By Id"}
+                />
+
+                <SideBarNavLink
                     icon={StarIcon}
-                    title="MEMBERSHIP"
-                    route="/dashboard/membership"
-                    id={useId()}
-                    routes={[
-                        {
-                            label: "Membership Requests",
-                            href: "/dashboard/membership",
-                            icon: UserCheck,
-                            badge: {
-                                text: "5",
-                                variant: "destructive"
-                            },
-                            description: "Pending requests"
-                        },
-                        {
-                            label: "Premium Members",
-                            href: "/dashboard/membership/premium",
-                            icon: Star,
-                            description: "Premium users"
-                        }
-                    ]}
+                    label={"Membership"}
+                    href={"/dashboard/memberships-management"}
+                    description={"Membership management"}
                 />
 
-                {/* Feedback Section */}
-                <SideBarLinksSection
-                    icon={MessageCircleIcon}
-                    title="FEEDBACK"
-                    route="/dashboard/feedback"
-                    id={useId()}
-                    routes={[
-                        {
-                            label: "User Feedback",
-                            href: "/dashboard/feedback",
-                            icon: MessageSquare,
-                            badge: {
-                                text: "New",
-                                variant: "default"
-                            },
-                            description: "User reviews and reports"
-                        }
-                    ]}
+                <SideBarNavLink
+                    icon={UserCheck}
+                    label={"Membership Requests"}
+                    href={"/dashboard/membership-request"}
+                    description={"Pending requests"}
+                    badge={{
+                        text: "5",
+                        variant: "destructive"
+                    }}
                 />
 
-                {/* Contact Section */}
-                <SideBarLinksSection
-                    icon={InboxIcon}
-                    title="CONTACT"
-                    route="/dashboard/contact"
-                    id={useId()}
-                    routes={[
-                        {
-                            label: "All Contacts",
-                            href: "/dashboard/contact",
-                            icon: Mail,
-                            badge: {
-                                text: "3",
-                                variant: "destructive"
-                            },
-                            description: "User messages"
-                        },
-
-                    ]}
+             
+                
+                <SideBarNavLink
+                    icon={Bell}
+                    label={"Push Notifications"}
+                    href={"/dashboard/notifications"}
+                    description={"Create and manage notifications"}
                 />
+
+                <SideBarNavLink
+                    icon={DollarSign}
+                    label={"Video Diamonds"}
+                    href={"/dashboard/video-currency"}
+                    description={"Manage video currency settings"}
+                />
+
 
                 <Separator className="my-4" />
 
                 {/* Logout Section */}
               
-
-                 <SideBarNavLink
+                <SideBarNavLink
                     icon={LogOut}
                     label={"Logout"}
                     href={"/loggout"}

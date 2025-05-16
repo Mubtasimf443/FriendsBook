@@ -15,6 +15,9 @@ import { Toaster } from '@/components/ui/sonner'
 import UserManagement from './pages/tabs/UserManagement'
 import AllUser from './pages/tabs/AllUser'
 import SearchUser from './pages/tabs/SearchUser'
+import PushNotification from './pages/tabs/PushNotification'
+import { MembershipPricing } from './pages/tabs/MembershipPricing'
+import MembershipRequest from './pages/tabs/MembershipRequest'
 
 const LazyDashboard = Lazy(() => import('./pages/DashBoard'))
 
@@ -63,6 +66,23 @@ function App() {
             ]
           },
           {
+            path : "notifications" ,
+            Component : PushNotification
+          },
+          {
+            path : "notifications" ,
+            Component : PushNotification
+          },
+          {
+            path :'memberships-management',
+            Component : MembershipPricing
+          },
+          {
+            path : 'membership-request' ,
+            Component : MembershipRequest
+          },
+
+          {
             path: '*',
             Component: NotFoundTab
           }
@@ -75,9 +95,7 @@ function App() {
         element: <NotFound />
       }
     ],
-    {
-      basename: '/admin'
-    }
+    
   )
   return (
     <>
