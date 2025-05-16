@@ -1,1094 +1,1094 @@
-/* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
-
-import express, { Router, Request, Response } from "express";
-import { User } from "../models/user";
-import { ShortList } from "../models/ShortListedProfiles";
-import { ProfileView } from "../models/ProfileView";
-import { z, ZodError } from "zod";
-import { _idValidator, text100Validation } from "../lib/schema/schemaComponents";
-import { 
-    shortListSchema ,
-    likeProfileSchema ,
-    sendMailSchema,
-    sendSmsSchema,
-    activityHistorySchema,
-    requestPhoneViewSchema,
-    respondToPhoneRequestSchema
-} from "../lib/schema/activity.schema";
-import { LikedProfile } from "../models/LikedProfile";
-import { SmsSendedProfile } from "../models/SmsSendedProfile";
-import { SendMailedProfile } from "../models/SendMailedProfile";
-import { MembershipRequest } from "../models/membershipRequest";
-import { MembershipRequestStatus } from "../lib/types/memberdship.types";
-import { RequestMobileNumberView } from "../models/RequestMobileNumberView";
-import { addDays } from "date-fns";
-import { validateUser } from "../lib/middlewares/auth.middleware";
-import connectionRequestSubRouter from './connectionRequest'
-import { IBlockedProfile } from "../lib/types/userProfile.types";
-import AuthSession from "../models/AuthSession";
-import { MatchScoreService } from "../lib/core/matchScore.service";
-
-const router: Router = express.Router();
-router.use(validateUser)
-
-
-
-
-router.use('/connections' ,connectionRequestSubRouter )
-// Add to shortlist
-router.post('/users/short-list/add', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        const validation = shortListSchema.safeParse(req.body);
-        if (!validation.success) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid input",
-                errors: validation.error.errors
-            });
-        }
-
-        const userId = req.authSession.value.userId;
-        const { shortListedId } = validation.data;
-
-        // Check if shortListedId exists and is not suspended
-        const shortListedUser = await User.findOne({
-            _id: shortListedId,
-            isSuspended: false
-        });
-
-        if (!shortListedUser) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found or is suspended"
-            });
-        }
-
-        if (shortListedUser.enhancedSettings.blocked.map(el => el.userId).includes(userId)) {
-            res.status(403).json({
-                success: false,
-                message: 'The Requested User Has Blocked You',
-                data: null
-            });
-            return;
-        }
-
-        // Prevent self-shortlisting
-        if (userId === shortListedId) {
-            return res.status(400).json({
-                success: false,
-                message: "You cannot shortlist yourself"
-            });
-        }
-
-        // Create or update shortlist entry
-        await ShortList.findOneAndUpdate(
-            { shortListerId : userId, shortListedId },
-            { shortListedAt: new Date() },
-            { upsert: true, new: true }
-        );
-
-        return res.status(200).json({
-            success: true,
-            message: "Profile added to shortlist"
-        });
-
-    } catch (error) {
-        console.error("Shortlist error:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error"
-        });
-    }
-});
-
-
-
-router.delete('/users/short-list/remove', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        const validation = shortListSchema.safeParse(req.body);
-        if (!validation.success) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid input",
-                errors: validation.error.errors
-            });
-        }
-
-        const userId = req.authSession.value.userId;
-        const { shortListedId } = validation.data;
-
-        // Find and delete the shortlist entry
-        const deletedEntry = await ShortList.findOneAndDelete({
-            userId,
-            shortListedId
-        });
-
-        if (!deletedEntry) {
-            return res.status(404).json({
-                success: false,
-                message: "Profile was not in your shortlist"
-            });
-        }
-
-        return res.status(200).json({
-            success: true,
-            message: "Profile removed from shortlist"
-        });
-
-    } catch (error) {
-        console.error("Remove from shortlist error:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error"
-        });
-    }
-});
-
-
-
-// Mark user as online
-router.put('/users/online/active', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        const userId = req.authSession.value.userId;
-
-        await User.findByIdAndUpdate(userId, {
-            'onlineStatus.isOnline': true,
-            'onlineStatus.lastActive': new Date(),
-        });
-
-        return res.status(200).json({
-            success: true,
-            message: "User marked as online"
-        });
-
-    } catch (error) {
-        console.error("Online status update error:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error"
-        });
-    }
-});
-
-
-// Mark user as offline
-router.put('/users/online/in-active', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        const userId = req.authSession.value.userId;
-
-        await User.findByIdAndUpdate(userId, {
-            'onlineStatus.isOnline': false,
-            'onlineStatus.lastSeen': new Date()
-        });
-
-        return res.status(200).json({
-            success: true,
-            message: "User marked as offline"
-        });
-
-    } catch (error) {
-        console.error("Offline status update error:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error"
-        });
-    }
-});
-
-
-// Record profile visit
-router.post('/users/visit-profile', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        const visitProfileSchema = z.object({
-            visitedId: _idValidator,
-        });
-        const validation = visitProfileSchema.safeParse(req.body);
-        if (!validation.success) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid input",
-                errors: validation.error.errors
-            });
-        }
-
-        const viewerId = req.authSession.value.userId;
-        const { visitedId } = validation.data;
-
-
-        // Check if visited profile exists and is not suspended
-        const visitedUser = await User.findOne({
-            _id: visitedId,
-            isSuspended: false
-        });
-
-        if (!visitedUser) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found or is suspended"
-            });
-        }
-
-
-
-        // Prevent self-view recording
-        if (viewerId === visitedId) {
-            return res.status(400).json({
-                success: false,
-                message: "Self-view not recorded"
-            });
-        }
-
-        if (visitedUser.enhancedSettings?.blocked?.some(block => block.userId.toString() === viewerId)) {
-            return res.status(403).json({
-                success: false,
-                message: 'You cannot view this profile as you have been blocked',
-                error: 'ACCESS_DENIED_BLOCKED'
-            });
-        }
-        // Find existing profile view or create new one
-        const existingView = await ProfileView.findOne({ viewerId, viewedId: visitedId });
-
-        if (existingView) {
-            // Add new timestamp to existing viewedAt array
-            existingView.viewedAt.push(new Date());
-            await existingView.save();
-        } else {
-            // Create new profile view record
-            await ProfileView.create({
-                viewerId,
-                viewedId: visitedId,
-                viewedAt: [new Date()]
-            });
-        };
-
-        return res.status(200).json({
-            success: true,
-            message: "Profile visit recorded"
-       });
-
-    } catch (error) {
-        console.error("Profile visit error:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error"
-        });
-    }
-});
-
-
-router.post('/users/like-profile', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        const validation = likeProfileSchema.safeParse(req.body);
-        if (!validation.success) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid input",
-                errors: validation.error.errors
-            });
-        }
-
-        const likerId = req.authSession.value.userId;
-        const { likedId } = validation.data;
-
-        // Check if liked profile exists and is not suspended
-        const likedUser = await User.findOne({
-            _id: likedId,
-            'suspension.isSuspended': false
-        });
-
-        if (!likedUser) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found or is suspended"
-            });
-        }
-
-        // Prevent self-like recording
-        if (likerId === likedId) {
-            return res.status(400).json({
-                success: false,
-                message: "Self-like not allowed"
-            });
-        }
-
-        // Find existing like or create new one
-        const existingLike = await LikedProfile.findOne({ likerId, likedId });
-
-        if (existingLike) {
-            // Add new timestamp to existing likedAt array
-            existingLike.likedAt.push(new Date());
-            await existingLike.save();
-        } else {
-            // Create new like record
-            await LikedProfile.create({
-                likerId,
-                likedId,
-                likedAt: [new Date()]
-            });
-        }
-
-        return res.status(200).json({
-            success: true,
-            message: "Profile like recorded"
-        });
-
-    } catch (error) {
-        console.error("[Profile like error]:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error"
-        });
-    }
-});
-
-// Record email sent to profile
-router.post('/users/send-mail', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        const validation = sendMailSchema.safeParse(req.body);
-        if (!validation.success) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid input",
-                errors: validation.error.errors
-            });
-        }
-
-        const senderId = req.authSession.value.userId;
-        const { receiverId, message } = validation.data;
-
-        // Check if receiver exists and is not suspended
-        const receiverUser = await User.findOne({
-            _id: receiverId,
-            'suspension.isSuspended': false
-        });
-
-        if (!receiverUser) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found or is suspended"
-            });
-        }
-
-          if (receiverUser.enhancedSettings?.blocked?.some(block => block.userId.toString() === senderId)) {
-            return res.status(403).json({
-                success: false,
-                message: 'Cannot send email as you have been blocked by this user',
-                error: { code: 'ACCESS_DENIED_BLOCKED' },
-                data: null
-            });
-        }
-
-        // Prevent sending mail to self
-        if (senderId === receiverId) {
-            return res.status(400).json({
-                success: false,
-                message: "Cannot send mail to yourself"
-            });
-        }
-
-        // Find existing mail record or create new one
-        const existingMail = await SendMailedProfile.findOne({ senderId, receiverId });
-
-        if (existingMail) {
-            // Add new timestamp to existing emailedAt array
-            existingMail.emailedAt.push(new Date());
-            await existingMail.save();
-        } else {
-            // Create new mail record
-            await SendMailedProfile.create({
-                senderId,
-                receiverId,
-                emailType: 'INTEREST',
-                emailStatus: 'PENDING',
-                emailedAt: [new Date()]
-            });
-        }
-
-        // TODO: Implement actual email sending logic here
-        // This would typically involve a messaging queue and separate worker
-
-        return res.status(200).json({
-            success: true,
-            message: "Email queued for sending"
-        });
-
-    } catch (error) {
-        console.error("[Send mail error]:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error"
-        });
-    }
-});
-
-// Record SMS sent to profile
-router.post('/users/send-sms', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        const validation = sendSmsSchema.safeParse(req.body);
-        if (!validation.success) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid input",
-                errors: validation.error.errors
-            });
-        }
-
-        const senderId = req.authSession.value.userId;
-        const { receiverId, message } = validation.data;
-
-        // Check if receiver exists and is not suspended
-        const receiverUser = await User.findOne({
-            _id: receiverId,
-            'suspension.isSuspended': false
-        });
-
-        if (!receiverUser) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found or is suspended"
-            });
-        }
-
-        if (receiverUser.enhancedSettings?.blocked?.some(block => block.userId.toString() === senderId)) {
-            return res.status(403).json({
-                success: false,
-                message: 'Cannot send SMS as you have been blocked by this user',
-                error: { code: 'ACCESS_DENIED_BLOCKED' },
-                data: null
-            });
-        }
-
-
-        // Prevent sending SMS to self
-        if (senderId === receiverId) {
-            return res.status(400).json({
-                success: false,
-                message: "Cannot send SMS to yourself"
-            });
-        }
-
-        // Find existing SMS record or create new one
-        const existingSms = await SmsSendedProfile.findOne({ senderId, receiverId });
-
-        if (existingSms) {
-            // Add new timestamp to existing sentAt array
-            existingSms.sentAt.push(new Date());
-            await existingSms.save();
-        } else {
-            // Create new SMS record
-            await SmsSendedProfile.create({
-                senderId,
-                receiverId,
-                smsType: 'INTEREST',
-                smsStatus: 'PENDING',
-                sentAt: [new Date()]
-            });
-        }
-
-        // TODO: Implement actual SMS sending logic here
-        // This would typically involve an SMS gateway service
-
-        return res.status(200).json({
-            success: true,
-            message: "SMS queued for sending"
-        });
-
-    } catch (error) {
-        console.error("[Send SMS error]:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error"
-        });
-    }
-});
-
-// Activity history endpoint
-router.get('/users/activity-history', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        // Validate query parameters using the schema
-        const validationResult = activityHistorySchema.safeParse(req.query);
-        if (!validationResult.success) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid query parameters",
-                errors: validationResult.error.errors,
-                data: null
-            });
-        }
-
-        const { page, limit, count: shouldCount, type } = validationResult.data;
-        const userId = req.authSession.value.userId;
-
-        // Calculate pagination
-        const skip = (page - 1) * limit;
-
-        // Define query configuration based on activity type
-        const queryConfig :any = {
-            likes: {
-                model: LikedProfile,
-                query: { likerId: userId },
-                sort: { 'likedAt': -1 },
-                populate: { path: 'likedId', select: 'name profileImage' },
-                timestamp: 'likedAt'
-            },
-            emails: {
-                model: SendMailedProfile,
-                query: { senderId: userId },
-                sort: { 'emailedAt': -1 },
-                populate: { path: 'receiverId', select: 'name profileImage' },
-                timestamp: 'emailedAt'
-            },
-            sms: {
-                model: SmsSendedProfile,
-                query: { senderId: userId },
-                sort: { 'sentAt': -1 },
-                populate: { path: 'receiverId', select: 'name profileImage' },
-                timestamp: 'sentAt'
-            }
-        };
-
-        const config :any= queryConfig[type];
-
-        // Execute queries with error handling and timeouts
-        const [activities, total] = await Promise.all([
-            config.model.find(config.query)
-                .sort(config.sort)
-                .skip(skip)
-                .limit(limit)
-                .populate(config.populate)
-                .lean()
-                .maxTimeMS(5000), // 5 second timeout
-
-            shouldCount === 'yes'
-                ? config.model.countDocuments(config.query).maxTimeMS(3000)
-                : Promise.resolve(undefined)
-        ])
-            .catch(error => {
-                console.error(`[Activity history query error] type: ${type}`, error);
-                throw new Error('Database query failed');
-            });
-
-        // Prepare pagination info
-        let pagination: Record<string, any> = {
-            currentPage: page,
-            pageSize: limit,
-        };
-
-        if (total !== undefined) {
-            pagination = {
-                ...pagination,
-                totalPages: Math.ceil(total / limit),
-                totalActivities: total
-            };
-        }
-
-        // Add cache headers for better performance
-        // Cache for 1 minute since activity data can change frequently
-        res.set('Cache-Control', 'private, max-age=60');
-
-        return res.status(200).json({
-            success: true,
-            data: {
-                type,
-                activities: activities,
-                pagination
-            }
-        });
-
-    } catch (error) {
-        // Enhanced error logging
-        console.error('[Activity history error]', {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
-            userId: req.authSession?.value?.userId,
-            query: req.query,
-            timestamp: new Date().toISOString()
-        });
-
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            error: 'ACTIVITY_HISTORY_ERROR',
-            data: null
-        });
-    }
-});
-
-
-router.post('/request-phone-view', async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        const validationResult = requestPhoneViewSchema.safeParse(req.body);
+// /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
+
+// import express, { Router, Request, Response } from "express";
+// import { User } from "../models/user";
+// import { ShortList } from "../models/ShortListedProfiles";
+// import { ProfileView } from "../models/ProfileView";
+// import { z, ZodError } from "zod";
+// import { _idValidator, text100Validation } from "../lib/schema/schemaComponents";
+// import { 
+//     shortListSchema ,
+//     likeProfileSchema ,
+//     sendMailSchema,
+//     sendSmsSchema,
+//     activityHistorySchema,
+//     requestPhoneViewSchema,
+//     respondToPhoneRequestSchema
+// } from "../lib/schema/activity.schema";
+// import { LikedProfile } from "../models/LikedProfile";
+// import { SmsSendedProfile } from "../models/SmsSendedProfile";
+// import { SendMailedProfile } from "../models/SendMailedProfile";
+// import { MembershipRequest } from "../models/membershipRequest";
+// import { MembershipRequestStatus } from "../lib/types/memberdship.types";
+// import { RequestMobileNumberView } from "../models/RequestMobileNumberView";
+// import { addDays } from "date-fns";
+// import { validateUser } from "../lib/middlewares/auth.middleware";
+// import connectionRequestSubRouter from './connectionRequest'
+// import { IBlockedProfile } from "../lib/types/userProfile.types";
+// import AuthSession from "../models/AuthSession";
+// import { MatchScoreService } from "../lib/core/matchScore.service";
+
+// const router: Router = express.Router();
+// router.use(validateUser)
+
+
+
+
+// router.use('/connections' ,connectionRequestSubRouter )
+// // Add to shortlist
+// router.post('/users/short-list/add', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const validation = shortListSchema.safeParse(req.body);
+//         if (!validation.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid input",
+//                 errors: validation.error.errors
+//             });
+//         }
+
+//         const userId = req.authSession.value.userId;
+//         const { shortListedId } = validation.data;
+
+//         // Check if shortListedId exists and is not suspended
+//         const shortListedUser = await User.findOne({
+//             _id: shortListedId,
+//             isSuspended: false
+//         });
+
+//         if (!shortListedUser) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: "User not found or is suspended"
+//             });
+//         }
+
+//         if (shortListedUser.enhancedSettings.blocked.map(el => el.userId).includes(userId)) {
+//             res.status(403).json({
+//                 success: false,
+//                 message: 'The Requested User Has Blocked You',
+//                 data: null
+//             });
+//             return;
+//         }
+
+//         // Prevent self-shortlisting
+//         if (userId === shortListedId) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "You cannot shortlist yourself"
+//             });
+//         }
+
+//         // Create or update shortlist entry
+//         await ShortList.findOneAndUpdate(
+//             { shortListerId : userId, shortListedId },
+//             { shortListedAt: new Date() },
+//             { upsert: true, new: true }
+//         );
+
+//         return res.status(200).json({
+//             success: true,
+//             message: "Profile added to shortlist"
+//         });
+
+//     } catch (error) {
+//         console.error("Shortlist error:", error);
+//         return res.status(500).json({
+//             success: false,
+//             message: "Internal server error"
+//         });
+//     }
+// });
+
+
+
+// router.delete('/users/short-list/remove', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const validation = shortListSchema.safeParse(req.body);
+//         if (!validation.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid input",
+//                 errors: validation.error.errors
+//             });
+//         }
+
+//         const userId = req.authSession.value.userId;
+//         const { shortListedId } = validation.data;
+
+//         // Find and delete the shortlist entry
+//         const deletedEntry = await ShortList.findOneAndDelete({
+//             userId,
+//             shortListedId
+//         });
+
+//         if (!deletedEntry) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: "Profile was not in your shortlist"
+//             });
+//         }
+
+//         return res.status(200).json({
+//             success: true,
+//             message: "Profile removed from shortlist"
+//         });
+
+//     } catch (error) {
+//         console.error("Remove from shortlist error:", error);
+//         return res.status(500).json({
+//             success: false,
+//             message: "Internal server error"
+//         });
+//     }
+// });
+
+
+
+// // Mark user as online
+// router.put('/users/online/active', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const userId = req.authSession.value.userId;
+
+//         await User.findByIdAndUpdate(userId, {
+//             'onlineStatus.isOnline': true,
+//             'onlineStatus.lastActive': new Date(),
+//         });
+
+//         return res.status(200).json({
+//             success: true,
+//             message: "User marked as online"
+//         });
+
+//     } catch (error) {
+//         console.error("Online status update error:", error);
+//         return res.status(500).json({
+//             success: false,
+//             message: "Internal server error"
+//         });
+//     }
+// });
+
+
+// // Mark user as offline
+// router.put('/users/online/in-active', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const userId = req.authSession.value.userId;
+
+//         await User.findByIdAndUpdate(userId, {
+//             'onlineStatus.isOnline': false,
+//             'onlineStatus.lastSeen': new Date()
+//         });
+
+//         return res.status(200).json({
+//             success: true,
+//             message: "User marked as offline"
+//         });
+
+//     } catch (error) {
+//         console.error("Offline status update error:", error);
+//         return res.status(500).json({
+//             success: false,
+//             message: "Internal server error"
+//         });
+//     }
+// });
+
+
+// // Record profile visit
+// router.post('/users/visit-profile', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const visitProfileSchema = z.object({
+//             visitedId: _idValidator,
+//         });
+//         const validation = visitProfileSchema.safeParse(req.body);
+//         if (!validation.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid input",
+//                 errors: validation.error.errors
+//             });
+//         }
+
+//         const viewerId = req.authSession.value.userId;
+//         const { visitedId } = validation.data;
+
+
+//         // Check if visited profile exists and is not suspended
+//         const visitedUser = await User.findOne({
+//             _id: visitedId,
+//             isSuspended: false
+//         });
+
+//         if (!visitedUser) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: "User not found or is suspended"
+//             });
+//         }
+
+
+
+//         // Prevent self-view recording
+//         if (viewerId === visitedId) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Self-view not recorded"
+//             });
+//         }
+
+//         if (visitedUser.enhancedSettings?.blocked?.some(block => block.userId.toString() === viewerId)) {
+//             return res.status(403).json({
+//                 success: false,
+//                 message: 'You cannot view this profile as you have been blocked',
+//                 error: 'ACCESS_DENIED_BLOCKED'
+//             });
+//         }
+//         // Find existing profile view or create new one
+//         const existingView = await ProfileView.findOne({ viewerId, viewedId: visitedId });
+
+//         if (existingView) {
+//             // Add new timestamp to existing viewedAt array
+//             existingView.viewedAt.push(new Date());
+//             await existingView.save();
+//         } else {
+//             // Create new profile view record
+//             await ProfileView.create({
+//                 viewerId,
+//                 viewedId: visitedId,
+//                 viewedAt: [new Date()]
+//             });
+//         };
+
+//         return res.status(200).json({
+//             success: true,
+//             message: "Profile visit recorded"
+//        });
+
+//     } catch (error) {
+//         console.error("Profile visit error:", error);
+//         return res.status(500).json({
+//             success: false,
+//             message: "Internal server error"
+//         });
+//     }
+// });
+
+
+// router.post('/users/like-profile', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const validation = likeProfileSchema.safeParse(req.body);
+//         if (!validation.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid input",
+//                 errors: validation.error.errors
+//             });
+//         }
+
+//         const likerId = req.authSession.value.userId;
+//         const { likedId } = validation.data;
+
+//         // Check if liked profile exists and is not suspended
+//         const likedUser = await User.findOne({
+//             _id: likedId,
+//             'suspension.isSuspended': false
+//         });
+
+//         if (!likedUser) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: "User not found or is suspended"
+//             });
+//         }
+
+//         // Prevent self-like recording
+//         if (likerId === likedId) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Self-like not allowed"
+//             });
+//         }
+
+//         // Find existing like or create new one
+//         const existingLike = await LikedProfile.findOne({ likerId, likedId });
+
+//         if (existingLike) {
+//             // Add new timestamp to existing likedAt array
+//             existingLike.likedAt.push(new Date());
+//             await existingLike.save();
+//         } else {
+//             // Create new like record
+//             await LikedProfile.create({
+//                 likerId,
+//                 likedId,
+//                 likedAt: [new Date()]
+//             });
+//         }
+
+//         return res.status(200).json({
+//             success: true,
+//             message: "Profile like recorded"
+//         });
+
+//     } catch (error) {
+//         console.error("[Profile like error]:", error);
+//         return res.status(500).json({
+//             success: false,
+//             message: "Internal server error"
+//         });
+//     }
+// });
+
+// // Record email sent to profile
+// router.post('/users/send-mail', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const validation = sendMailSchema.safeParse(req.body);
+//         if (!validation.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid input",
+//                 errors: validation.error.errors
+//             });
+//         }
+
+//         const senderId = req.authSession.value.userId;
+//         const { receiverId, message } = validation.data;
+
+//         // Check if receiver exists and is not suspended
+//         const receiverUser = await User.findOne({
+//             _id: receiverId,
+//             'suspension.isSuspended': false
+//         });
+
+//         if (!receiverUser) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: "User not found or is suspended"
+//             });
+//         }
+
+//           if (receiverUser.enhancedSettings?.blocked?.some(block => block.userId.toString() === senderId)) {
+//             return res.status(403).json({
+//                 success: false,
+//                 message: 'Cannot send email as you have been blocked by this user',
+//                 error: { code: 'ACCESS_DENIED_BLOCKED' },
+//                 data: null
+//             });
+//         }
+
+//         // Prevent sending mail to self
+//         if (senderId === receiverId) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Cannot send mail to yourself"
+//             });
+//         }
+
+//         // Find existing mail record or create new one
+//         const existingMail = await SendMailedProfile.findOne({ senderId, receiverId });
+
+//         if (existingMail) {
+//             // Add new timestamp to existing emailedAt array
+//             existingMail.emailedAt.push(new Date());
+//             await existingMail.save();
+//         } else {
+//             // Create new mail record
+//             await SendMailedProfile.create({
+//                 senderId,
+//                 receiverId,
+//                 emailType: 'INTEREST',
+//                 emailStatus: 'PENDING',
+//                 emailedAt: [new Date()]
+//             });
+//         }
+
+//         // TODO: Implement actual email sending logic here
+//         // This would typically involve a messaging queue and separate worker
+
+//         return res.status(200).json({
+//             success: true,
+//             message: "Email queued for sending"
+//         });
+
+//     } catch (error) {
+//         console.error("[Send mail error]:", error);
+//         return res.status(500).json({
+//             success: false,
+//             message: "Internal server error"
+//         });
+//     }
+// });
+
+// // Record SMS sent to profile
+// router.post('/users/send-sms', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const validation = sendSmsSchema.safeParse(req.body);
+//         if (!validation.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid input",
+//                 errors: validation.error.errors
+//             });
+//         }
+
+//         const senderId = req.authSession.value.userId;
+//         const { receiverId, message } = validation.data;
+
+//         // Check if receiver exists and is not suspended
+//         const receiverUser = await User.findOne({
+//             _id: receiverId,
+//             'suspension.isSuspended': false
+//         });
+
+//         if (!receiverUser) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: "User not found or is suspended"
+//             });
+//         }
+
+//         if (receiverUser.enhancedSettings?.blocked?.some(block => block.userId.toString() === senderId)) {
+//             return res.status(403).json({
+//                 success: false,
+//                 message: 'Cannot send SMS as you have been blocked by this user',
+//                 error: { code: 'ACCESS_DENIED_BLOCKED' },
+//                 data: null
+//             });
+//         }
+
+
+//         // Prevent sending SMS to self
+//         if (senderId === receiverId) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Cannot send SMS to yourself"
+//             });
+//         }
+
+//         // Find existing SMS record or create new one
+//         const existingSms = await SmsSendedProfile.findOne({ senderId, receiverId });
+
+//         if (existingSms) {
+//             // Add new timestamp to existing sentAt array
+//             existingSms.sentAt.push(new Date());
+//             await existingSms.save();
+//         } else {
+//             // Create new SMS record
+//             await SmsSendedProfile.create({
+//                 senderId,
+//                 receiverId,
+//                 smsType: 'INTEREST',
+//                 smsStatus: 'PENDING',
+//                 sentAt: [new Date()]
+//             });
+//         }
+
+//         // TODO: Implement actual SMS sending logic here
+//         // This would typically involve an SMS gateway service
+
+//         return res.status(200).json({
+//             success: true,
+//             message: "SMS queued for sending"
+//         });
+
+//     } catch (error) {
+//         console.error("[Send SMS error]:", error);
+//         return res.status(500).json({
+//             success: false,
+//             message: "Internal server error"
+//         });
+//     }
+// });
+
+// // Activity history endpoint
+// router.get('/users/activity-history', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         // Validate query parameters using the schema
+//         const validationResult = activityHistorySchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 errors: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+
+//         const { page, limit, count: shouldCount, type } = validationResult.data;
+//         const userId = req.authSession.value.userId;
+
+//         // Calculate pagination
+//         const skip = (page - 1) * limit;
+
+//         // Define query configuration based on activity type
+//         const queryConfig :any = {
+//             likes: {
+//                 model: LikedProfile,
+//                 query: { likerId: userId },
+//                 sort: { 'likedAt': -1 },
+//                 populate: { path: 'likedId', select: 'name profileImage' },
+//                 timestamp: 'likedAt'
+//             },
+//             emails: {
+//                 model: SendMailedProfile,
+//                 query: { senderId: userId },
+//                 sort: { 'emailedAt': -1 },
+//                 populate: { path: 'receiverId', select: 'name profileImage' },
+//                 timestamp: 'emailedAt'
+//             },
+//             sms: {
+//                 model: SmsSendedProfile,
+//                 query: { senderId: userId },
+//                 sort: { 'sentAt': -1 },
+//                 populate: { path: 'receiverId', select: 'name profileImage' },
+//                 timestamp: 'sentAt'
+//             }
+//         };
+
+//         const config :any= queryConfig[type];
+
+//         // Execute queries with error handling and timeouts
+//         const [activities, total] = await Promise.all([
+//             config.model.find(config.query)
+//                 .sort(config.sort)
+//                 .skip(skip)
+//                 .limit(limit)
+//                 .populate(config.populate)
+//                 .lean()
+//                 .maxTimeMS(5000), // 5 second timeout
+
+//             shouldCount === 'yes'
+//                 ? config.model.countDocuments(config.query).maxTimeMS(3000)
+//                 : Promise.resolve(undefined)
+//         ])
+//             .catch(error => {
+//                 console.error(`[Activity history query error] type: ${type}`, error);
+//                 throw new Error('Database query failed');
+//             });
+
+//         // Prepare pagination info
+//         let pagination: Record<string, any> = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+
+//         if (total !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(total / limit),
+//                 totalActivities: total
+//             };
+//         }
+
+//         // Add cache headers for better performance
+//         // Cache for 1 minute since activity data can change frequently
+//         res.set('Cache-Control', 'private, max-age=60');
+
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 type,
+//                 activities: activities,
+//                 pagination
+//             }
+//         });
+
+//     } catch (error) {
+//         // Enhanced error logging
+//         console.error('[Activity history error]', {
+//             error: error instanceof Error ? error.message : 'Unknown error',
+//             stack: error instanceof Error ? error.stack : undefined,
+//             userId: req.authSession?.value?.userId,
+//             query: req.query,
+//             timestamp: new Date().toISOString()
+//         });
+
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             error: 'ACTIVITY_HISTORY_ERROR',
+//             data: null
+//         });
+//     }
+// });
+
+
+// router.post('/request-phone-view', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const validationResult = requestPhoneViewSchema.safeParse(req.body);
        
-        if (!validationResult.success) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid request parameters",
-                error: validationResult.error.errors,
-                data: null
-            });
-        }
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid request parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
 
-        const { requestedUserId } = validationResult.data;
-        const requesterId = req.authSession.value.userId;
+//         const { requestedUserId } = validationResult.data;
+//         const requesterId = req.authSession.value.userId;
 
 
-        const requestedUser = await User.findById(requestedUserId);
+//         const requestedUser = await User.findById(requestedUserId);
         
-        if (!requestedUser) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found',
-                data: null
-            });
-        }
+//         if (!requestedUser) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: 'User not found',
+//                 data: null
+//             });
+//         }
 
-        // Add blocking check
-        if (requestedUser.enhancedSettings?.blocked?.some(block => block.userId.toString() === requesterId)) {
-            return res.status(403).json({
-                success: false,
-                message: 'Cannot view phone number as you have been blocked by this user',
-                error: { code: 'ACCESS_DENIED_BLOCKED' },
-                data: null
-            });
-        }
-
-        
-        // Check if users exist and are not the same person
-        if (requesterId.toString() === requestedUserId.toString()) {
-            return res.status(400).json({
-                success: false,
-                message: "You cannot view your own phone number through this process",
-                data: null
-            });
-        }
-
-
-           // Check if there's an existing active request
-        const existingRequest = await RequestMobileNumberView.findOne({
-            requesterId,
-            requestedId: requestedUserId,
-        });
-
-        if (existingRequest) {
-            let requestedUserPhoneDetails = await User.findById(requestedUserId  ).select('phoneInfo').lean() ;
-            res.status(200).json({
-                success : true,
-                data : {
-                    user : requestedUserPhoneDetails,
-                },
-                error : null,
-                message : 'OK'
-            })
-            return;
-
-        }
-        // Find requester's active membership
-        const activeMembership = await User.findById(requesterId)
-            .select('membership')
-            .lean();
-
-
-
-        if (!activeMembership?.membership?.currentMembership?.requestId) {
-            return res.status(403).json({
-                success: false,
-                message: "You need an active membership to view phone numbers",
-                data: null
-            });
-        }
-
-        // Check membership details
-        const membershipDetails = await MembershipRequest.findOne({
-            _id: activeMembership.membership.currentMembership.requestId,
-            requestStatus: MembershipRequestStatus.APPROVED,
-        });
-        
+//         // Add blocking check
+//         if (requestedUser.enhancedSettings?.blocked?.some(block => block.userId.toString() === requesterId)) {
+//             return res.status(403).json({
+//                 success: false,
+//                 message: 'Cannot view phone number as you have been blocked by this user',
+//                 error: { code: 'ACCESS_DENIED_BLOCKED' },
+//                 data: null
+//             });
+//         }
 
         
-        if (!membershipDetails ) {
-            res.status(500).json({
-                success: false,
-                message: 'Unknown server error',
-                error : {
-                    message : 'could not find the membership details of the user '
-                },
-                data: null
-            });
-            return;
-        }
+//         // Check if users exist and are not the same person
+//         if (requesterId.toString() === requestedUserId.toString()) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "You cannot view your own phone number through this process",
+//                 data: null
+//             });
+//         }
 
 
-        if (membershipDetails.hasVerifiedPhonesRemaining() === false) {
-            return res.status(403).json({
-                success: false,
-                message: "You have reached your phone number view limit",
-                data: null
-            });
-        };
+//            // Check if there's an existing active request
+//         const existingRequest = await RequestMobileNumberView.findOne({
+//             requesterId,
+//             requestedId: requestedUserId,
+//         });
 
-        await membershipDetails.useVerifiedPhone()
+//         if (existingRequest) {
+//             let requestedUserPhoneDetails = await User.findById(requestedUserId  ).select('phoneInfo').lean() ;
+//             res.status(200).json({
+//                 success : true,
+//                 data : {
+//                     user : requestedUserPhoneDetails,
+//                 },
+//                 error : null,
+//                 message : 'OK'
+//             })
+//             return;
+
+//         }
+//         // Find requester's active membership
+//         const activeMembership = await User.findById(requesterId)
+//             .select('membership')
+//             .lean();
+
+
+
+//         if (!activeMembership?.membership?.currentMembership?.requestId) {
+//             return res.status(403).json({
+//                 success: false,
+//                 message: "You need an active membership to view phone numbers",
+//                 data: null
+//             });
+//         }
+
+//         // Check membership details
+//         const membershipDetails = await MembershipRequest.findOne({
+//             _id: activeMembership.membership.currentMembership.requestId,
+//             requestStatus: MembershipRequestStatus.APPROVED,
+//         });
+        
+
+        
+//         if (!membershipDetails ) {
+//             res.status(500).json({
+//                 success: false,
+//                 message: 'Unknown server error',
+//                 error : {
+//                     message : 'could not find the membership details of the user '
+//                 },
+//                 data: null
+//             });
+//             return;
+//         }
+
+
+//         if (membershipDetails.hasVerifiedPhonesRemaining() === false) {
+//             return res.status(403).json({
+//                 success: false,
+//                 message: "You have reached your phone number view limit",
+//                 data: null
+//             });
+//         };
+
+//         await membershipDetails.useVerifiedPhone()
      
-        // Create new request
-        const newRequest = await RequestMobileNumberView.create({
-            requesterId,
-            requestedId: requestedUserId,
-            requestedAt: [new Date()],
-        });
+//         // Create new request
+//         const newRequest = await RequestMobileNumberView.create({
+//             requesterId,
+//             requestedId: requestedUserId,
+//             requestedAt: [new Date()],
+//         });
 
     
-        let requestedUserPhoneDetails = await User.findById(requestedUserId).select('phoneInfo').lean();
-        res.status(200).json({
-            success: true,
-            data: {
-                user: requestedUserPhoneDetails,
-            },
-            error: null,
-            message: 'OK'
-        })
-        return;
+//         let requestedUserPhoneDetails = await User.findById(requestedUserId).select('phoneInfo').lean();
+//         res.status(200).json({
+//             success: true,
+//             data: {
+//                 user: requestedUserPhoneDetails,
+//             },
+//             error: null,
+//             message: 'OK'
+//         })
+//         return;
 
-    } catch (error) {
-        console.error('[Phone number view request error]', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
-
-
-router.post('/block/user/:id', async function (req: Request, res: Response): Promise<any> {
-    try {
-        // Validate user ID
-        const targetUserId = await _idValidator.parseAsync(req.params.id);
-        const currentUserId = req.authSession.value.userId;
-
-        // Prevent self-blocking
-        if (targetUserId.toString() === currentUserId.toString()) {
-            return res.status(400).json({
-                success: false,
-                message: 'Cannot block yourself',
-                error: {
-                    code: 'SELF_BLOCK_ATTEMPTED',
-                    details: 'Users cannot block their own accounts'
-                },
-                data: null
-            });
-        }
-
-        // Check if target user exists
-        const targetUser = await User.findById(targetUserId, 'name');
-        if (!targetUser) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found',
-                error: {
-                    code: 'USER_NOT_FOUND',
-                    details: 'The specified user does not exist'
-                },
-                data: null
-            });
-        }
-
-        // Check if already blocked
-        const currentUser = await User.findById(currentUserId, 'enhancedSettings.blocked');
-        const isAlreadyBlocked = currentUser?.enhancedSettings?.blocked?.some(
-            block => block.userId.toString() === targetUserId.toString()
-        );
-
-        if (isAlreadyBlocked) {
-            return res.status(409).json({
-                success: false,
-                message: 'User is already blocked',
-                error: {
-                    code: 'ALREADY_BLOCKED',
-                    details: 'This user is already in your blocked list'
-                },
-                data: null
-            });
-        }
-
-        // Optional: Get block reason from request body
-        const reason  = (z.optional(text100Validation)).parse(req.body.reason);
-
-        // Create block entry
-        const blockEntry: Partial<IBlockedProfile> = {
-            userId: targetUserId,
-            blockedAt: new Date(),
-            ...(reason ? { reason: reason }  : {})
-        };
-
-        // Update user's blocked list
-        const updatedUser = await User.findByIdAndUpdate(
-            currentUserId,
-            {
-                $addToSet: {
-                    'enhancedSettings.blocked': blockEntry
-                }
-            },
-            { new: true }
-        );
+//     } catch (error) {
+//         console.error('[Phone number view request error]', error);
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
 
 
-        // Handle any unexpected issues with the update
-        if (!updatedUser) {
-            throw new Error('Failed to update user blocked list');
-        }
+// router.post('/block/user/:id', async function (req: Request, res: Response): Promise<any> {
+//     try {
+//         // Validate user ID
+//         const targetUserId = await _idValidator.parseAsync(req.params.id);
+//         const currentUserId = req.authSession.value.userId;
 
-        await AuthSession.findByIdAndUpdate(req.authSession._id , { 
-            $addToSet :{
-                'value.blockedProfiles' : blockEntry.userId
-            }
-        })
+//         // Prevent self-blocking
+//         if (targetUserId.toString() === currentUserId.toString()) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'Cannot block yourself',
+//                 error: {
+//                     code: 'SELF_BLOCK_ATTEMPTED',
+//                     details: 'Users cannot block their own accounts'
+//                 },
+//                 data: null
+//             });
+//         }
 
-        return res.status(200).json({
-            success: true,
-            data: {
-                blockedUser: {
-                    id: targetUserId,
-                    name: targetUser.name
-                },
-                blockedAt: blockEntry.blockedAt,
-                reason: blockEntry.reason
-            },
-            error: null,
-            message: 'User blocked successfully'
-        });
+//         // Check if target user exists
+//         const targetUser = await User.findById(targetUserId, 'name');
+//         if (!targetUser) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: 'User not found',
+//                 error: {
+//                     code: 'USER_NOT_FOUND',
+//                     details: 'The specified user does not exist'
+//                 },
+//                 data: null
+//             });
+//         }
 
-    } catch (error) {
-        // Handle validation errors
-        if (error instanceof ZodError) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid user ID format',
-                error: {
-                    code: 'INVALID_ID_FORMAT',
-                    details: error.errors
-                },
-                data: null
-            });
-        }
+//         // Check if already blocked
+//         const currentUser = await User.findById(currentUserId, 'enhancedSettings.blocked');
+//         const isAlreadyBlocked = currentUser?.enhancedSettings?.blocked?.some(
+//             block => block.userId.toString() === targetUserId.toString()
+//         );
 
-        // Log the error with context
-        console.error('[Block User API Error]', {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
-            userId: req.authSession.value.userId,
-            targetId: req.params.id,
-            timestamp: new Date().toISOString()
-        });
+//         if (isAlreadyBlocked) {
+//             return res.status(409).json({
+//                 success: false,
+//                 message: 'User is already blocked',
+//                 error: {
+//                     code: 'ALREADY_BLOCKED',
+//                     details: 'This user is already in your blocked list'
+//                 },
+//                 data: null
+//             });
+//         }
 
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to block user',
-            error: {
-                code: 'INTERNAL_SERVER_ERROR',
-                details: process.env.NODE_ENV === 'development' ? 
-                    error instanceof Error ? error.message : 'Unknown error' 
-                    : undefined
-            },
-            data: null
-        });
-    }
-});
+//         // Optional: Get block reason from request body
+//         const reason  = (z.optional(text100Validation)).parse(req.body.reason);
 
-router.post('/unblock/user/:id', async function (req: Request, res: Response): Promise<any> {
-    try {
-        // Validate user ID
-        const targetUserId = await _idValidator.parseAsync(req.params.id);
-        const currentUserId = req.authSession.value.userId;
+//         // Create block entry
+//         const blockEntry: Partial<IBlockedProfile> = {
+//             userId: targetUserId,
+//             blockedAt: new Date(),
+//             ...(reason ? { reason: reason }  : {})
+//         };
 
-        // Check if target user exists
-        const targetUser = await User.findById(targetUserId, 'name');
-        if (!targetUser) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found',
-                error: {
-                    code: 'USER_NOT_FOUND',
-                    details: 'The specified user does not exist'
-                },
-                data: null
-            });
-        }
-
-        // Check if actually blocked
-        const currentUser = await User.findById(currentUserId, 'enhancedSettings.blocked');
-        const isBlocked = currentUser?.enhancedSettings?.blocked?.some(
-            block => block.userId.toString() === targetUserId.toString()
-        );
-
-        if (!isBlocked) {
-            return res.status(404).json({
-                success: false,
-                message: 'User is not blocked',
-                error: {
-                    code: 'NOT_BLOCKED',
-                    details: 'This user is not in your blocked list'
-                },
-                data: null
-            });
-        }
-
-        // Remove from blocked list
-        const updatedUser = await User.findByIdAndUpdate(
-            currentUserId,
-            {
-                $pull: {
-                    'enhancedSettings.blocked': {
-                        userId: targetUserId
-                    }
-                }
-            },
-            { new: true }
-        );
-
-        // Handle any unexpected issues with the update
-        if (!updatedUser) {
-            throw new Error('Failed to update user blocked list');
-        }
-
-        await AuthSession.findByIdAndUpdate(req.authSession._id, {
-            $pull: {
-                'value.blockedProfiles': targetUserId
-            }
-        })
+//         // Update user's blocked list
+//         const updatedUser = await User.findByIdAndUpdate(
+//             currentUserId,
+//             {
+//                 $addToSet: {
+//                     'enhancedSettings.blocked': blockEntry
+//                 }
+//             },
+//             { new: true }
+//         );
 
 
-        return res.status(200).json({
-            success: true,
-            data: {
-                unBlockedUser: {
-                    id: targetUserId,
-                    name: targetUser.name
-                },
-                unBlockedAt: new Date()
-            },
-            error: null,
-            message: 'User unblocked successfully'
-        });
+//         // Handle any unexpected issues with the update
+//         if (!updatedUser) {
+//             throw new Error('Failed to update user blocked list');
+//         }
 
-    } catch (error) {
-        // Handle validation errors
-        if (error instanceof ZodError) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid user ID format',
-                error: {
-                    code: 'INVALID_ID_FORMAT',
-                    details: error.errors
-                },
-                data: null
-            });
-        }
+//         await AuthSession.findByIdAndUpdate(req.authSession._id , { 
+//             $addToSet :{
+//                 'value.blockedProfiles' : blockEntry.userId
+//             }
+//         })
 
-        // Log the error with context
-        console.error('[Unblock User API Error]', {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
-            userId: req.authSession.value.userId,
-            targetId: req.params.id,
-            timestamp: new Date().toISOString()
-        });
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 blockedUser: {
+//                     id: targetUserId,
+//                     name: targetUser.name
+//                 },
+//                 blockedAt: blockEntry.blockedAt,
+//                 reason: blockEntry.reason
+//             },
+//             error: null,
+//             message: 'User blocked successfully'
+//         });
 
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to unblock user',
-            error: {
-                code: 'INTERNAL_SERVER_ERROR',
-                details: process.env.NODE_ENV === 'development' ? 
-                    error instanceof Error ? error.message : 'Unknown error' 
-                    : undefined
-            },
-            data: null
-        });
-    }
-});
+//     } catch (error) {
+//         // Handle validation errors
+//         if (error instanceof ZodError) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'Invalid user ID format',
+//                 error: {
+//                     code: 'INVALID_ID_FORMAT',
+//                     details: error.errors
+//                 },
+//                 data: null
+//             });
+//         }
 
-router.get('/match-result', async function (req: Request, res: Response): Promise<any> {
-    try {
-        const validationSchema = z.object({
-            profile_id: _idValidator
-        });
+//         // Log the error with context
+//         console.error('[Block User API Error]', {
+//             error: error instanceof Error ? error.message : 'Unknown error',
+//             stack: error instanceof Error ? error.stack : undefined,
+//             userId: req.authSession.value.userId,
+//             targetId: req.params.id,
+//             timestamp: new Date().toISOString()
+//         });
 
-        const validationResult = validationSchema.safeParse(req.body);
-        if (!validationResult.success) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid input parameters",
-                error: validationResult.error,
-                data: null
-            });
-        }
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Failed to block user',
+//             error: {
+//                 code: 'INTERNAL_SERVER_ERROR',
+//                 details: process.env.NODE_ENV === 'development' ? 
+//                     error instanceof Error ? error.message : 'Unknown error' 
+//                     : undefined
+//             },
+//             data: null
+//         });
+//     }
+// });
 
-        const { profile_id } = validationResult.data;
-        const currentUserId = req.authSession.value.userId;
+// router.post('/unblock/user/:id', async function (req: Request, res: Response): Promise<any> {
+//     try {
+//         // Validate user ID
+//         const targetUserId = await _idValidator.parseAsync(req.params.id);
+//         const currentUserId = req.authSession.value.userId;
 
-        // Prevent self-matching
-        if (profile_id.toString() === currentUserId.toString()) {
-            return res.status(400).json({
-                success: false,
-                message: "Cannot calculate match score with yourself",
-                data: null
-            });
-        }
+//         // Check if target user exists
+//         const targetUser = await User.findById(targetUserId, 'name');
+//         if (!targetUser) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: 'User not found',
+//                 error: {
+//                     code: 'USER_NOT_FOUND',
+//                     details: 'The specified user does not exist'
+//                 },
+//                 data: null
+//             });
+//         }
 
-        // Fetch both user profiles
-        const [currentUser, matchingUser] = await Promise.all([
-            User.findById(currentUserId),
-            User.findById(profile_id)
-        ]);
+//         // Check if actually blocked
+//         const currentUser = await User.findById(currentUserId, 'enhancedSettings.blocked');
+//         const isBlocked = currentUser?.enhancedSettings?.blocked?.some(
+//             block => block.userId.toString() === targetUserId.toString()
+//         );
 
-        if (!currentUser || !matchingUser) {
-            return res.status(404).json({
-                success: false,
-                message: "One or both users not found",
-                data: null
-            });
-        }
+//         if (!isBlocked) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: 'User is not blocked',
+//                 error: {
+//                     code: 'NOT_BLOCKED',
+//                     details: 'This user is not in your blocked list'
+//                 },
+//                 data: null
+//             });
+//         }
 
-        // Check if users have blocked each other
-        if (currentUser.enhancedSettings.blocked.some(b => b.userId.toString() === profile_id.toString()) ||
-            matchingUser.enhancedSettings.blocked.some(b => b.userId.toString() === currentUserId.toString())) {
-            return res.status(403).json({
-                success: false,
-                message: "Cannot calculate match score for blocked users",
-                data: null
-            });
-        }
+//         // Remove from blocked list
+//         const updatedUser = await User.findByIdAndUpdate(
+//             currentUserId,
+//             {
+//                 $pull: {
+//                     'enhancedSettings.blocked': {
+//                         userId: targetUserId
+//                     }
+//                 }
+//             },
+//             { new: true }
+//         );
 
-        // Calculate match score
-        const matchScore = MatchScoreService.calculateMatchScore(currentUser, matchingUser);
+//         // Handle any unexpected issues with the update
+//         if (!updatedUser) {
+//             throw new Error('Failed to update user blocked list');
+//         }
 
-        // Cache the result for 24 hours
-        res.set('Cache-Control', 'private, max-age=86400');
-
-        return res.status(200).json({
-            success: true,
-            message: "Match score calculated successfully",
-            data: {
-                overallScore: matchScore.totalScore,
-                compatibility: matchScore.compatibility,
-                categoryScores: matchScore.categoryScores,
-                details: matchScore.details
-            }
-        });
-
-    } catch (error) {
-        console.error('[match-result api error]', {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined,
-            timestamp: new Date().toISOString()
-        });
-
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
+//         await AuthSession.findByIdAndUpdate(req.authSession._id, {
+//             $pull: {
+//                 'value.blockedProfiles': targetUserId
+//             }
+//         })
 
 
-export default router;
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 unBlockedUser: {
+//                     id: targetUserId,
+//                     name: targetUser.name
+//                 },
+//                 unBlockedAt: new Date()
+//             },
+//             error: null,
+//             message: 'User unblocked successfully'
+//         });
+
+//     } catch (error) {
+//         // Handle validation errors
+//         if (error instanceof ZodError) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'Invalid user ID format',
+//                 error: {
+//                     code: 'INVALID_ID_FORMAT',
+//                     details: error.errors
+//                 },
+//                 data: null
+//             });
+//         }
+
+//         // Log the error with context
+//         console.error('[Unblock User API Error]', {
+//             error: error instanceof Error ? error.message : 'Unknown error',
+//             stack: error instanceof Error ? error.stack : undefined,
+//             userId: req.authSession.value.userId,
+//             targetId: req.params.id,
+//             timestamp: new Date().toISOString()
+//         });
+
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Failed to unblock user',
+//             error: {
+//                 code: 'INTERNAL_SERVER_ERROR',
+//                 details: process.env.NODE_ENV === 'development' ? 
+//                     error instanceof Error ? error.message : 'Unknown error' 
+//                     : undefined
+//             },
+//             data: null
+//         });
+//     }
+// });
+
+// router.get('/match-result', async function (req: Request, res: Response): Promise<any> {
+//     try {
+//         const validationSchema = z.object({
+//             profile_id: _idValidator
+//         });
+
+//         const validationResult = validationSchema.safeParse(req.body);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid input parameters",
+//                 error: validationResult.error,
+//                 data: null
+//             });
+//         }
+
+//         const { profile_id } = validationResult.data;
+//         const currentUserId = req.authSession.value.userId;
+
+//         // Prevent self-matching
+//         if (profile_id.toString() === currentUserId.toString()) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Cannot calculate match score with yourself",
+//                 data: null
+//             });
+//         }
+
+//         // Fetch both user profiles
+//         const [currentUser, matchingUser] = await Promise.all([
+//             User.findById(currentUserId),
+//             User.findById(profile_id)
+//         ]);
+
+//         if (!currentUser || !matchingUser) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: "One or both users not found",
+//                 data: null
+//             });
+//         }
+
+//         // Check if users have blocked each other
+//         if (currentUser.enhancedSettings.blocked.some(b => b.userId.toString() === profile_id.toString()) ||
+//             matchingUser.enhancedSettings.blocked.some(b => b.userId.toString() === currentUserId.toString())) {
+//             return res.status(403).json({
+//                 success: false,
+//                 message: "Cannot calculate match score for blocked users",
+//                 data: null
+//             });
+//         }
+
+//         // Calculate match score
+//         const matchScore = MatchScoreService.calculateMatchScore(currentUser, matchingUser);
+
+//         // Cache the result for 24 hours
+//         res.set('Cache-Control', 'private, max-age=86400');
+
+//         return res.status(200).json({
+//             success: true,
+//             message: "Match score calculated successfully",
+//             data: {
+//                 overallScore: matchScore.totalScore,
+//                 compatibility: matchScore.compatibility,
+//                 categoryScores: matchScore.categoryScores,
+//                 details: matchScore.details
+//             }
+//         });
+
+//     } catch (error) {
+//         console.error('[match-result api error]', {
+//             error: error instanceof Error ? error.message : 'Unknown error',
+//             stack: error instanceof Error ? error.stack : undefined,
+//             timestamp: new Date().toISOString()
+//         });
+
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+
+
+// export default router;
