@@ -457,9 +457,10 @@ router.post('/login', async function (req: Request, res: Response): Promise<Resp
 
         // Email regex remains the same as it's already robust
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const phoneRegex = /^\d{10,15}$/;
         let existingUser: IUser | null = null;
         let loginType: LoginEnum;
-        const phoneRegex = /^\d{10,15}$/;
+        
 
         if (emailRegex.test(credential)) {
             // Handle email login

@@ -10,6 +10,7 @@ type ENV_VALUE=string | undefined
 export const PORT : ENV_VALUE =process.env.PORT ;
 export const NODE_ENV : ENV_VALUE =process.env.NODE_ENV ;
 export const BASE_URL : ENV_VALUE =process.env.BASE_URL ;
+export const ALLOWED_ORIGIN : ENV_VALUE =process.env.ALLOWED_ORIGIN ;
 
 // Database
 export const MONGO_DB_URL:ENV_VALUE=process.env.MONGO_DB_URL ;
