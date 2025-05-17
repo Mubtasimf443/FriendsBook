@@ -39,7 +39,7 @@ const Sidebar = () => {
                 <SideBarNavLink
                     icon={LayoutDashboard}
                     label={"Dashboard overview"}
-                    href={"/dashboard/overview"}
+                    href={"/admin/overview"}
                     description={"Dashboard overview"}
                 />
 
@@ -51,28 +51,28 @@ const Sidebar = () => {
                 <SideBarNavLink
                     icon={User}
                     label={"All Users"}
-                    href={"/dashboard/users/all"}
+                    href={"/admin/users/all"}
                     description={"Manage all users"}
                 />
 
                 <SideBarNavLink
                     icon={UserRoundSearch}
                     label={"Search Users"}
-                    href={"/dashboard/users/search-by-id"}
+                    href={"/admin/users/search"}
                     description={"Search Users By Id"}
                 />
 
                 <SideBarNavLink
                     icon={StarIcon}
                     label={"Membership"}
-                    href={"/dashboard/memberships-management"}
+                    href={"/admin/memberships-management"}
                     description={"Membership management"}
                 />
 
                 <SideBarNavLink
                     icon={UserCheck}
                     label={"Membership Requests"}
-                    href={"/dashboard/membership-request"}
+                    href={"/admin/membership-request"}
                     description={"Pending requests"}
                     badge={{
                         text: "5",
@@ -85,14 +85,14 @@ const Sidebar = () => {
                 <SideBarNavLink
                     icon={Bell}
                     label={"Push Notifications"}
-                    href={"/dashboard/notifications"}
+                    href={"/admin/notifications"}
                     description={"Create and manage notifications"}
                 />
 
                 <SideBarNavLink
                     icon={DollarSign}
                     label={"Video Diamonds"}
-                    href={"/dashboard/video-currency"}
+                    href={"/admin/video-currency"}
                     description={"Manage video currency settings"}
                 />
 

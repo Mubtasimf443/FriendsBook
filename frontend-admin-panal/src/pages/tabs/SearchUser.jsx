@@ -3,9 +3,9 @@
 import { UserInfoCard } from '@/components/custom/Users';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Mail, Phone, Cake, User, Heart, Briefcase, MapPin, Globe, Book, Music, Coffee, DollarSign } from 'lucide-react';
-import React, { useState } from 'react';
-
+import { Api } from '@/lib/env';
+import { Search, Mail, Phone, Cake, User, Heart, Briefcase, MapPin, Globe, Book, Music, Coffee, DollarSign, Circle, Clock, Languages, Monitor } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 
 const UserProfileSection = ({ title, children }) => (
@@ -20,31 +20,45 @@ const UserProfileSection = ({ title, children }) => (
 const SearchUser = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [searchedUser, setSearchedUser] = useState(null);
+
+  const [videoUser, setVUser] = useState(null);
+  const [mUser, setMUser] = useState(null);
+
+
+
+
+  const [userType , setUserType ] = useState('matrimony');
 
   const handleSearch = async () => {
-    if (!searchTerm.trim()) return;
-    
     setIsLoading(true);
+    setVUser(null);
+    setMUser(null);
+
     try {
-      // API call simulation
-      // const response = await searchUserById(searchTerm);
-      // setSearchedUser(response.data);
-      
-      // Remove this when implementing actual API
-      setTimeout(() => {
-        setSearchedUser({
-          name: "John Doe",
-          mid: "M123456",
-          // ... other user details
-        });
-        setIsLoading(false);
-      }, 1000);
+      let params = new URLSearchParams({ searchTerm, userType })
+      let res = await fetch(Api + "/users/search?" + params.toString() , { credentials : 'include'});
+      if (res.ok) {
+        let user =(await res.json()).data.user;
+        if (userType === 'video') {
+          setVUser(user)
+        } 
+        if (userType !== 'video') {
+          setMUser(user)
+        }
+        console.log(user);
+      }
     } catch (error) {
-      console.error('Search failed:', error);
-      setIsLoading(false);
+      console.error(error);
+    } finally {
+      setIsLoading(false)
     }
   };
+
+
+  useEffect(() => console.log(videoUser) , [videoUser]);
+  useEffect(() => console.log(mUser) , [mUser]);
+
+
 
   return (
     <div className='flex flex-col gap-6 min-h-full w-full p-4 sm:p-6'>
@@ -53,12 +67,13 @@ const SearchUser = () => {
         <div className="relative w-full sm:w-72">
           <Input
             type="text"
-            placeholder="Search user by ID..."
+            placeholder="Search user by email,phone..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2"
           />
           <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+        
         </div>
 
         <Button 
@@ -68,75 +83,126 @@ const SearchUser = () => {
         >
           {isLoading ? 'Searching...' : 'Search'}
         </Button>
+        <select
+        disabled={isLoading}
+          className="h-10 px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 shadow"
+          style={{ width: '160px' }}
+          onChange={(e) => setUserType(e.target.value)}
+        >
+       
+          <option value="matrimony">Matrimony</option>
+          <option value="video">Video Call</option>
+        </select>
       </div>
 
       {/* User Profile Display */}
-      {searchedUser && (
-        <div className="space-y-6">
-          {/* Header Section */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="relative h-48 bg-gradient-to-r from-green-500 to-green-700">
-              {searchedUser.coverImage && (
-                <img
-                  src={searchedUser.coverImage}
-                  alt="Cover"
-                  className="w-full h-full object-cover"
-                />
-              )}
-              <div className="absolute -bottom-16 left-6 p-1 bg-green-50 rounded-full">
-                <img
-                  src={searchedUser.profileImage || `https://ui-avatars.com/api/?name=${searchedUser.name}`}
-                  alt={searchedUser.name}
-                  className="w-32 h-32 rounded-full object-cover"
-                />
+
+     
+         {
+        videoUser && (
+          <div className="space-y-6">
+            {/* Video User Profile Card */}
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div className="relative h-48 bg-gradient-to-r from-blue-500 to-purple-600">
+                <div className="absolute -bottom-16 left-6 p-1 bg-blue-50 rounded-full">
+                  <img
+                    src={`https://ui-avatars.com/api/?name=${videoUser.name}`}
+                    alt={videoUser.name}
+                    className="w-32 h-32 rounded-full object-cover"
+                  />
+                </div>
+              </div>
+              
+              <div className="pt-20 px-6 pb-6">
+                <h2 className="text-2xl font-bold text-gray-800">{videoUser.name}</h2>
+                <p className="text-gray-500">Video Call User</p>
+                <div className="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  <Circle className="w-2 h-2 mr-1 fill-current" /> {videoUser.status}
+                </div>
               </div>
             </div>
-            
-            <div className="pt-20 px-6 pb-6">
-              <h2 className="text-2xl font-bold text-gray-800">{searchedUser.name}</h2>
-              <p className="text-gray-500">Matrimony ID: {searchedUser.mid}</p>
-            </div>
+
+            {/* Basic Information */}
+            <UserProfileSection title="Basic Information">
+              <UserInfoCard icon={Mail} title="Email" value={videoUser.email} />
+              <UserInfoCard icon={Phone} title="Phone" value={videoUser.phone} />
+              <UserInfoCard icon={User} title="Gender" value={videoUser.gender} />
+              <UserInfoCard icon={Cake} title="Age" value={`${videoUser.age} years`} />
+              <UserInfoCard icon={Clock} title="Last Active" value={new Date(videoUser.lastActive).toLocaleString()} />
+              <UserInfoCard icon={MapPin} title="Location" value={videoUser.location?.country} />
+            </UserProfileSection>
+
+            {/* Additional Information */}
+            <UserProfileSection title="Account Information">
+              <UserInfoCard icon={Clock} title="Member Since" value={new Date(videoUser.createdAt).toLocaleDateString()} />
+              <UserInfoCard icon={Languages} title="Languages" value={videoUser.languages?.join(", ")} />
+              <UserInfoCard icon={Monitor} title="Session Status" value={videoUser.socketId ? "Connected" : "Disconnected"} />
+            </UserProfileSection>
           </div>
+        )
+      }
+      
+      {
+        mUser && (
+          <div className="space-y-6">
+            {/* Matrimony User Profile Header */}
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div className="relative h-48 bg-gradient-to-r from-green-500 to-green-700">
+                {mUser.coverImage && (
+                  <img
+                    src={mUser.coverImage}
+                    alt="Cover"
+                    className="w-full h-full object-cover"
+                  />
+                )}
+                <div className="absolute -bottom-16 left-6 p-1 bg-green-50 rounded-full">
+                  <img
+                    src={mUser.profileImage?.url || `https://ui-avatars.com/api/?name=${mUser.name}`}
+                    alt={mUser.name}
+                    className="w-32 h-32 rounded-full object-cover"
+                  />
+                </div>
+              </div>
+              
+              <div className="pt-20 px-6 pb-6">
+                <h2 className="text-2xl font-bold text-gray-800">{mUser.name}</h2>
+                <p className="text-gray-500">Matrimony ID: {mUser.mid}</p>
+              </div>
+            </div>
 
-          {/* Basic Information */}
-          <UserProfileSection title="Basic Information">
-            <UserInfoCard icon={Mail} title="Email" value={searchedUser.email} />
-            <UserInfoCard icon={Phone} title="Phone" value={searchedUser.phoneInfo} />
-            <UserInfoCard icon={User} title="Gender" value={searchedUser.gender} />
-            <UserInfoCard icon={Cake} title="Age" value={`${searchedUser.age} years`} />
-            <UserInfoCard icon={Heart} title="Marital Status" value={searchedUser.maritalStatus} />
-            <UserInfoCard icon={User} title="Profile Created By" value={searchedUser.profileCreatedBy} />
-          </UserProfileSection>
+            {/* Basic Information */}
+            <UserProfileSection title="Basic Information">
+              <UserInfoCard icon={Mail} title="Email" value={mUser.email} />
+              <UserInfoCard icon={Phone} title="Phone" value={mUser.phoneInfo?.number} />
+              <UserInfoCard icon={User} title="Gender" value={mUser.gender} />
+              <UserInfoCard icon={Cake} title="Age" value={`${mUser.age} years`} />
+              <UserInfoCard icon={Heart} title="Marital Status" value={mUser.maritalStatus?.replace('_', ' ')} />
+              <UserInfoCard icon={User} title="Profile Created By" value={mUser.profileCreatedBy} />
+            </UserProfileSection>
 
-          {/* Professional Information */}
-          <UserProfileSection title="Professional Information">
-            <UserInfoCard icon={Book} title="Education" value={searchedUser.education} />
-            <UserInfoCard icon={Briefcase} title="Occupation" value={searchedUser.occupation} />
-            <UserInfoCard icon={DollarSign} title="Annual Income" value={searchedUser.annualIncome} />
-          </UserProfileSection>
+            {/* Professional Information */}
+            <UserProfileSection title="Professional Information">
+              <UserInfoCard icon={Book} title="Education" value={mUser.education ? mUser.education[0]?.degree || "Not specified" : "Not specified"} />
+              <UserInfoCard icon={Briefcase} title="Occupation" value={mUser.occupation || "Not specified"} />
+              <UserInfoCard icon={DollarSign} title="Annual Income" value={mUser.annualIncome?.currency || "Not specified"} />
+            </UserProfileSection>
 
-          {/* Location & Background */}
-          <UserProfileSection title="Location & Background">
-            <UserInfoCard icon={MapPin} title="Address" value={searchedUser.address} />
-            <UserInfoCard icon={Globe} title="Religion" value={searchedUser.religion} />
-            <UserInfoCard icon={Globe} title="Languages" value={searchedUser.languages?.join(", ")} />
-          </UserProfileSection>
+            {/* Location & Background */}
+            <UserProfileSection title="Location & Background">
+              <UserInfoCard icon={MapPin} title="Address" value={mUser.address?.country || "Not specified"} />
+              <UserInfoCard icon={Globe} title="Religion" value={mUser.religion} />
+              <UserInfoCard icon={Globe} title="Languages" value={mUser.languages?.join(", ")} />
+            </UserProfileSection>
 
-          {/* Interests & Preferences */}
-          <UserProfileSection title="Interests & Preferences">
-            <UserInfoCard 
-              icon={Coffee} 
-              title="Hobbies" 
-              value={searchedUser.aboutMe?.interestedHobbies?.join(", ")} 
-            />
-            <UserInfoCard 
-              icon={Music} 
-              title="Music Preferences" 
-              value={searchedUser.aboutMe?.interestedMusicTypes?.join(", ")} 
-            />
-          </UserProfileSection>
-        </div>
-      )}
+            {/* Physical Attributes */}
+            <UserProfileSection title="Physical Attributes">
+              <UserInfoCard icon={User} title="Height" value={mUser.height} />
+              <UserInfoCard icon={User} title="Weight" value={`${mUser.weight} kg`} />
+            </UserProfileSection>
+          </div>
+        )
+      }
+    
     </div>
   );
 };

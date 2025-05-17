@@ -1,6 +1,6 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   User,
   Mail,
@@ -10,8 +10,8 @@ import {
   Award,
   Check,
   X,
-  Search,
-  Filter
+
+  TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,17 +19,11 @@ import {
   Card, 
   CardContent, 
   CardDescription, 
-  CardFooter, 
+
   CardHeader, 
   CardTitle 
 } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+
 import {
   Table,
   TableBody,
@@ -38,68 +32,76 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import Pagination from '@/components/custom/Pagination';
+import { Api } from '@/lib/env';
 
 const MembershipRequest = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('all');
-  const [filterDuration, setFilterDuration] = useState('all');
+
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Example data - Replace with actual data from your backend
-  const membershipRequests = [
-    {
-      id: 1,
-      userName: 'Ahmed Khan',
-      userEmail: 'ahmed.khan@example.com',
-      paymentMethod: 'Credit Card',
-      transactionId: 'TXN123456789',
-      membershipType: 'Premium',
-      membershipDuration: '3 months',
-      status: 'pending'
-    },
-    {
-      id: 2,
-      userName: 'Fatima Ali',
-      userEmail: 'fatima.ali@example.com',
-      paymentMethod: 'PayPal',
-      transactionId: 'TXN987654321',
-      membershipType: 'Gold',
-      membershipDuration: '6 months',
-      status: 'pending'
-    },
-    {
-      id: 3,
-      userName: 'Muhammad Usman',
-      userEmail: 'muhammad.usman@example.com',
-      paymentMethod: 'Bank Transfer',
-      transactionId: 'TXN456789123',
-      membershipType: 'Diamond',
-      membershipDuration: '12 months',
-      status: 'pending'
-    },
-  ];
+  const [pagination, setPagination] = useState({ totalPages: 1, page: 1, limit: 10 });
+  const [membershipRequests, setMembershipRequests] = useState([]);
 
-  // Filter requests based on search term and filters
-  const filteredRequests = membershipRequests.filter(request => {
-    const matchesSearch = 
-      request.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.transactionId.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesType = filterType === 'all' || request.membershipType === filterType;
-    const matchesDuration = filterDuration === 'all' || request.membershipDuration === filterDuration;
-    
-    return matchesSearch && matchesType && matchesDuration;
-  });
+  useEffect(() => {
+    (async function () {
+      try {
+        setIsLoading(true);
+        let params = new URLSearchParams({
+          page: pagination.page,
+          limit: pagination.limit
+        });
+        let res = await fetch(Api + "/membership/request?" + params.toString(), { credentials: "include"  });
+        if (res.ok) {
+          let data = await res.json();
+          setPagination((state) => ({
+            ...state,
+            page: data.data.pagination.page,
+            totalPages: data.data.pagination.totalPages
+          }));
+          setMembershipRequests(data.data.requests || []);
+        } else {
+          setMembershipRequests([]);
+        }
+      } catch (error) {
+        setMembershipRequests([]);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+   
+  }, [pagination.page]);
 
-  const handleApprove = (id) => {
-    // Implement approval logic
-    console.log(`Approved request ${id}`);
+  const handleApprove = async (id) => {
+    try {
+      setIsLoading(true);
+      let res = await fetch(`${Api}/membership/request/${id}/accapt`, {
+        method: "PUT",
+        credentials: "include"
+      });
+      if (res.ok) {
+        setMembershipRequests(requests => requests.filter(r => r._id !== id));
+      }
+    } catch (error) {
+      // handle error
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleReject = (id) => {
-    // Implement rejection logic
-    console.log(`Rejected request ${id}`);
+  const handleReject = async (id) => {
+    try {
+      setIsLoading(true);
+      let res = await fetch(`${Api}/membership/request/${id}/reject`, {
+        method: "PUT",
+        credentials: "include"
+      });
+      if (res.ok) {
+        setMembershipRequests(requests => requests.filter(r => r._id !== id));
+      }
+    } catch (error) {
+      // handle error
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -108,48 +110,6 @@ const MembershipRequest = () => {
         <h1 className="text-2xl font-bold text-gray-800">Membership Requests</h1>
         <p className="text-gray-600">Review and manage membership upgrade requests</p>
       </div>
-
-      {/* Search and Filter Section */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-              <Input
-                type="text"
-                placeholder="Search by name, email or transaction ID"
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Membership Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="Premium">Premium</SelectItem>
-                  <SelectItem value="Gold">Gold</SelectItem>
-                  <SelectItem value="Diamond">Diamond</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filterDuration} onValueChange={setFilterDuration}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Duration" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Durations</SelectItem>
-                  <SelectItem value="3 months">3 Months</SelectItem>
-                  <SelectItem value="6 months">6 Months</SelectItem>
-                  <SelectItem value="12 months">12 Months</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Requests Table */}
       <Card>
@@ -160,7 +120,12 @@ const MembershipRequest = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {filteredRequests.length > 0 ? (
+          {isLoading ? (
+            <div className="text-center py-8 text-gray-500">
+              <TrendingUp className="mx-auto h-8 w-8 animate-spin mb-2" />
+              <p>Loading...</p>
+            </div>
+          ) : membershipRequests && membershipRequests.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -172,17 +137,17 @@ const MembershipRequest = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredRequests.map((request) => (
-                    <TableRow key={request.id}>
+                  {membershipRequests.map((request) => (
+                    <TableRow key={request._id}>
                       <TableCell>
                         <div className="flex flex-col">
                           <div className="font-medium flex items-center gap-1">
                             <User className="h-4 w-4" />
-                            {request.userName}
+                            {request.userName || request.user?.name || "N/A"}
                           </div>
                           <div className="text-sm text-gray-500 flex items-center gap-1">
                             <Mail className="h-3 w-3" />
-                            {request.userEmail}
+                            {request.userEmail || request.user?.email || "N/A"}
                           </div>
                         </div>
                       </TableCell>
@@ -190,11 +155,11 @@ const MembershipRequest = () => {
                         <div className="flex flex-col">
                           <div className="flex items-center gap-1">
                             <CreditCard className="h-4 w-4" />
-                            {request.paymentMethod}
+                            {request.paymentMethod || "N/A"}
                           </div>
                           <div className="text-sm text-gray-500 flex items-center gap-1">
                             <Hash className="h-3 w-3" />
-                            {request.transactionId}
+                            {request.transactionId || "N/A"}
                           </div>
                         </div>
                       </TableCell>
@@ -202,30 +167,32 @@ const MembershipRequest = () => {
                         <div className="flex flex-col">
                           <div className="flex items-center gap-1">
                             <Award className="h-4 w-4" />
-                            {request.membershipType}
+                            {request.membershipType || request.plan || "N/A"}
                           </div>
                           <div className="text-sm text-gray-500 flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            {request.membershipDuration}
+                            {request.membershipDuration || request.duration || "N/A"} months
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
+                          <Button
+                            size="sm"
+                            variant="outline"
                             className="text-green-600 border-green-600 hover:bg-green-50"
-                            onClick={() => handleApprove(request.id)}
+                            onClick={() => handleApprove(request._id)}
+                            disabled={isLoading}
                           >
                             <Check className="h-4 w-4 mr-1" />
                             Approve
                           </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
+                          <Button
+                            size="sm"
+                            variant="outline"
                             className="text-red-600 border-red-600 hover:bg-red-50"
-                            onClick={() => handleReject(request.id)}
+                            onClick={() => handleReject(request._id)}
+                            disabled={isLoading}
                           >
                             <X className="h-4 w-4 mr-1" />
                             Reject
@@ -245,6 +212,12 @@ const MembershipRequest = () => {
           )}
         </CardContent>
       </Card>
+
+      <Pagination
+        currentPage={pagination.page}
+        totalPages={pagination.totalPages}
+        onPageChange={(page) => setPagination(state => ({ ...state, page }))}
+      />
     </div>
   );
 };

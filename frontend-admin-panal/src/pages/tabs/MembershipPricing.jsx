@@ -1,35 +1,57 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Edit, Save, X } from 'lucide-react';
+import DashboardLoader, { FullPageLoader } from '@/components/custom/loader';
+import { Api } from '@/lib/env';
+
+import { toast } from 'sonner';
 
 export const MembershipPricing = () => {
+  let [loading , setLoading] = useState(false) ;
+  const [isDisabledInp , setDisableInp] = useState(false);
   const [memberships, setMemberships] = useState({
     premium: {
       name: 'Premium',
       prices: {
-        '3': { price: 299, smsText: 'Get Premium membership for 3 months at $299' },
-        '6': { price: 499, smsText: 'Get Premium membership for 6 months at $499' },
-        '12': { price: 799, smsText: 'Get Premium membership for 12 months at $799' },
+        '3': { price: 299, sms:3  },
+        '6': { price: 499, sms:3  },
+        '12': { price: 799, sms:3 },
       }
     },
     gold: {
       name: 'Gold',
       prices: {
-        '3': { price: 499, smsText: 'Get Gold membership for 3 months at $499' },
-        '6': { price: 799, smsText: 'Get Gold membership for 6 months at $799' },
-        '12': { price: 1299, smsText: 'Get Gold membership for 12 months at $1299' },
+        '3': { price: 499,sms:3  },
+        '6': { price: 799,sms:3  },
+        '12': { price: 1299, sms:3  },
       }
     },
     diamond: {
       name: 'Diamond',
       prices: {
-        '3': { price: 799, smsText: 'Get Diamond membership for 3 months at $799' },
-        '6': { price: 1299, smsText: 'Get Diamond membership for 6 months at $1299' },
-        '12': { price: 1999, smsText: 'Get Diamond membership for 12 months at $1999' },
+        '3': { price: 799, sms:3 },
+        '6': { price: 129, sms:3  },
+        '12': { price: 1999, sms: 5 },
       }
     }
   });
 
+  useEffect(() => {
+     (async function () {
+      try { 
+        setLoading(true)
+        let response = await fetch(Api + '/membership/pricing' , { credentials : 'include' ,  });
+        if (response.status === 200) { 
+          let data = await response.json();
+          setMemberships(data.data.membership_data);
+        } 
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false)
+      }
+    })();
+  } , []);
   const [editingState, setEditingState] = useState({
     membership: null,
     duration: null,
@@ -45,9 +67,30 @@ export const MembershipPricing = () => {
   };
 
   const handleSave = () => {
-    const { membership, duration, field } = editingState;
+    (async function () {
+      try {
+        setDisableInp(true)
+        const { membership, duration, field } = editingState;
     if (membership && duration && field) {
-      setMemberships(prev => {
+      let response = await fetch(Api + '/membership/pricing' , {
+         method : 'put' ,
+         credentials : 'include',
+         headers : {
+          'content-type' :'application/json' 
+         },
+         body :JSON.stringify({
+          plan:membership, 
+          duration, 
+          field,
+          value : Number(tempValue)
+         })
+      });
+      if (response.status !== 200) {
+        return toast('Failed to Update the ' + field);
+      } else {
+        toast('Field Updated SuccessFully')
+      }
+      setMemberships((prev) => { 
         const newMemberships = { ...prev };
         const value = field === 'price' ? Number(tempValue) : tempValue;
         newMemberships[membership].prices[duration][field] = value;
@@ -55,6 +98,14 @@ export const MembershipPricing = () => {
       });
     }
     setEditingState({ membership: null, duration: null, field: null });
+    
+      } catch (error) {
+        console.error(error);
+        
+      } finally {
+        setDisableInp(false)
+      }
+    })()
   };
 
   const handleCancel = () => {
@@ -70,21 +121,15 @@ export const MembershipPricing = () => {
     if (isEditing) {
       return (
         <div className="flex items-center gap-2">
-          {field === 'price' ? (
-            <input 
-              type="number" 
-              value={tempValue} 
-              onChange={(e) => setTempValue(e.target.value)}
-              className="border rounded px-2 py-1 w-24"
-            />
-          ) : (
-            <input 
-              type="text" 
-              value={tempValue} 
-              onChange={(e) => setTempValue(e.target.value)}
-              className="border rounded px-2 py-1 w-full"
-            />
-          )}
+         
+          <input 
+            type="number" 
+            value={tempValue} 
+            disabled={isDisabledInp}
+            onChange={(e) => setTempValue(e.target.value)}
+            className="border rounded px-2 py-1 w-24"
+           />
+           
           <button 
             className="p-1 rounded hover:bg-gray-100" 
             onClick={handleSave}
@@ -115,16 +160,21 @@ export const MembershipPricing = () => {
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">Membership Pricing Management</h1>
+    <>
+      { loading && <DashboardLoader />}
+      {
+        !loading && (
+          
+        <div className="container mx-auto p-4">
+          <h1 className="text-2xl font-bold mb-6">Membership Pricing Management</h1>
       
-      <div className="mb-6">
-        <div className="grid w-full grid-cols-3 border rounded overflow-hidden">
-          <button 
-            className={`py-2 ${activeTab === 'premium' ? 'bg-blue-500 text-white' : 'bg-gray-100'}`}
-            onClick={() => setActiveTab('premium')}
-          >
-            Premium
+          <div className="mb-6">
+            <div className="grid w-full grid-cols-3 border rounded overflow-hidden">
+            <button 
+              className={`py-2 ${activeTab === 'premium' ? 'bg-blue-500 text-white' : 'bg-gray-100'}`}
+              onClick={() => setActiveTab('premium')}
+            >
+              Premium
           </button>
           <button 
             className={`py-2 ${activeTab === 'gold' ? 'bg-blue-500 text-white' : 'bg-gray-100'}`}
@@ -172,8 +222,8 @@ export const MembershipPricing = () => {
                             {renderPriceEditor(
                               membershipKey, 
                               duration, 
-                              'smsText', 
-                              memberships[membershipKey].prices[duration].smsText
+                              'sms', 
+                              memberships[membershipKey].prices[duration].sms
                             )}
                           </div>
                         </div>
@@ -187,5 +237,10 @@ export const MembershipPricing = () => {
         ))}
       </div>
     </div>
+      )
+    }
+    
+    </>
+   
   );
 };

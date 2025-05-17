@@ -1,6 +1,8 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
-import React, { Fragment, useState } from 'react';
+
+
+import React, { Fragment, useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,14 +10,53 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bell, Send, Users } from "lucide-react";
 import { toast } from "sonner";
+import { Api } from '@/lib/env';
+
+const NOTIFICATION_STORAGE_KEY = "sent_notifications";
+
+function getStoredNotifications() {
+  let items = [];
+  try {
+    items = JSON.parse(localStorage.getItem(NOTIFICATION_STORAGE_KEY)) || [];
+  } catch (e) {
+    items = [];
+  }
+  // Remove notifications older than 7 days
+  const now = Date.now();
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  const filtered = items.filter(n => now - n.timestamp < weekMs);
+  if (filtered.length !== items.length) {
+    localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(filtered));
+  }
+  return filtered;
+}
+
+function addNotificationToStorage(notification) {
+  const items = getStoredNotifications();
+  items.unshift(notification);
+  localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(items));
+}
 
 const PushNotification = () => {
+  const apiUrl = Api + "/notification";
   const [notification, setNotification] = useState({
     title: '',
     message: '',
-    target: 'all', // all, premium, gold, diamond
+    target: 'all', // all, video, matrimony
   });
   const [loading, setLoading] = useState(false);
+  const [sentNotifications, setSentNotifications] = useState([]);
+
+  // Load notifications from localStorage on mount
+  useEffect(() => {
+    setSentNotifications(getStoredNotifications());
+  }, []);
+
+  // Clean up old notifications every time component renders
+  useEffect(() => {
+    const filtered = getStoredNotifications();
+    setSentNotifications(filtered);
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -26,32 +67,79 @@ const PushNotification = () => {
     setNotification(prev => ({ ...prev, target: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!notification.title.trim()) {
       toast.error("Please enter a notification title");
       return;
     }
-    
+
     if (!notification.message.trim()) {
       toast.error("Please enter a notification message");
       return;
     }
-    
+
     setLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      toast.success(`Notification sent to ${notification.target} users!`);
-      setLoading(false);
+
+    try {
+      // Only allow "all", "video", "matrimony" as targets/types
+      let type = "global";
+      if (notification.target === "video") type = "video";
+      else if (notification.target === "matrimony") type = "matrimony";
+      // else "all" is "global"
+
+      const payload = {
+        type,
+        title: notification.title,
+        body: notification.message,
+      };
+
+      const res = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to send notification");
+      }
+
+      let targetLabel = "all";
+      if (type === "video") targetLabel = "video";
+      else if (type === "matrimony") targetLabel = "matrimony";
+
+      toast.success(`Notification sent to ${targetLabel} users!`);
+
+      // Store in localStorage with timestamp
+      const sent = {
+        ...payload,
+        target: targetLabel,
+        timestamp: Date.now(),
+      };
+      addNotificationToStorage(sent);
+      setSentNotifications(getStoredNotifications());
+
       setNotification({
         title: '',
         message: '',
         target: 'all',
       });
-    }, 1500);
+    } catch (err) {
+      toast.error("Failed to send notification");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // Remove notifications older than 7 days on every render (in case time passes)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSentNotifications(getStoredNotifications());
+    }, 60 * 60 * 1000); // every hour
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <Fragment>
@@ -60,7 +148,7 @@ const PushNotification = () => {
           <Bell className="h-8 w-8 text-primary" />
           Push Notifications
         </h1>
-        
+
         <Card>
           <CardHeader>
             <CardTitle>Send Push Notification</CardTitle>
@@ -72,7 +160,7 @@ const PushNotification = () => {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <label htmlFor="title" className="text-sm font-medium">Notification Title</label>
-                <Input 
+                <Input
                   id="title"
                   name="title"
                   placeholder="Enter notification title"
@@ -80,10 +168,10 @@ const PushNotification = () => {
                   onChange={handleChange}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label htmlFor="message" className="text-sm font-medium">Notification Message</label>
-                <Textarea 
+                <Textarea
                   id="message"
                   name="message"
                   placeholder="Enter notification message"
@@ -92,11 +180,11 @@ const PushNotification = () => {
                   onChange={handleChange}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label htmlFor="target" className="text-sm font-medium">Target Audience</label>
-                <Select 
-                  value={notification.target} 
+                <Select
+                  value={notification.target}
                   onValueChange={handleSelectChange}
                 >
                   <SelectTrigger>
@@ -104,9 +192,8 @@ const PushNotification = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Users</SelectItem>
-                    <SelectItem value="premium">Premium Members</SelectItem>
-                    <SelectItem value="gold">Gold Members</SelectItem>
-                    <SelectItem value="diamond">Diamond Members</SelectItem>
+                    <SelectItem value="video">Video Calling Members</SelectItem>
+                    <SelectItem value="matrimony">Matrimony Members</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -128,7 +215,7 @@ const PushNotification = () => {
             </CardFooter>
           </form>
         </Card>
-        
+
         <Card className="mt-6">
           <CardHeader>
             <CardTitle>Recent Notifications</CardTitle>
@@ -137,10 +224,29 @@ const PushNotification = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center text-muted-foreground py-8">
-              <Users className="mx-auto h-12 w-12 opacity-50 mb-2" />
-              <p>No notifications have been sent yet</p>
-            </div>
+            {sentNotifications && sentNotifications.length > 0 ? (
+              <div className="space-y-4">
+                {sentNotifications.map((n, idx) => (
+                  <div key={idx} className="border rounded p-3 flex flex-col gap-1 bg-muted/50">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{n.title}</span>
+                      <span className="text-xs text-gray-500 ml-auto">
+                        {new Date(n.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-700">{n.body}</div>
+                    <div className="text-xs text-gray-500">
+                      Target: {n.target || n.type}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground py-8">
+                <Users className="mx-auto h-12 w-12 opacity-50 mb-2" />
+                <p>No notifications have been sent yet</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

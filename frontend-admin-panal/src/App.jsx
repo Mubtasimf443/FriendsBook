@@ -1,43 +1,37 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
-import { createBrowserRouter, RouterProvider } from 'react-router'
-import LoadingPage from './pages/LoadingPage'
-
-import { lazy as Lazy, Suspense } from 'react'
-import DashboardLoader from './components/custom/loader'
-import ErrorBoundary from './components/custom/ErrorBoundary'
-import WithErrorBoundary from './components/custom/withErrorBoundary'
-import Overview from './pages/tabs/Overview'
-import NotFoundTab from './pages/tabs/NotFoundTab'
-import NotFound from './pages/NotFound'
-import Logout from './pages/Logout'
-import LoginPage from './pages/Login'
-import { Toaster } from '@/components/ui/sonner'
-import UserManagement from './pages/tabs/UserManagement'
-import AllUser from './pages/tabs/AllUser'
-import SearchUser from './pages/tabs/SearchUser'
-import PushNotification from './pages/tabs/PushNotification'
-import { MembershipPricing } from './pages/tabs/MembershipPricing'
-import MembershipRequest from './pages/tabs/MembershipRequest'
+import { createBrowserRouter, RouterProvider } from 'react-router';
+import LoadingPage from './pages/LoadingPage';
+import { lazy as Lazy, Suspense } from 'react';
+import DashboardLoader from './components/custom/loader';
+import Overview from './pages/tabs/Overview';
+import NotFoundTab from './pages/tabs/NotFoundTab';
+import NotFound from './pages/NotFound';
+import Logout from './pages/Logout';
+import { Toaster } from '@/components/ui/sonner';
+import UserManagement from './pages/tabs/UserManagement';
+import AllUser from './pages/tabs/AllUser';
+import SearchUser from './pages/tabs/SearchUser';
+import PushNotification from './pages/tabs/PushNotification';
+import { MembershipPricing } from './pages/tabs/MembershipPricing';
+import MembershipRequest from './pages/tabs/MembershipRequest';
+import Login from './pages/Login';
 
 const LazyDashboard = Lazy(() => import('./pages/DashBoard'))
 
 function App() {
+ 
   const router = createBrowserRouter(
     [
       {
-        path: '/',
-        element: <LoadingPage />
-      },
-      {
         path: '/login',
-        element: <LoginPage />
+        element: <Login />
       },
       {
-        path: '/loggout',
-        element: <Logout />
+        path :'/loading',
+        element : <LoadingPage />
       },
       {
-        path: '/dashboard',
+        path: '/admin',
         element: <Suspense fallback={<DashboardLoader />}>  <LazyDashboard />    </Suspense>,
         children: [
           {
@@ -60,7 +54,7 @@ function App() {
                 Component: AllUser
               },
               {
-                path: 'search-by-id',
+                path: 'search',
                 Component: SearchUser
               }
             ]
@@ -90,19 +84,21 @@ function App() {
 
       },
       {
+        path: '/loggout',
+        element: <Logout />
+      },
+      {
         path: "*",
-
         element: <NotFound />
       }
     ],
     
-  )
+  );
+
   return (
     <>
-
-      <RouterProvider router={router} />
+   <RouterProvider router={router} />
       <Toaster />
-
     </>
   )
 }

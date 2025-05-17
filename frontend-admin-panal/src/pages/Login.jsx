@@ -4,8 +4,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { Api } from '@/lib/env';
+import { authStore } from '@/lib/auth.store';
 
 const Login = () => {
+    const setAuthToken  = authStore((state) => state.setAuthToken );
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
         email: '',
@@ -61,11 +65,42 @@ const Login = () => {
         if (validateForm()) {
             setIsLoading(true);
             try {
-                // Add your API call here
-                await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
                 
-                // If login successful
-                navigate('/admin/overview');
+                // Make API request to login endpoint
+                const response = await fetch(`${Api}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: formData.email,
+                        password: formData.password
+                    }),
+                    credentials: 'include' // Important for cookies
+                });
+                
+                
+                if (!response.ok) {
+                    // Show error toast notification
+                    toast({
+                        variant: "destructive",
+                        title: "Login Failed",
+                        description: data.message || "Invalid email or password",
+                    });
+                    throw new Error(data.message || 'Login failed');
+                }
+                const data = await response.json();
+                
+                setAuthToken(data.data.authToken)
+                // Show success toast notification
+                toast({
+                    title: "Login Successful",
+                    description: "Welcome to the admin panel",
+                    variant: "success",
+                });
+
+                
+               window.location.replace('/admin/users/all')
             } catch (error) {
                 setErrors({
                     submit: 'Invalid email or password'
