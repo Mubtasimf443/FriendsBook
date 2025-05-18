@@ -19,6 +19,7 @@ import { randomVideoCallSocketService } from './sockets/randomVideoCall.socket';
 import { NotificationSocketService } from './sockets/notification.socket';
 import './lib/types/express.decratation';
 import adminRouter from './main_routes/admin';
+import path from 'node:path';
 
 
 
@@ -69,13 +70,16 @@ async function main() {
     app.use('/api/admin', adminRouter);
     // app.use('/api/cron-jobs', cronJobsRouter);
 
+    app.get('*', async function (req , res ) {
+        return res.sendFile(path.join(__dirname , '../public/index.html'))
+    })
 
-    app.get('/video-call' , async function (req , res ) {
-        res.render('index')
-    })
-    app.get('/notification-test' , async function (req , res ) {
-        res.render('notifcation')
-    })
+    // app.get('/video-call' , async function (req , res ) {
+    //     res.render('index')
+    // })
+    // app.get('/notification-test' , async function (req , res ) {
+    //     res.render('notifcation')
+    // })
     // app.listen(port ,() =>   )
    
     console.log(`Server is Fire at http://localhost:${port}`)

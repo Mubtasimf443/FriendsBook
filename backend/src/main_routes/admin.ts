@@ -33,7 +33,7 @@ router.post('/login', async function (req: Request, res: Response,): Promise<any
         // Set auth token as cookie
         res.cookie('admin_auth_token', authToken, {
             httpOnly: true,
-            sameSite : false , 
+            sameSite : true , 
             secure: process.env.NODE_ENV === 'production',
             maxAge:24 * 60 * 60 * 1000 // 24 hours
         });
@@ -541,7 +541,7 @@ router.post('/log-out' ,async function (req:Request , res : Response ,) :Promise
     try {
         res.clearCookie('admin_auth_token', {
             httpOnly: true,
-            sameSite : false , 
+            sameSite : true , 
             secure: process.env.NODE_ENV === 'production',
             maxAge:24 * 60 * 60 * 1000 // 24 hours
         })
