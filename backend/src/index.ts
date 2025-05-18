@@ -20,46 +20,39 @@ import { NotificationSocketService } from './sockets/notification.socket';
 import './lib/types/express.decratation';
 import adminRouter from './main_routes/admin';
 import path from 'node:path';
+import membershipRouter from './main_routes/Membership';
+import configureChatMessagingSocket from './sockets/chat.messaging.socket';
+
+const app: express.Application = express();
+const port: number = Number(PORT ?? 4000) 
+const server= createServer(app).listen(port) ;
+const io = new Server(server, {
+    cors: {
+        origin: '*',
+        methods: ['POST', 'GET', 'DELETE', 'PUT']
+    }
+});
+randomVideoCallSocketService.getInstance(io.of('/random-video-call'));
+const NotificationService = NotificationSocketService.getInstance(io.of('/notifications'));
+configureChatMessagingSocket(io.of('/chat-messaging'));
+
 
 
 
 async function main() {
 
-    // Variables
-    const app: express.Application = express();
-    const port: number = Number(PORT ?? 4000) 
-    const server= createServer(app).listen(port) ;
-    const io = new Server(server, {
-        cors: {
-            origin: '*',
-            methods: ['POST', 'GET', 'DELETE', 'PUT']
-        }
-    });
-
-
-
-
-
-
-    randomVideoCallSocketService.getInstance(io.of('/random-video-call'));
-    const NotificationService = NotificationSocketService.getInstance(io.of('/notifications'));
+    await connectDB();
+    // environment
     app.use(async function (req:Request , res : Response , next : NextFunction) {
         req.notifications = NotificationService;
         next()
     });
-
-
-    // Environmemt
-    await connectDB();
     app.use(cookieParser());
     app.use(ExpressJsonMidleware());
     app.use(express.static('public'));
     app.use(cors)
     app.set('view engine' , 'ejs')
-   
     NODE_ENV === 'developement' && app.use(morgan('dev'));
-    
-
 
     // routes
     app.use('/api/auth', authRouter);
@@ -68,6 +61,7 @@ async function main() {
     // app.use('/api/profile', profileRouter);
     app.use('/api/data', dataRouter);
     app.use('/api/admin', adminRouter);
+    app.use('/api/membership', membershipRouter);
     // app.use('/api/cron-jobs', cronJobsRouter);
 
     app.get('*', async function (req , res ) {

@@ -472,6 +472,16 @@ export interface IUser extends Document {
     pendingIncomingRequests: mongoose.Types.ObjectId[];
     pendingOutgoingRequests: mongoose.Types.ObjectId[];
 
+    // Messaging rooms
+    messagingRooms : {
+        connectedRooms : mongoose.Types.ObjectId[],
+        blockedRooms : mongoose.Types.ObjectId[]
+    },
+    socket_ids : {
+        notification_socket :string ;
+        messaging_socket : string ;
+        video_calling_socket : string;
+    }
     // Instance Methods
     createPreference(): IUser;          // Generate partner preferences
     createMID(): string;                   // Generate matrimony ID

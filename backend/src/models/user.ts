@@ -536,6 +536,23 @@ const userSchema = new Schema<IUser>({
         }
     },
 
+    // Messaging Rooms 
+    messagingRooms : {
+        connectedRooms : [{
+            type : mongoose.SchemaTypes.ObjectId ,
+            ref : 'MessagingRoom'
+        }],
+        blockedRooms : [{
+            type : mongoose.SchemaTypes.ObjectId ,
+            ref : 'MessagingRoom'
+        }]
+    },
+    
+    socket_ids : {
+        notification_socket : String, 
+        messaging_socket: String ,
+        video_calling_socket : String,
+    } ,
     /**
      * Partner Preferences
      * -----------------

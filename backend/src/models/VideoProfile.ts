@@ -30,6 +30,17 @@ export interface IVideoProfile extends Document {
         country : string ;
         lat : number ;
         long : number ;
+    };
+     // Messaging rooms
+    messagingRooms : {
+        connectedRooms : mongoose.Types.ObjectId[],
+        blockedRooms : mongoose.Types.ObjectId[]
+    },
+    socket_ids : {
+        notification_socket :string ;
+        messaging_socket : string ;
+        video_calling_socket : string;
+        random_video_calling_socket : string ;
     }
 }
 
@@ -117,7 +128,27 @@ const videoProfileSchema = new Schema<IVideoProfile>(
             required : true ,
             maxlength : 20,
             minlength : 8
-        }
+        },
+        // Messaging Rooms 
+        messagingRooms : {
+            connectedRooms : [{
+                type : mongoose.SchemaTypes.ObjectId ,
+                ref : 'MessagingRoom'
+            }],
+            blockedRooms : [{
+                type : mongoose.SchemaTypes.ObjectId ,
+                ref : 'MessagingRoom'
+            }]
+        },
+
+        // Socket Id
+        socket_ids : {
+            notification_socket : String, 
+            messaging_socket: String ,
+            video_calling_socket : String,
+            random_video_calling_socket : String 
+        } 
+
     },
     { timestamps: true }
 );

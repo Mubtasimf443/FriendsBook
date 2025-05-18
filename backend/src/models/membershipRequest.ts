@@ -3,21 +3,21 @@
 import mongoose, { Schema } from 'mongoose';
 import { IMembershipRequest, MembershipTier, MembershipDuration, MembershipRequestStatus, PaymentMethod } from '../lib/types/memberdship.types';
 
-const verificationImageSchema = new Schema(
-    {
-        url: {
-            type: String,
-            required: true
-        },
-        id: {
-            type: String,
-            required: true
-        }
-    },
-    { 
-        _id: false
-    }
-);
+// const verificationImageSchema = new Schema(
+//     {
+//         url: {
+//             type: String,
+            
+//         },
+//         id: {
+//             type: String,
+           
+//         }
+//     },
+//     { 
+//         _id: false
+//     }
+// );
 
 const paymentInfoSchema = new Schema(
     {
@@ -54,7 +54,7 @@ const paymentInfoSchema = new Schema(
             required: true,
             default: Date.now
         },
-        verificationImage: verificationImageSchema
+        // verificationImage: verificationImageSchema
     },
     { _id: false }
 );
@@ -152,11 +152,7 @@ const membershipRequestSchema = new Schema<IMembershipRequest>({
     timestamps: true
 });
 
-// Indexes for efficient querying
-membershipRequestSchema.index({ requestStatus: 1, requestDate: -1 });
-membershipRequestSchema.index({ 'paymentInfo.transactionId': 1 });
-membershipRequestSchema.index({ requesterID: 1, requestStatus: 1 });
-membershipRequestSchema.index({ endDate: 1 }, { sparse: true });
+
 
 // Static method to calculate membership benefits based on tier and duration
 membershipRequestSchema.statics.calculateBenefits = function(tier: MembershipTier, duration: MembershipDuration) {
