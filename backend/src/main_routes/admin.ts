@@ -538,33 +538,7 @@ router.put('/membership/request/:id/reject' ,  async function (req:Request , res
 });
 
 
-router.post('/notification' , async function (req:Request , res : Response ,) :Promise<any> {
-    try {
-        let {type , title , body} = (z.object({
-            type : z.enum(['global' ,'video' , 'matrimony' , ]),
-            title : z.string().max(80),
-            body : z.string().max(120)
-        })).parse(req.body);
 
-        res.status(200).json({
-            success : true,
-            data : {
-        
-            },
-            error : null,
-            message : 'OK'
-        })
-        return;
-    
-    } catch (error) {
-        console.error('[notification admin error]', error);
-        return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
-        });
-    } 
-} )
 
 
 

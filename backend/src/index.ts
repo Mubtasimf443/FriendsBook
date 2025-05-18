@@ -73,7 +73,9 @@ async function main() {
     app.get('/video-call' , async function (req , res ) {
         res.render('index')
     })
-    
+    app.get('/notification-test' , async function (req , res ) {
+        res.render('notifcation')
+    })
     // app.listen(port ,() =>   )
    
     console.log(`Server is Fire at http://localhost:${port}`)
