@@ -11,10 +11,13 @@ export enum NotificationFor {
     MATRIMONY_USERS= 'matrimony_users',
     VIDEO_USERS= 'video_users',
 }
-
-
 export enum NotificationType {
     ADMIN = "admin_notification"
+}
+export enum Rooms {
+    VIDEO_ROOMS = 'video_calling_members_room',
+    MATRIMONY_ROOMS = 'matrimony_members_room',
+    ALL_USERS_ROOMS = 'all_members_room',
 }
 
 
@@ -36,19 +39,18 @@ export class NotificationSocketService {
            
             socket.emit('connection-success' , null) 
        
-            // if (socket.data.profileType === 'matrimonyProfile') {
-               
-            //     socket.join('matrimonyProfileRoom');
-                
-            
-            // } else 
-            // if (socket.data.profileType === 'videoProfile') {
-            //     socket.join('videoProfileRoom');
-            // }
-            
-            socket.on('hi' , () => socket.emit('hello'))
+            socket.on('video-users-notification-request' , (data)  => {
+                socket.emit('notification-request-accepted', 'video_calling_members')
+            });
 
-
+            socket.on('matrimony-users-notification-request' , (data)  => {
+                socket.emit('notification-request-accepted', 'matrimony_members')
+            });
+            
+            socket.on('all-users-notification-request' , (data)  => {
+                socket.emit('notification-request-accepted', 'all_members')
+            });
+           
             socket.on('admin_notification' ,(playload) => {
                 try {
                     let {type , title , message} = (z.object({

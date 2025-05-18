@@ -361,7 +361,6 @@ router.delete('/users/:id', async function (req: Request, res: Response, next: N
     }
 })
 
-
 router.get('/membership/pricing' ,  async function (req:Request , res : Response ) :Promise<any> {
     try {
         let data: any = JSON.parse(readFileSync(path.join(__dirname , '../../data/membership.config.json') , 'utf-8' ));
@@ -380,7 +379,6 @@ router.get('/membership/pricing' ,  async function (req:Request , res : Response
         });   
     }
 }) ;
-
 
 
 router.put('/membership/pricing' ,  async function (req:Request , res : Response ) :Promise<any> {
@@ -539,7 +537,27 @@ router.put('/membership/request/:id/reject' ,  async function (req:Request , res
 
 
 
-
+router.post('/log-out' ,async function (req:Request , res : Response ,) :Promise<any> {
+    try {
+        res.clearCookie('admin_auth_token', {
+            httpOnly: true,
+            sameSite : false , 
+            secure: process.env.NODE_ENV === 'production',
+            maxAge:24 * 60 * 60 * 1000 // 24 hours
+        })
+        .status(200)
+        .json({});
+        return;
+    
+    } catch (error) {
+        console.error('[Admin Log out error]', error);
+        return res.status(500).json({
+           success: false,
+           message: 'Internal server error',
+           data: null
+        });
+    }
+} );
 
 
 export default  router;
