@@ -8,6 +8,7 @@ import { RandomVideoCall, IRandomVideoCall } from '../models/RandomVideoCall';
 import { z } from 'zod';
 import mongoose from 'mongoose';
 import { randomUUID } from 'crypto';
+import VideoProfile from '../models/VideoProfile';
 
 // Constants
 const VIDEO_CALL_DURATION = 20 * 1000; // 20 seconds in milliseconds
@@ -109,12 +110,37 @@ export class randomVideoCallSocketService {
                 }
             });
            
+            socket.on('caller-details-request' ,async function () {
+                try {
+                    let call2 =await RandomVideoCall.findOne({ connectedWith : socket.user._id , status : 'connected'});
+                    if (!call2) {
+                        return  socket.emit('error', { message: 'can not find Caller Details' });
+                    }
+                    let caller = await VideoProfile.findById(call2.connectedWith);
+                    if (!caller) {
+                        return  socket.emit('error', { message: 'can not find Caller Details' });
+                    }
+                    socket.emit('caller-details' , { 
+                       name : caller.name ,
+                       photo : caller.profileImage?.url,
+                       email : caller.email
+                    });
+                    
+                } catch (error) {
+                    console.error(error);
+                }
+            })
+
+
+
             socket.on('stop-video-call' ,async  function () {
                 let call2 =await RandomVideoCall.findOne({ connectedWith : socket.user._id , status : 'connected'});
                 if (call2) {
                     socket.to(call2.roomId).emit('call-cancelled')
                 }
             });
+
+
 
             socket.on('disconnect', async () => {
                 try {
@@ -161,6 +187,7 @@ export class randomVideoCallSocketService {
             // Notify both users about the connection
             socket.emit('call-user', request2.peerId);
             
+
             let timeOut =setTimeout(() => {
                 try {
                     socket.to(request1.roomId).emit('end-call'  );
@@ -170,9 +197,9 @@ export class randomVideoCallSocketService {
                     console.error(error);
                 }
             }, VIDEO_CALL_DURATION + 2500);
-            // Join both users to the same room for easier communication
-            socket.join(request1.roomId);
-           
+          
+
+
         } catch (error) {
             console.error('Error connecting users:', error);
             socket.emit('error', { message: 'Failed to establish connection' });

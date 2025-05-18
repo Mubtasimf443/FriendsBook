@@ -785,9 +785,6 @@ router.get('/users/preferred-location', async function (req: Request, res: Respo
     }
 });
 
-
-
-
 router.get('/users/matching/daily', async function (req: Request, res: Response): Promise<Response | any> {
     try {
 
@@ -814,7 +811,7 @@ router.get('/users/matching/daily', async function (req: Request, res: Response)
         const { limit } = validationResult.data;
 
         let userData = req.authSession.value;
-        if (userData.address.country !== CountryNamesEnum.BANGLADESH || !userData.address.lat || !userData.address.long) {
+        if (!userData.address.lat || !userData.address.long) {
             return res.status(400).json({
                 success: false,
                 message: "Todays Match are only available for Bangladeshi Users",
@@ -899,7 +896,7 @@ router.get('/users/matching/location', async function (req: Request, res: Respon
         const { page, limit, count: shouldCount } = validationResult.data;
 
 
-        if (userData.address.country !== CountryNamesEnum.BANGLADESH || !userData.address.lat || !userData.address.long) {
+        if ( !userData.address.lat || !userData.address.long) {
             return res.status(400).json({
                 success: false,
                 message: "Matching Users are only available for Bangladeshi Users",
@@ -908,7 +905,7 @@ router.get('/users/matching/location', async function (req: Request, res: Respon
         }
 
         let lat = userData.address.lat, long = userData.address.long;
-        let nearestDistricts = findNearestDistricts(lat, long, 7);
+        let nearestDistricts = findNearestDistricts(lat, long, 60);
 
 
         const skip = (page - 1) * limit;
@@ -919,7 +916,7 @@ router.get('/users/matching/location', async function (req: Request, res: Respon
             'address.district.id': { $in: nearestDistricts.map(district => district.id) },
         };
 
-        console.log(baseQuery)
+        
 
         // Use aggregation to prioritize online users
         let aggregate:any = [
@@ -985,7 +982,6 @@ router.get('/users/matching/location', async function (req: Request, res: Respon
         });
     }
 });
-
 
 router.get('/users/mutual', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -1247,6 +1243,8 @@ router.get('/users/viewed-not-contact', async function (req: Request, res: Respo
         });
     }
 });
+
+
 
 
 // router.get('/users/not-viewed', 

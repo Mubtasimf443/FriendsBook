@@ -51,9 +51,9 @@ export function searchHeightGenerator(min: number, max: number): string[] {
 export function getBaseSearchQuery(userData: IAuthSession['value']) {
   return {
     // 'suspension.isSuspended': false,
-    // '_id': { $ne: userData.userId },
+    '_id': { $ne: userData.userId },
     // 'enhancedSettings.blocked.userId': { $ne: userData.userId },
-    // 'gender': { $ne: userData.gender },
+    'gender': { $ne: userData.gender },
     // religion: userData.religion
   };
 }
