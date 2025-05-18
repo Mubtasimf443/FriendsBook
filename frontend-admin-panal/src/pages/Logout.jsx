@@ -3,39 +3,25 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { LogOut, Loader2, CheckCircle } from 'lucide-react';
+import { Api } from '@/lib/env';
+import Awaiter from '@/lib/Awaiter';
 
 const Logout = () => {
     const [logoutStatus, setLogoutStatus] = useState('logging-out');
     const navigate = useNavigate();
 
     useEffect(() => {
-        const handleLogout = async () => {
-            try {
-                // Clear local storage
-                localStorage.removeItem('friendsbook_token');
-                localStorage.removeItem('friendsbook_user');
-                
-                // Clear session storage
-                sessionStorage.clear();
-
-                // Simulate API call delay
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                
+        fetch(Api + "/log-out" , { credentials : "include" , method : "post"})
+        .then(response=> {
+            if (response.status === 200) {
                 setLogoutStatus('success');
-
-                // Redirect after showing success message
-                setTimeout(() => {
-                    navigate('/login');
-                }, 5000);
-
-            } catch (error) {
-                console.error('Logout Error:', error);
-                setLogoutStatus('error');
+                (async function () {
+                    await Awaiter(1000);
+                    window.location.assign('/login')
+                })
             }
-        };
-
-        handleLogout();
-    }, [navigate]);
+        })
+    } , [])
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-background to-background/50 flex items-center justify-center p-4">
