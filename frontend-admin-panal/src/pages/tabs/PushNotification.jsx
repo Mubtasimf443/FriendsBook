@@ -1,8 +1,7 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-
-import React, { Fragment, useState, useEffect } from 'react';
+import React, { Fragment, useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +9,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bell, Send, Users } from "lucide-react";
 import { toast } from "sonner";
-import { Api } from '@/lib/env';
+import { notification_socket } from '@/lib/env';
+import { io } from 'socket.io-client';
 
 const NOTIFICATION_STORAGE_KEY = "sent_notifications";
 
@@ -30,7 +30,6 @@ function getStoredNotifications() {
   }
   return filtered;
 }
-
 function addNotificationToStorage(notification) {
   const items = getStoredNotifications();
   items.unshift(notification);
@@ -38,24 +37,50 @@ function addNotificationToStorage(notification) {
 }
 
 const PushNotification = () => {
-  const apiUrl = Api + "/notification";
   const [notification, setNotification] = useState({
     title: '',
     message: '',
-    target: 'all', // all, video, matrimony
+    target: 'all_users', // all_users, video_users, matrimony_users
   });
   const [loading, setLoading] = useState(false);
   const [sentNotifications, setSentNotifications] = useState([]);
+  const socketRef = useRef(null);
 
-  // Load notifications from localStorage on mount
+  // Load notifications from localStorage on mount and setup socket
   useEffect(() => {
     setSentNotifications(getStoredNotifications());
-  }, []);
-
-  // Clean up old notifications every time component renders
-  useEffect(() => {
     const filtered = getStoredNotifications();
     setSentNotifications(filtered);
+    const interval = setInterval(() => {
+      setSentNotifications(getStoredNotifications());
+    }, 60 * 60 * 1000); // every hour
+
+    // Setup socket connection
+    const socket = io(notification_socket);
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('Connected to Socket Io');
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from Socket Io');
+    });
+
+    // Optionally listen for server acks or errors
+    socket.on('notification_sent', (data) => {
+      toast.success("Notification sent (server ack)");
+    });
+    socket.on('notification_error', (err) => {
+      toast.error("Server error sending notification");
+    });
+
+    return () => {
+      clearInterval(interval);
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
   }, []);
 
   const handleChange = (e) => {
@@ -83,32 +108,29 @@ const PushNotification = () => {
     setLoading(true);
 
     try {
-      // Only allow "all", "video", "matrimony" as targets/types
-      let type = "global";
-      if (notification.target === "video") type = "video";
-      else if (notification.target === "matrimony") type = "matrimony";
-      // else "all" is "global"
+      // Map UI target to backend type
+      let type = notification.target;
+      
 
       const payload = {
         type,
         title: notification.title,
-        body: notification.message,
+        message: notification.message,
       };
 
-      const res = await fetch(apiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to send notification");
+      // Emit notification request via socket.io
+      if (socketRef.current && socketRef.current.connected) {
+        // Optionally, you can use a callback for ack
+        socketRef.current.emit('admin_notification', payload, (response) => {
+          // Optionally handle ack from server
+        });
+      } else {
+        throw new Error("Socket not connected");
       }
 
       let targetLabel = "all";
-      if (type === "video") targetLabel = "video";
-      else if (type === "matrimony") targetLabel = "matrimony";
+      if (backendType === "video") targetLabel = "video";
+      else if (backendType === "matrimony") targetLabel = "matrimony";
 
       toast.success(`Notification sent to ${targetLabel} users!`);
 
@@ -124,7 +146,7 @@ const PushNotification = () => {
       setNotification({
         title: '',
         message: '',
-        target: 'all',
+        target: 'all_users',
       });
     } catch (err) {
       toast.error("Failed to send notification");
@@ -133,13 +155,20 @@ const PushNotification = () => {
     }
   };
 
-  // Remove notifications older than 7 days on every render (in case time passes)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSentNotifications(getStoredNotifications());
-    }, 60 * 60 * 1000); // every hour
-    return () => clearInterval(interval);
-  }, []);
+  let userTypes = [
+    {
+      name: "All Members",
+      value: 'all_users'
+    },
+    {
+      name: "Matrimony Members",
+      value: 'matrimony_users'
+    },
+    {
+      name: "Video Calling Members",
+      value: 'video_users'
+    },
+  ];
 
   return (
     <Fragment>
@@ -191,9 +220,13 @@ const PushNotification = () => {
                     <SelectValue placeholder="Select target audience" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Users</SelectItem>
-                    <SelectItem value="video">Video Calling Members</SelectItem>
-                    <SelectItem value="matrimony">Matrimony Members</SelectItem>
+                    {
+                      userTypes.map(element => {
+                        return (
+                          <SelectItem key={element.value} value={element.value}>{element.name}</SelectItem>
+                        );
+                      })
+                    }
                   </SelectContent>
                 </Select>
               </div>
@@ -234,7 +267,7 @@ const PushNotification = () => {
                         {new Date(n.timestamp).toLocaleString()}
                       </span>
                     </div>
-                    <div className="text-sm text-gray-700">{n.body}</div>
+                    <div className="text-sm text-gray-700">{n.message || n.body}</div>
                     <div className="text-xs text-gray-500">
                       Target: {n.target || n.type}
                     </div>
