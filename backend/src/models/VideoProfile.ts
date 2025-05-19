@@ -21,6 +21,8 @@ export interface IVideoProfile extends Document {
     updatedAt?: Date;
     passwordDetails: IPassword,
     languages : Language[],
+    
+    video_calling_coins : number;
     auth : {
         authSession? : String;
         session_exp_date: Date,
@@ -101,6 +103,10 @@ const videoProfileSchema = new Schema<IVideoProfile>(
                 type : String ,
                 required : true 
             }],  
+        },
+        video_calling_coins : {
+            type : Number ,
+            default : 100,
         },
         auth : {
             authSession : {

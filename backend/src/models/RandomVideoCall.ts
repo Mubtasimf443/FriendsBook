@@ -9,7 +9,7 @@ export interface IRandomVideoCall extends Document {
   id : string ;
   status: 'searching' | 'connected' | 'ended';
   connectedWith?: mongoose.Types.ObjectId;
-  peerId : string;
+
   createdAt: Date;
   updatedAt: Date;
   socketId: string;
@@ -38,10 +38,7 @@ const RandomVideoCallSchema: Schema = new Schema(
       type: Schema.Types.ObjectId,
       ref: 'VideoProfile',
     },
-    peerId : {
-      type : String ,
-      required : true
-    },
+
     roomId : {
       type : String
     },

@@ -53,7 +53,7 @@ async function main() {
     app.use(cors)
     app.set('view engine' , 'ejs')
     NODE_ENV === 'developement' && app.use(morgan('dev'));
-
+    app.set('trust proxy', 'loopback');
     // routes
     app.use('/api/auth', authRouter);
     app.use('/api/search', searchRouter);
