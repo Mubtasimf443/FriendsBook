@@ -57,10 +57,6 @@ const RandomVideoCallSchema = new mongoose_1.Schema({
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'VideoProfile',
     },
-    peerId: {
-        type: String,
-        required: true
-    },
     roomId: {
         type: String
     },

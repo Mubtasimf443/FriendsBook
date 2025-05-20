@@ -9,63 +9,82 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.randomVideoCallSocketService = void 0;
 require("../lib/types/socket.decralation");
-const socket_middleware_1 = require("../lib/middlewares/socket.middleware");
 const RandomVideoCall_1 = require("../models/RandomVideoCall");
 const zod_1 = require("zod");
 const crypto_1 = require("crypto");
+const VideoProfile_1 = __importDefault(require("../models/VideoProfile"));
+const auth_schema_1 = require("../lib/schema/auth.schema");
 // Constants
 const VIDEO_CALL_DURATION = 20 * 1000; // 20 seconds in milliseconds
+let roomIdSchema = zod_1.z.string().uuid();
 class randomVideoCallSocketService {
     constructor(io) {
         this.activeCallTimers = new Map();
         this.io = io;
-        this.io.use(socket_middleware_1.socketMiddlewaresVideoProfile);
+        this.io.use(function (socket, next) {
+            return __awaiter(this, void 0, void 0, function* () {
+                try {
+                    let { token, profileType } = yield socket.handshake.auth;
+                    token = auth_schema_1.authSessionValidation.parse(token);
+                    if (profileType === 'video_calling_member') {
+                        let videoCallingMember = yield VideoProfile_1.default.findOne({ 'auth.authSession': token });
+                        if (videoCallingMember) {
+                            socket.user_id = videoCallingMember._id.toString();
+                            socket.userProfileType = 'videoProfile';
+                            socket.user = videoCallingMember;
+                            videoCallingMember.socket_ids.video_calling_socket = socket.id;
+                            yield videoCallingMember.save();
+                            return next();
+                        }
+                        else
+                            return next(new Error('Failed To Authenticate the User'));
+                    }
+                    else
+                        return next(new Error('Failed To Authenticate the User'));
+                }
+                catch (error) {
+                    next(new Error('Failed to Authenticate User'));
+                }
+            });
+        });
         this.initializeListeners();
     }
     initializeListeners() {
         return __awaiter(this, void 0, void 0, function* () {
             this.io.on('connection', (socket) => {
-                var _a, _b;
-                console.log('User connected to random video call socket', (_a = socket.user) === null || _a === void 0 ? void 0 : _a._id);
-                this.cleanupUserSessions((_b = socket.user) === null || _b === void 0 ? void 0 : _b._id);
-                socket.on('create-video-call', (peerId) => __awaiter(this, void 0, void 0, function* () {
+                var _a;
+                this.cleanupUserSessions((_a = socket.user) === null || _a === void 0 ? void 0 : _a._id);
+                socket.emit('connected', { data: null });
+                socket.on('init-video-call', () => __awaiter(this, void 0, void 0, function* () {
                     try {
-                        let peerIdSchema = zod_1.z.string().min(10).max(512);
-                        if (!peerIdSchema.safeParse(peerId).success) {
-                            return socket.emit('error', { text: 'Failed to validate' });
-                        }
-                        peerId = peerIdSchema.parse(peerId);
                         let roomId = (0, crypto_1.randomUUID)();
                         const randomVideoCall = new RandomVideoCall_1.RandomVideoCall({
                             userId: socket.user._id,
                             status: 'searching',
-                            peerId: peerId,
                             roomId: roomId,
                             gender: socket.user.gender
                         });
                         socket.join(roomId);
                         yield randomVideoCall.save();
-                        socket.emit('room-created', roomId); // Fixed event name (removed leading slash)
+                        socket.emit('video-call-initialized', { data: { roomId } });
                     }
                     catch (error) {
                         console.error('Error creating video request:', error);
-                        socket.emit('error', { message: 'Failed to create video call request' });
+                        socket.emit('call-initialization-error', { message: 'Failed to create video call request' });
                     }
                 }));
                 socket.on('connect-video-call', (roomId) => __awaiter(this, void 0, void 0, function* () {
                     try {
-                        let roomIdSchema = zod_1.z.string().uuid();
-                        if (!roomIdSchema.safeParse(roomId).success) {
-                            return socket.emit('error', { text: 'Invalid room ID' });
-                        }
                         let randomVideoCall = yield RandomVideoCall_1.RandomVideoCall.findOne({ roomId: roomIdSchema.parse(roomId) });
-                        if (!randomVideoCall) {
+                        if (!randomVideoCall)
                             throw new Error("Cannot find Random video call created in the database");
-                        }
-                        socket.emit('started', true);
+                        socket.emit('connecting', { data: null });
                         let arr = [1, 2, 1, 2];
                         let startSearchNow = ((arr) => {
                             let randomNum = Math.floor(arr.length * Math.random());
@@ -73,47 +92,88 @@ class randomVideoCallSocketService {
                         })(arr);
                         if (startSearchNow) {
                             let request2 = yield this.searchUser(socket.user._id, socket.user.gender);
-                            if (request2) {
+                            if (request2)
                                 this.connectUser(randomVideoCall, request2, socket);
-                            }
-                            else {
-                                socket.emit('searching', { message: 'Looking for a match...' });
-                            }
+                            else
+                                socket.emit('not-connected', { data: null });
                         }
                         else {
                             let timeOut = setTimeout(() => __awaiter(this, void 0, void 0, function* () {
-                                let request2 = yield this.searchUser(socket.user._id, socket.user.gender);
-                                if (request2) {
-                                    this.connectUser(randomVideoCall, request2, socket);
-                                }
-                                else {
-                                    socket.emit('searching', { message: 'Looking for a match...' });
+                                let isConnected = yield RandomVideoCall_1.RandomVideoCall.exists({
+                                    roomId: randomVideoCall.roomId,
+                                    status: 'connected'
+                                });
+                                if (!isConnected) {
+                                    let request2 = yield this.searchUser(socket.user._id, socket.user.gender);
+                                    if (request2)
+                                        this.connectUser(randomVideoCall, request2, socket);
+                                    else
+                                        socket.emit('not-connected', { data: null });
                                 }
                                 clearTimeout(timeOut);
-                            }), 1500);
+                            }), 3000);
                         }
                     }
                     catch (error) {
                         console.error(error);
-                        socket.emit('error', {
-                            type: 'video-connection-failed',
-                            message: 'Failed to connect User in 20s video call'
-                        });
+                        socket.emit('connection-creation-failed', { message: 'Failed to connect User in 20s video call' });
                     }
                 }));
-                socket.on('stop-video-call', function () {
-                    return __awaiter(this, void 0, void 0, function* () {
+                socket.on('peer-details', (signal, userBRoomId) => {
+                    try {
+                        userBRoomId = (zod_1.z.string().uuid()).parse(userBRoomId);
+                        this.io.to(userBRoomId).emit('call-user', signal);
+                    }
+                    catch (error) {
+                        console.error(error);
+                        socket.emit('invalid-peer-details', { data: null });
+                    }
+                });
+                socket.on('caller-details-request', () => __awaiter(this, void 0, void 0, function* () {
+                    var _a;
+                    try {
+                        let call2 = yield RandomVideoCall_1.RandomVideoCall.findOne({ connectedWith: socket.user._id, status: 'connected' });
+                        if (!call2) {
+                            return socket.emit('caller-details-error', { message: 'can not find Caller Details' });
+                        }
+                        let caller = yield VideoProfile_1.default.findById(call2.connectedWith);
+                        if (!caller) {
+                            return socket.emit('caller-details-error', { message: 'can not find Caller Details' });
+                        }
+                        socket.emit('caller-details', {
+                            name: caller.name,
+                            photo: (_a = caller.profileImage) === null || _a === void 0 ? void 0 : _a.url,
+                            email: caller.email
+                        });
+                    }
+                    catch (error) {
+                        console.error(error);
+                        return socket.emit('caller-details-error', { message: 'can not find Caller Details' });
+                    }
+                }));
+                socket.on('leave-call-room', (roomId) => __awaiter(this, void 0, void 0, function* () {
+                    try {
+                        roomId = roomIdSchema.parse(roomId);
+                        socket.leave(roomId);
+                    }
+                    catch (error) {
+                        console.error('[Leave calling Room Error]', error);
+                        socket.emit('leave-calling-room-error', { data: null });
+                    }
+                }));
+                socket.on('stop-video-call', (roomId) => __awaiter(this, void 0, void 0, function* () {
+                    try {
                         let call2 = yield RandomVideoCall_1.RandomVideoCall.findOne({ connectedWith: socket.user._id, status: 'connected' });
                         if (call2) {
-                            socket.to(call2.roomId).emit('call-cancelled');
+                            this.io.to(call2.roomId).emit('end-call', call2.roomId);
+                            socket.leave(roomId);
                         }
-                    });
-                });
+                    }
+                    catch (error) {
+                    }
+                }));
                 socket.on('disconnect', () => __awaiter(this, void 0, void 0, function* () {
                     try {
-                        yield RandomVideoCall_1.RandomVideoCall.deleteOne({
-                            userId: socket.user._id
-                        });
                     }
                     catch (error) {
                         console.error('Error handling disconnect:', error);
@@ -150,23 +210,37 @@ class randomVideoCallSocketService {
                 request2.connectedWith = request1.userId;
                 yield request2.save();
                 // Notify both users about the connection
-                socket.emit('call-user', request2.peerId);
-                let timeOut = setTimeout(() => {
+                this.io.to(request2.roomId).emit('give-peer-details', request1.roomId); // User B Room Id
+                socket.emit('connection-created', { data: null });
+                let timeOut;
+                const endCall = (room1, room2) => __awaiter(this, void 0, void 0, function* () {
                     try {
-                        socket.to(request1.roomId).emit('end-call');
-                        socket.to(request2.roomId).emit('end-call');
+                        this.io.to(room1.roomId).emit('end-call', room1.roomId);
+                        this.io.to(room2.roomId).emit('end-call', room2.roomId);
+                        yield RandomVideoCall_1.RandomVideoCall.updateMany({
+                            status: 'connected',
+                            roomId: {
+                                $in: [room1.roomId, room2.roomId]
+                            },
+                            connectedWith: {
+                                $in: [room1.userId, room2.userId]
+                            }
+                        }, {
+                            status: 'ended'
+                        });
                         clearTimeout(timeOut);
                     }
                     catch (error) {
                         console.error(error);
                     }
+                });
+                timeOut = setTimeout(function () {
+                    endCall(request1, request2);
                 }, VIDEO_CALL_DURATION + 2500);
-                // Join both users to the same room for easier communication
-                socket.join(request1.roomId);
             }
             catch (error) {
                 console.error('Error connecting users:', error);
-                socket.emit('error', { message: 'Failed to establish connection' });
+                socket.emit('connection-creation-failed', { message: 'Failed to establish connection' });
             }
         });
     }

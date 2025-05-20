@@ -65,34 +65,37 @@ const notification_socket_1 = require("./sockets/notification.socket");
 require("./lib/types/express.decratation");
 const admin_1 = __importDefault(require("./main_routes/admin"));
 const node_path_1 = __importDefault(require("node:path"));
+const Membership_1 = __importDefault(require("./main_routes/Membership"));
+const chat_messaging_socket_1 = __importDefault(require("./sockets/chat.messaging.socket"));
+const app = (0, express_1.default)();
+const port = Number(env_1.PORT !== null && env_1.PORT !== void 0 ? env_1.PORT : 4000);
+const server = (0, node_http_1.createServer)(app).listen(port);
+const io = new socket_io_1.Server(server, {
+    cors: {
+        origin: '*',
+        methods: ['POST', 'GET', 'DELETE', 'PUT']
+    }
+});
+randomVideoCall_socket_1.randomVideoCallSocketService.getInstance(io.of('/random-video-call'));
+const NotificationService = notification_socket_1.NotificationSocketService.getInstance(io.of('/notifications'));
+(0, chat_messaging_socket_1.default)(io.of('/chat-messaging'));
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
-        // Variables
-        const app = (0, express_1.default)();
-        const port = Number(env_1.PORT !== null && env_1.PORT !== void 0 ? env_1.PORT : 4000);
-        const server = (0, node_http_1.createServer)(app).listen(port);
-        const io = new socket_io_1.Server(server, {
-            cors: {
-                origin: '*',
-                methods: ['POST', 'GET', 'DELETE', 'PUT']
-            }
-        });
-        randomVideoCall_socket_1.randomVideoCallSocketService.getInstance(io.of('/random-video-call'));
-        const NotificationService = notification_socket_1.NotificationSocketService.getInstance(io.of('/notifications'));
+        yield (0, connectDB_1.connectDB)();
+        // environment
         app.use(function (req, res, next) {
             return __awaiter(this, void 0, void 0, function* () {
                 req.notifications = NotificationService;
                 next();
             });
         });
-        // Environmemt
-        yield (0, connectDB_1.connectDB)();
         app.use((0, cookie_parser_1.default)());
         app.use((0, express_1.json)());
         app.use(express_1.default.static('public'));
         app.use(cors_1.cors);
         app.set('view engine', 'ejs');
         env_1.NODE_ENV === 'developement' && app.use((0, morgan_1.default)('dev'));
+        app.set('trust proxy', 'loopback');
         // routes
         app.use('/api/auth', auth_1.default);
         app.use('/api/search', search_1.default);
@@ -100,6 +103,7 @@ function main() {
         // app.use('/api/profile', profileRouter);
         app.use('/api/data', data_1.default);
         app.use('/api/admin', admin_1.default);
+        app.use('/api/membership', Membership_1.default);
         // app.use('/api/cron-jobs', cronJobsRouter);
         app.get('*', function (req, res) {
             return __awaiter(this, void 0, void 0, function* () {

@@ -46,18 +46,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MembershipRequest = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const memberdship_types_1 = require("../lib/types/memberdship.types");
-const verificationImageSchema = new mongoose_1.Schema({
-    url: {
-        type: String,
-        required: true
-    },
-    id: {
-        type: String,
-        required: true
-    }
-}, {
-    _id: false
-});
+// const verificationImageSchema = new Schema(
+//     {
+//         url: {
+//             type: String,
+//         },
+//         id: {
+//             type: String,
+//         }
+//     },
+//     { 
+//         _id: false
+//     }
+// );
 const paymentInfoSchema = new mongoose_1.Schema({
     transactionId: {
         type: String,
@@ -91,7 +92,7 @@ const paymentInfoSchema = new mongoose_1.Schema({
         required: true,
         default: Date.now
     },
-    verificationImage: verificationImageSchema
+    // verificationImage: verificationImageSchema
 }, { _id: false });
 const membershipRequestSchema = new mongoose_1.Schema({
     requestStatus: {
@@ -185,11 +186,6 @@ const membershipRequestSchema = new mongoose_1.Schema({
 }, {
     timestamps: true
 });
-// Indexes for efficient querying
-membershipRequestSchema.index({ requestStatus: 1, requestDate: -1 });
-membershipRequestSchema.index({ 'paymentInfo.transactionId': 1 });
-membershipRequestSchema.index({ requesterID: 1, requestStatus: 1 });
-membershipRequestSchema.index({ endDate: 1 }, { sparse: true });
 // Static method to calculate membership benefits based on tier and duration
 membershipRequestSchema.statics.calculateBenefits = function (tier, duration) {
     const benefits = {

@@ -46,11 +46,11 @@ function searchHeightGenerator(min, max) {
 // Add this at the top of search.ts
 function getBaseSearchQuery(userData) {
     return {
-    // 'suspension.isSuspended': false,
-    // '_id': { $ne: userData.userId },
-    // 'enhancedSettings.blocked.userId': { $ne: userData.userId },
-    // 'gender': { $ne: userData.gender },
-    // religion: userData.religion
+        // 'suspension.isSuspended': false,
+        '_id': { $ne: userData.userId },
+        // 'enhancedSettings.blocked.userId': { $ne: userData.userId },
+        'gender': { $ne: userData.gender },
+        // religion: userData.religion
     };
 }
 function getUserWithCountryFlagsEmoji(UserList) {

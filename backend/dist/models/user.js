@@ -534,6 +534,22 @@ const userSchema = new mongoose_1.Schema({
             default: 'BDT'
         }
     },
+    // Messaging Rooms 
+    messagingRooms: {
+        connectedRooms: [{
+                type: mongoose_1.default.SchemaTypes.ObjectId,
+                ref: 'MessagingRoom'
+            }],
+        blockedRooms: [{
+                type: mongoose_1.default.SchemaTypes.ObjectId,
+                ref: 'MessagingRoom'
+            }]
+    },
+    socket_ids: {
+        notification_socket: String,
+        messaging_socket: String,
+        video_calling_socket: String,
+    },
     /**
      * Partner Preferences
      * -----------------

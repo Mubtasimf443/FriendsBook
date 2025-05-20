@@ -688,7 +688,7 @@ router.get('/users/matching/daily', function (req, res) {
             }
             const { limit } = validationResult.data;
             let userData = req.authSession.value;
-            if (userData.address.country !== country_names_enum_1.CountryNamesEnum.BANGLADESH || !userData.address.lat || !userData.address.long) {
+            if (!userData.address.lat || !userData.address.long) {
                 return res.status(400).json({
                     success: false,
                     message: "Todays Match are only available for Bangladeshi Users",
@@ -759,7 +759,7 @@ router.get('/users/matching/location', function (req, res) {
                 });
             }
             const { page, limit, count: shouldCount } = validationResult.data;
-            if (userData.address.country !== country_names_enum_1.CountryNamesEnum.BANGLADESH || !userData.address.lat || !userData.address.long) {
+            if (!userData.address.lat || !userData.address.long) {
                 return res.status(400).json({
                     success: false,
                     message: "Matching Users are only available for Bangladeshi Users",
@@ -767,10 +767,9 @@ router.get('/users/matching/location', function (req, res) {
                 });
             }
             let lat = userData.address.lat, long = userData.address.long;
-            let nearestDistricts = (0, search_controller_1.findNearestDistricts)(lat, long, 7);
+            let nearestDistricts = (0, search_controller_1.findNearestDistricts)(lat, long, 60);
             const skip = (page - 1) * limit;
             const baseQuery = Object.assign(Object.assign({}, (0, search_controller_1.getBaseSearchQuery)(userData)), { 'address.country': country_names_enum_1.CountryNamesEnum.BANGLADESH, 'address.district.id': { $in: nearestDistricts.map(district => district.id) } });
-            console.log(baseQuery);
             // Use aggregation to prioritize online users
             let aggregate = [
                 { $match: baseQuery },
