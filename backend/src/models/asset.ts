@@ -4,8 +4,6 @@ import { randomUUID } from 'crypto';
 import mongoose, { Document, Schema } from 'mongoose';
 
 
-
-// Define the asset types we'll support
 export enum AssetType {
   IMAGE = 'image',
   VIDEO = 'video',
@@ -13,14 +11,12 @@ export enum AssetType {
   AUDIO = 'audio'
 }
 
-// Upload info interface
 export interface IUploadInfo {
   host: string;      
   host_id: string;   
   path?: string;    
 }
 
-// Interface for Asset document
 export interface IAsset extends Document {
   name?: string;
   url: string;
@@ -32,7 +28,6 @@ export interface IAsset extends Document {
   id : string;
 }
 
-// Create the uploadInfo schema
 const UploadInfoSchema = new Schema<IUploadInfo>({
   host: {
     type: String,
@@ -51,7 +46,6 @@ const UploadInfoSchema = new Schema<IUploadInfo>({
   }
 }, { _id: false }); // Disable _id for subdocument
 
-// Create the Asset Schema
 const AssetSchema = new Schema<IAsset>(
   {
     id : {
@@ -99,14 +93,5 @@ const AssetSchema = new Schema<IAsset>(
   }
 );
 
-// Indexes for performance optimization
-AssetSchema.index({ asset_type: 1 });
-AssetSchema.index({ created_at: -1 });
-AssetSchema.index({ size: 1 });
-AssetSchema.index({ 'uploadInfo.host': 1 });
-AssetSchema.index({ 'uploadInfo.host_id': 1 });
-
-// Add compound index for host and host_id
-AssetSchema.index({ 'uploadInfo.host': 1, 'uploadInfo.host_id': 1 }, { unique: true });
 
 export const Asset = mongoose.model<IAsset>('Asset', AssetSchema);

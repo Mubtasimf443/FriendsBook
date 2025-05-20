@@ -5,7 +5,7 @@ import path from 'path';
 import { Request } from 'express';
 
 // Allowed file types
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp' , 'application/pdf'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 // Configure multer storage
@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
 // File filter function
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     if (!ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
-        cb(new Error('Invalid file type. Only JPEG, PNG, JPG, and WEBP files are allowed.'));
+        cb(new Error('Invalid file type. Only JPEG, PNG, JPG, PDF, and WEBP files are allowed.'));
         return;
     }
     cb(null, true);

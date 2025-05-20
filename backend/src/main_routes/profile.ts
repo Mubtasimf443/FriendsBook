@@ -59,7 +59,6 @@ router.get('/user-details/video-profile', validateVideoProfile ,async function (
     }
 });
 
-
 router.put('/user-details/video-profile', validateVideoProfile, async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // Define validation schema with all fields as optional
@@ -163,24 +162,6 @@ router.put('/user-details/video-profile', validateVideoProfile, async function (
         });
     }
 });
-
-// router.put('/user-details/updatePhoto/video-profile', validateVideoProfile ,async function (req: Request, res: Response): Promise<Response | any> {
-//     try {
-//         let schema = (z.object({})).parse(req.body)
-//         return res.status(200).json(req.videoProfile?.toObject() || {});
-
-//     } catch (error) {
-
-//         return res.status(500).json({
-//             success: false,
-//             message: 'Internal server error',
-//             error: 'InternalServerError',
-//             data: null
-//         });
-//     }
-// });
-
-
 
 router.get('/user-details/matrimony', validateUser ,async function (req: Request, res: Response): Promise<Response | any> {
     try {

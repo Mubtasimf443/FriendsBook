@@ -35,7 +35,7 @@ const io = new Server(server, {
 randomVideoCallSocketService.getInstance(io.of('/random-video-call'));
 configOnlineStatusSocket(io.of('/socket/online-status-management'))
 const NotificationService = NotificationSocketService.getInstance(io.of('/notifications'));
-configureChatMessagingSocket(io.of('/chat-messaging'));
+configureChatMessagingSocket(io.of('/socket/chat-messaging'));
 
 
 
@@ -68,14 +68,6 @@ async function main() {
     app.get('*', async function (req , res ) {
         return res.sendFile(path.join(__dirname , '../public/index.html'))
     })
-
-    // app.get('/video-call' , async function (req , res ) {
-    //     res.render('index')
-    // })
-    // app.get('/notification-test' , async function (req , res ) {
-    //     res.render('notifcation')
-    // })
-    // app.listen(port ,() =>   )
    
     console.log(`Server is Fire at http://localhost:${port}`)
 }
