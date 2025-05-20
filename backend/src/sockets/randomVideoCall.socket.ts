@@ -14,6 +14,7 @@ import { authSessionValidation } from '../lib/schema/auth.schema';
 
 // Constants
 const VIDEO_CALL_DURATION = 20 * 1000; // 20 seconds in milliseconds
+let roomIdSchema = z.string().uuid();
 
 export class randomVideoCallSocketService {
     private io: Namespace;
@@ -75,7 +76,6 @@ export class randomVideoCallSocketService {
 
             socket.on('connect-video-call', async (roomId) => {
                 try {
-                    let roomIdSchema = z.string().uuid();
                    
                     let randomVideoCall = await RandomVideoCall.findOne({ roomId: roomIdSchema.parse(roomId) });
 
@@ -113,25 +113,25 @@ export class randomVideoCallSocketService {
                 }
             });
 
-            socket.on('peer-details' , (signal , roomId) => {
+            socket.on('peer-details' , (signal , userBRoomId) => {
                 try {
-                    roomId = (z.string().uuid()).parse(roomId);
-                    this.io.to(roomId).emit('call-user', signal);
+                    userBRoomId = (z.string().uuid()).parse(userBRoomId);
+                    this.io.to(userBRoomId).emit('call-user', signal);
                 } catch (error) {
                     console.error(error);
                     socket.emit('invalid-peer-details' , { data : null })
                 }
             });
            
-            socket.on('caller-details-request' ,async function () {
+            socket.on('caller-details-request' ,async  () =>  {
                 try {
                     let call2 =await RandomVideoCall.findOne({ connectedWith : socket.user._id , status : 'connected'});
                     if (!call2) {
-                        return  socket.emit('error', { message: 'can not find Caller Details' });
+                        return  socket.emit('caller-details-error', { message: 'can not find Caller Details' });
                     }
                     let caller = await VideoProfile.findById(call2.connectedWith);
                     if (!caller) {
-                        return  socket.emit('error', { message: 'can not find Caller Details' });
+                        return  socket.emit('caller-details-error', { message: 'can not find Caller Details' });
                     }
                     socket.emit('caller-details' , { 
                        name : caller.name ,
@@ -141,25 +141,35 @@ export class randomVideoCallSocketService {
                     
                 } catch (error) {
                     console.error(error);
+                    return  socket.emit('caller-details-error', { message: 'can not find Caller Details' });
                 }
             })
 
+            socket.on('leave-call-room' ,async (roomId) => {
+                try {
+                    roomId = roomIdSchema.parse(roomId);
+                    socket.leave(roomId);
+                } catch (error) {
+                    console.error('[Leave calling Room Error]' , error);
+                    socket.emit('leave-calling-room-error' , { data : null})
+                }
+            })
 
+            socket.on('stop-video-call', async  (roomId) => {
+                try {
+                    let call2 = await RandomVideoCall.findOne({ connectedWith: socket.user._id, status: 'connected' });
+                    if (call2) {
+                        this.io.to(call2.roomId).emit('end-call' ,call2.roomId );
+                        socket.leave(roomId);
+                    }
+                } catch (error) {
 
-            socket.on('stop-video-call' ,async  function () {
-                let call2 =await RandomVideoCall.findOne({ connectedWith : socket.user._id , status : 'connected'});
-                if (call2) {
-                    socket.broadcast.to(call2.roomId).emit('call-cancelled')
                 }
             });
 
-
-
             socket.on('disconnect', async () => {
                 try {
-                    await RandomVideoCall.deleteOne({
-                        userId : socket.user._id
-                    });
+                    
                 } catch (error) {
                     console.error('Error handling disconnect:', error);
                 }
@@ -198,19 +208,41 @@ export class randomVideoCallSocketService {
             await request2.save();
 
             // Notify both users about the connection
-            this.io.to(request2.roomId).emit('give-peer-details', request1.roomId );
+            this.io.to(request2.roomId).emit('give-peer-details', request1.roomId ); // User B Room Id
             socket.emit('connection-created' , { data : null})
 
-            let timeOut =setTimeout(() => {
+
+            let timeOut :any;
+
+            const endCall = async (room1: IRandomVideoCall, room2: IRandomVideoCall) => {
                 try {
-                    this.io.to(request1.roomId).emit('end-call'  );
-                    this.io.to(request2.roomId).emit('end-call'  );
+                    this.io.to(room1.roomId).emit('end-call' , room1.roomId);
+                    this.io.to(room2.roomId).emit('end-call', room2.roomId);
+
+                    await RandomVideoCall.updateMany(
+                        {
+                            status: 'connected',
+                            roomId : {
+                                $in : [room1.roomId , room2.roomId]
+                            },
+                            connectedWith : {
+                                $in : [room1.userId , room2.userId]
+                            }
+                        },
+                        {
+                            status: 'ended'
+                        }
+                    );
+
                     clearTimeout(timeOut)
                 } catch (error) {
                     console.error(error);
                 }
+            }
+
+            timeOut = setTimeout(function () {
+                endCall(request1, request2)
             }, VIDEO_CALL_DURATION + 2500);
-          
 
 
         } catch (error) {
