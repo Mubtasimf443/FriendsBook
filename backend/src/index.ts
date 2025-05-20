@@ -22,6 +22,7 @@ import adminRouter from './main_routes/admin';
 import path from 'node:path';
 import membershipRouter from './main_routes/Membership';
 import configureChatMessagingSocket from './sockets/chat.messaging.socket';
+import { configOnlineStatusSocket } from './sockets/OnlineStatus.socket';
 
 const app: express.Application = express();
 const port: number = Number(PORT ?? 4000) 
@@ -33,6 +34,7 @@ const io = new Server(server, {
     }
 });
 randomVideoCallSocketService.getInstance(io.of('/random-video-call'));
+configOnlineStatusSocket(io.of('/socket/online-status-management'))
 const NotificationService = NotificationSocketService.getInstance(io.of('/notifications'));
 configureChatMessagingSocket(io.of('/chat-messaging'));
 

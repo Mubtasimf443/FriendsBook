@@ -167,13 +167,7 @@ export class randomVideoCallSocketService {
                 }
             });
 
-            socket.on('disconnect', async () => {
-                try {
-                    
-                } catch (error) {
-                    console.error('Error handling disconnect:', error);
-                }
-            });
+            socket.on('disconnect', async () => {});
         });
     }
     
