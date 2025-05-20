@@ -45,9 +45,11 @@ export async function configOnlineStatusSocket(io: Namespace,) {
         socket.emit('connected', { data: null });
 
 
+        socket.on('is-connected' , () =>   socket.emit('connected', { data: null }) )
+
+
         socket.on('disconnect', async function () {
             try {
-
                 switch (socket.userProfileType) {
                     case 'matrimonyProfile':
                         await User.findByIdAndUpdate(socket.user_id, {

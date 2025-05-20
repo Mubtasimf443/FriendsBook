@@ -92,15 +92,13 @@ function validateVideoProfile(req, res, next) {
                     error: validationResult.error
                 });
             }
-            let user = yield VideoProfile_1.default.findOne({ 'auth.authSession': token, "auth.session_exp_date": { $gt: new Date() } });
+            let user = yield VideoProfile_1.default.findOne({ 'auth.authSession': token, "auth.session_exp_date": { $gt: new Date() } }).select('-passwordDetails');
             if (user) {
-                user = user === null || user === void 0 ? void 0 : user.toObject();
-                delete user.passwordDetails;
-                req.videoProfileData = user;
+                req.videoProfile = user;
                 next();
             }
             else {
-                res.status(400).json({
+                res.status(401).json({
                     success: false,
                     message: 'Invalid authorization token',
                     data: null

@@ -172,13 +172,7 @@ class randomVideoCallSocketService {
                     catch (error) {
                     }
                 }));
-                socket.on('disconnect', () => __awaiter(this, void 0, void 0, function* () {
-                    try {
-                    }
-                    catch (error) {
-                        console.error('Error handling disconnect:', error);
-                    }
-                }));
+                socket.on('disconnect', () => __awaiter(this, void 0, void 0, function* () { }));
             });
         });
     }

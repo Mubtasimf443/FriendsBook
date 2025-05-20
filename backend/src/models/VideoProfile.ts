@@ -16,7 +16,6 @@ export interface IVideoProfile extends Document {
     dateOfBirth : Date ,
     age : number ;
     lastActive: Date;
-    socketId?: string | null;
     createdAt?: Date;
     updatedAt?: Date;
     passwordDetails: IPassword,
@@ -87,10 +86,7 @@ const videoProfileSchema = new Schema<IVideoProfile>(
             type: Date,
             default: Date.now
         },
-        socketId: {
-            type: String,
-            default: null
-        },
+      
         passwordDetails: {
             type: {
                 hashed: String,

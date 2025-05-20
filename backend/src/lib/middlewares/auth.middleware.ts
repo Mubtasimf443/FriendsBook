@@ -18,7 +18,7 @@ export const extractBearerToken = (header: string | undefined): string | null =>
 };
 
 // Middleware to extract and validate bearer token
-export async function validateUser(req: Request | any | Request, res: Response, next: NextFunction) :Promise<void | any> {
+export async function validateUser(req: Request | any, res: Response, next: NextFunction) :Promise<void | any> {
   try {
     const authHeader = req.headers.authorization;
     const token = extractBearerToken(authHeader);
@@ -67,7 +67,7 @@ export async function validateUser(req: Request | any | Request, res: Response, 
   }
 };
 
-export async function validateVideoProfile(req: Request | any | Request, res: Response, next: NextFunction) :Promise<void | any> {
+export async function validateVideoProfile(req: Request | any , res: Response, next: NextFunction) :Promise<void | any> {
   try {
     const authHeader = req.headers.authorization;
     const token = extractBearerToken(authHeader);
@@ -89,15 +89,12 @@ export async function validateVideoProfile(req: Request | any | Request, res: Re
       });
     }
 
-    let user :any= await VideoProfile.findOne({ 'auth.authSession' : token , "auth.session_exp_date" : { $gt : new Date()} });
- 
+    let user :any= await VideoProfile.findOne({ 'auth.authSession' : token , "auth.session_exp_date" : { $gt : new Date()} }).select('-passwordDetails');
     if (user) {
-      user = user?.toObject();
-      delete user.passwordDetails;
-      req.videoProfileData =user;
+      req.videoProfile =user;
       next();
     } else {
-      res.status(400).json({
+      res.status(401).json({
           success: false,
           message:  'Invalid authorization token',
           data: null
@@ -107,7 +104,6 @@ export async function validateVideoProfile(req: Request | any | Request, res: Re
     
   } catch (error) {
     console.error('Bearer access Token Validation error' , error);
-
     return res.status(401).json({
       success: false,
       message: 'Invalid authorization token'

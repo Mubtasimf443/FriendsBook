@@ -6,7 +6,7 @@ import { connectDB } from './config/connectDB';
 import authRouter from './main_routes/auth';
 import searchRouter from './main_routes/search';
 import assetsRouter from './main_routes/assets';
-// import profileRouter from './main_routes/profile';
+import profileRouter from './main_routes/profile';
 // import cronJobsRouter from './main_routes/cron-jobs';
 import dataRouter from './main_routes/data';
 import cookieParser from 'cookie-parser';
@@ -14,7 +14,6 @@ import morgan from 'morgan';
 import { cors } from './config/cors';
 import { createServer } from 'node:http';
 import {Server} from 'socket.io'
-import { validateBothProfiledUser } from './lib/middlewares/auth.middleware';
 import { randomVideoCallSocketService } from './sockets/randomVideoCall.socket';
 import { NotificationSocketService } from './sockets/notification.socket';
 import './lib/types/express.decratation';
@@ -60,7 +59,7 @@ async function main() {
     app.use('/api/auth', authRouter);
     app.use('/api/search', searchRouter);
     app.use('/api/assets', assetsRouter);
-    // app.use('/api/profile', profileRouter);
+    app.use('/api/profile', profileRouter);
     app.use('/api/data', dataRouter);
     app.use('/api/admin', adminRouter);
     app.use('/api/membership', membershipRouter);

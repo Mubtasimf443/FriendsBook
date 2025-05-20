@@ -21,28 +21,167 @@ const zod_1 = require("zod");
 const query_middleware_1 = __importDefault(require("../lib/middlewares/query.middleware"));
 const profile_schema_1 = require("../lib/schema/profile.schema");
 const updateUser_schema_1 = require("../lib/schema/updateUser.schema");
-const membershipRequest_1 = require("../models/membershipRequest");
-const memberdship_types_1 = require("../lib/types/memberdship.types");
-const membership_schema_1 = require("../lib/schema/membership.schema");
 const asset_1 = require("../models/asset");
-const console_1 = require("console");
 const partnerPreference_schema_1 = require("../lib/schema/partnerPreference.schema");
 require("../lib/types/express.decratation");
+const VideoProfile_1 = __importDefault(require("../models/VideoProfile"));
 const router = (0, express_1.Router)();
 // Constants
 const RATE_LIMIT_WINDOW_MS = 120 * 1000; // 2 minutes
 const RATE_LIMIT_MAX_REQUESTS = 150;
 // Apply rate limiter
 router.use((0, rateRimiter_1.default)(RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX_REQUESTS));
-router.use(auth_middleware_1.validateUser);
 router.use(query_middleware_1.default);
-router.get('/user-details', function (req, res) {
+router.get('/user-details/video-profile', auth_middleware_1.validateVideoProfile, function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a;
+        try {
+            return res.status(200).json({
+                name: req.videoProfile.name,
+                gender: req.videoProfile.gender,
+                email: req.videoProfile.email,
+                age: req.videoProfile.age,
+                status: req.videoProfile.status,
+                country: (_a = req.videoProfile.location) === null || _a === void 0 ? void 0 : _a.country,
+                _id: req.videoProfile._id,
+                languages: req.videoProfile.languages,
+                phone: req.videoProfile.phone,
+                lastActive: req.videoProfile.lastActive,
+                profileImage: req.videoProfile.profileImage,
+                coverImage: req.videoProfile.coverImage,
+            });
+        }
+        catch (error) {
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                error: 'InternalServerError',
+                data: null
+            });
+        }
+    });
+});
+router.put('/user-details/video-profile', auth_middleware_1.validateVideoProfile, function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a;
+        try {
+            // Define validation schema with all fields as optional
+            const updateSchema = zod_1.z.object({
+                name: zod_1.z.string().optional(),
+                gender: zod_1.z.enum(['male', 'female',]).optional(),
+                status: zod_1.z.enum(['online', 'offline']).optional(),
+                dateOfBirth: zod_1.z.string().transform(val => new Date(val)).optional(),
+                age: zod_1.z.number().optional(),
+                languages: zod_1.z.array(zod_1.z.string()).optional(),
+                location: zod_1.z.object({
+                    country: zod_1.z.string().optional(),
+                    lat: zod_1.z.number().optional(),
+                    long: zod_1.z.number().optional()
+                }).optional(),
+                coverImage: zod_1.z.object({ url: zod_1.z.string().url(), id: zod_1.z.string().uuid() }).optional(),
+                profileImage: zod_1.z.object({ url: zod_1.z.string().url(), id: zod_1.z.string().uuid() }).optional(),
+            });
+            // Validate request body
+            const validatedData = updateSchema.parse(req.body);
+            // Find fields to update
+            const updateData = {};
+            // Map validated fields to updateData
+            if (validatedData.name)
+                updateData.name = validatedData.name;
+            if (validatedData.gender)
+                updateData.gender = validatedData.gender;
+            if (validatedData.status)
+                updateData.status = validatedData.status;
+            if (validatedData.dateOfBirth)
+                updateData.dateOfBirth = validatedData.dateOfBirth;
+            if (validatedData.age)
+                updateData.age = validatedData.age;
+            if (validatedData.languages)
+                updateData.languages = validatedData.languages;
+            if (validatedData.profileImage)
+                updateData.profileImage = validatedData.profileImage;
+            if (validatedData.coverImage)
+                updateData.coverImage = validatedData.coverImage;
+            // Handle nested location object
+            if (validatedData.location) {
+                if (!updateData.location)
+                    updateData.location = {};
+                if (validatedData.location.country !== undefined)
+                    updateData.location.country = validatedData.location.country;
+                if (validatedData.location.lat !== undefined)
+                    updateData.location.lat = validatedData.location.lat;
+                if (validatedData.location.long !== undefined)
+                    updateData.location.long = validatedData.location.long;
+            }
+            // Update lastActive timestamp
+            updateData.lastActive = new Date();
+            // Update user profile
+            const updatedProfile = yield VideoProfile_1.default.findByIdAndUpdate(req.videoProfile._id, { $set: updateData }, { new: true });
+            if (!updatedProfile) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'User profile not found',
+                    error: 'NotFound',
+                    data: null
+                });
+            }
+            // Return updated profile with selected fields
+            return res.status(200).json({
+                success: true,
+                message: 'Profile updated successfully',
+                data: {
+                    name: updateData.name && updatedProfile.name,
+                    gender: updateData.gender && updatedProfile.gender,
+                    age: updateData.age && updatedProfile.age,
+                    status: updateData.status && updatedProfile.status,
+                    country: (_a = updatedProfile.location) === null || _a === void 0 ? void 0 : _a.country,
+                    _id: updatedProfile._id,
+                    languages: updateData.languages && updatedProfile.languages,
+                    lastActive: updateData.lastActive && updatedProfile.lastActive,
+                    profileImage: updateData.profileImage && updatedProfile.profileImage,
+                    coverImage: updateData.coverImage && updatedProfile.coverImage,
+                }
+            });
+        }
+        catch (error) {
+            console.error('Error updating profile:', error);
+            // Handle zod validation errors
+            if (error instanceof zod_1.z.ZodError) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid request data',
+                    error: 'ValidationError',
+                    details: error.errors
+                });
+            }
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                error: 'InternalServerError',
+                data: null
+            });
+        }
+    });
+});
+// router.put('/user-details/updatePhoto/video-profile', validateVideoProfile ,async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         let schema = (z.object({})).parse(req.body)
+//         return res.status(200).json(req.videoProfile?.toObject() || {});
+//     } catch (error) {
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             error: 'InternalServerError',
+//             data: null
+//         });
+//     }
+// });
+router.get('/user-details/matrimony', auth_middleware_1.validateUser, function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
         try {
             if (typeof req.query.fields === 'string')
                 req.query.fields = [req.query.fields];
-            (0, console_1.log)(req.query.fields);
             const { fields } = yield profile_schema_1.userDetailsQuerySchema.parseAsync(req.query);
             console.log(fields);
             // Parse and validate user ID
@@ -100,7 +239,7 @@ router.get('/user-details', function (req, res) {
         }
     });
 });
-router.put('/user-details', function (req, res) {
+router.put('/user-details/matrimony', auth_middleware_1.validateUser, function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, _b, _c, _d;
         try {
@@ -208,7 +347,7 @@ router.put('/user-details', function (req, res) {
         }
     });
 });
-router.put('/user-details/education', function (req, res) {
+router.put('/user-details/education/matrimony', auth_middleware_1.validateUser, function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, _b, _c;
         try {
@@ -297,7 +436,7 @@ router.put('/user-details/education', function (req, res) {
         }
     });
 });
-router.put('/user-details/partner-preference', function (req, res) {
+router.put('/user-details/partner-preference/matrimony', auth_middleware_1.validateUser, function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
         try {
@@ -393,90 +532,7 @@ router.put('/user-details/partner-preference', function (req, res) {
         }
     });
 });
-router.post('/user-details/membership-request', function (req, res) {
-    return __awaiter(this, void 0, void 0, function* () {
-        var _a;
-        try {
-            if (!req.authSession || !((_a = req.authSession) === null || _a === void 0 ? void 0 : _a.value)) {
-                res.status(401).json({
-                    success: false,
-                    message: 'Failed to authorize the user',
-                    data: null
-                });
-                return;
-            }
-            const userId = req.authSession.value.userId;
-            // Check if user exists
-            const user = yield user_1.User.findById(userId);
-            if (!user) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'User not found',
-                    data: null
-                });
-            }
-            const pendingRequest = yield membershipRequest_1.MembershipRequest.findOne({
-                requesterID: userId,
-                requestStatus: memberdship_types_1.MembershipRequestStatus.PENDING
-            });
-            if (pendingRequest) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'You already have a pending membership request',
-                    data: null
-                });
-            }
-            let db_user = yield user_1.User.findById(userId, 'membership');
-            if (!db_user) {
-                res.status(401).json({
-                    success: false,
-                    message: 'Could not find The User Account',
-                    data: null
-                });
-                return;
-            }
-            if (db_user.hasActiveMembership()) {
-                res.status(400).json({
-                    success: false,
-                    message: 'User Already has an active membership, You can not request membership when User has a membership active',
-                    data: null
-                });
-                return;
-            }
-            // // Validate request body
-            const validatedData = yield membership_schema_1.membershipRequestSchema.parseAsync(req.body);
-            const startDate = new Date(validatedData.startDate);
-            // Create membership request
-            const membershipRequest = new membershipRequest_1.MembershipRequest(Object.assign(Object.assign({}, validatedData), { startDate, requesterID: userId, requestStatus: memberdship_types_1.MembershipRequestStatus.PENDING, requestDate: new Date(), endDate: new Date(startDate.getTime() + validatedData.duration * 30 * 24 * 60 * 60 * 1000) }));
-            yield membershipRequest.save();
-            return res.status(201).json({
-                success: true,
-                message: 'Membership request created successfully',
-                data: membershipRequest
-            });
-        }
-        catch (error) {
-            console.error('[Membership Request API Error]', {
-                error: error instanceof Error ? error.message : 'Unknown error',
-                timestamp: new Date().toISOString()
-            });
-            if (error instanceof zod_1.z.ZodError) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Validation error',
-                    error: error.errors,
-                    data: null
-                });
-            }
-            return res.status(500).json({
-                success: false,
-                message: 'Internal server error',
-                data: null
-            });
-        }
-    });
-});
-router.post('/user-details/update-photo', function (req, res) {
+router.post('/user-details/update-photo/matrimony', auth_middleware_1.validateUser, function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, _b, _c;
         try {
@@ -625,7 +681,7 @@ router.post('/user-details/update-photo', function (req, res) {
         }
     });
 });
-router.delete('/user-details/user-photo', function (req, res) {
+router.delete('/user-details/user-photo/matrimony', auth_middleware_1.validateUser, function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
         try {
@@ -729,178 +785,256 @@ router.delete('/user-details/user-photo', function (req, res) {
         }
     });
 });
-router.get('/membership-request', auth_middleware_1.validateUser, function (req, res) {
-    return __awaiter(this, void 0, void 0, function* () {
-        var _a, _b, _c;
-        try {
-            if (!req.authSession || !((_a = req.authSession) === null || _a === void 0 ? void 0 : _a.value)) {
-                res.status(401).json({
-                    success: false,
-                    message: 'Failed to authorize the user',
-                    data: null
-                });
-                return;
-            }
-            const userId = req.authSession.value.userId;
-            // Validate query parameters
-            const validationResult = membership_schema_1.membershipRequestQuerySchema.safeParse(req.query);
-            if (!validationResult.success) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Invalid query parameters",
-                    error: validationResult.error.errors,
-                    data: null
-                });
-            }
-            const { page, limit, status, count: shouldCount } = validationResult.data;
-            // Build query
-            const query = { requesterID: userId };
-            if (status && status !== 'all') {
-                query.requestStatus = status;
-            }
-            // Execute query with pagination
-            const requests = yield membershipRequest_1.MembershipRequest.find(query)
-                .sort({ requestDate: -1 })
-                .skip((page - 1) * limit)
-                .limit(limit)
-                .lean()
-                .maxTimeMS(10000); // Set maximum execution time
-            // Get total count if requested
-            let totalCount;
-            if (shouldCount === 'yes') {
-                totalCount = yield membershipRequest_1.MembershipRequest.countDocuments(query)
-                    .maxTimeMS(5000);
-            }
-            // Prepare pagination info
-            let pagination = {
-                currentPage: page,
-                pageSize: limit,
-            };
-            if (totalCount !== undefined) {
-                pagination = Object.assign(Object.assign({}, pagination), { totalPages: Math.ceil(totalCount / limit), totalRequests: totalCount });
-            }
-            // Set cache headers
-            res.set('Cache-Control', 'private, max-age=30'); // Cache for 30 seconds, private because it's user-specific
-            return res.status(200).json({
-                success: true,
-                data: {
-                    requests,
-                    pagination,
-                    filterCriteria: {
-                        status
-                    }
-                }
-            });
-        }
-        catch (error) {
-            console.error('[Get Membership History API Error]', {
-                error: error instanceof Error ? error.message : 'Unknown error',
-                timestamp: new Date().toISOString(),
-                userId: (_c = (_b = req.authSession) === null || _b === void 0 ? void 0 : _b.value) === null || _c === void 0 ? void 0 : _c.userId
-            });
-            if (error instanceof zod_1.z.ZodError) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Validation error',
-                    error: error.errors,
-                    data: null
-                });
-            }
-            return res.status(500).json({
-                success: false,
-                message: 'Internal server error',
-                data: null
-            });
-        }
-    });
-});
-router.put('/membership-request/cancel', auth_middleware_1.validateUser, function (req, res) {
-    return __awaiter(this, void 0, void 0, function* () {
-        var _a;
-        try {
-            if (!req.authSession || !((_a = req.authSession) === null || _a === void 0 ? void 0 : _a.value)) {
-                res.status(401).json({
-                    success: false,
-                    message: 'Failed to authorize the user',
-                    data: null
-                });
-                return;
-            }
-            const userId = req.authSession.value.userId;
-            const membershipRequest = yield membershipRequest_1.MembershipRequest.findOne({
-                requesterID: userId,
-                requestStatus: memberdship_types_1.MembershipRequestStatus.PENDING
-            });
-            if (!membershipRequest) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'No pending membership request found',
-                    data: null
-                });
-            }
-            membershipRequest.cancel();
-            yield membershipRequest.save();
-            return res.status(200).json({
-                success: true,
-                message: 'Membership request cancelled successfully',
-                data: membershipRequest
-            });
-        }
-        catch (error) {
-            console.error('[Cancel Membership Request API Error]', {
-                error: error instanceof Error ? error.message : 'Unknown error',
-                timestamp: new Date().toISOString()
-            });
-            return res.status(500).json({
-                success: false,
-                message: 'Internal server error',
-                data: null
-            });
-        }
-    });
-});
-router.delete('/membership-request', auth_middleware_1.validateUser, function (req, res) {
-    return __awaiter(this, void 0, void 0, function* () {
-        var _a;
-        try {
-            if (!req.authSession || !((_a = req.authSession) === null || _a === void 0 ? void 0 : _a.value)) {
-                res.status(401).json({
-                    success: false,
-                    message: 'Failed to authorize the user',
-                    data: null
-                });
-                return;
-            }
-            const userId = req.authSession.value.userId;
-            const membershipRequest = yield membershipRequest_1.MembershipRequest.findOne({
-                requesterID: userId,
-                requestStatus: memberdship_types_1.MembershipRequestStatus.CANCELLED
-            });
-            if (!membershipRequest) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'No cancelled membership request found',
-                    data: null
-                });
-            }
-            yield membershipRequest.deleteOne();
-            return res.status(200).json({
-                success: true,
-                message: 'Membership request deleted successfully',
-                data: null
-            });
-        }
-        catch (error) {
-            console.error('[Delete Membership Request API Error]', {
-                error: error instanceof Error ? error.message : 'Unknown error',
-                timestamp: new Date().toISOString()
-            });
-            return res.status(500).json({
-                success: false,
-                message: 'Internal server error',
-                data: null
-            });
-        }
-    });
-});
+// router.post('/user-details/membership-request',validateUser , async function (req: Request, res: Response): Promise<any> {
+//     try {
+//         if (!req.authSession || !req.authSession?.value) {
+//             res.status(401).json({
+//                 success: false,
+//                 message: 'Failed to authorize the user',
+//                 data: null
+//             });
+//             return;
+//         }
+//         const userId = req.authSession.value.userId;
+//         // Check if user exists
+//         const user = await User.findById(userId);
+//         if (!user) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: 'User not found',
+//                 data: null
+//             });
+//         }
+//         const pendingRequest = await MembershipRequest.findOne({
+//             requesterID: userId,
+//             requestStatus: MembershipRequestStatus.PENDING
+//         });
+//         if (pendingRequest) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'You already have a pending membership request',
+//                 data: null
+//             });
+//         }
+//         let db_user = await User.findById(userId, 'membership');
+//         if (!db_user) {
+//             res.status(401).json({
+//                 success: false,
+//                 message: 'Could not find The User Account',
+//                 data: null
+//             });
+//             return;
+//         }
+//         if (db_user.hasActiveMembership()) {
+//             res.status(400).json({
+//                 success: false,
+//                 message: 'User Already has an active membership, You can not request membership when User has a membership active',
+//                 data: null
+//             });
+//             return;
+//         }
+//         // // Validate request body
+//         const validatedData = await membershipRequestSchema.parseAsync(req.body);
+//         const startDate = new Date(validatedData.startDate);
+//         // Create membership request
+//         const membershipRequest = new MembershipRequest({
+//             ...validatedData,
+//             startDate,
+//             requesterID: userId,
+//             requestStatus: MembershipRequestStatus.PENDING,
+//             requestDate: new Date(),
+//             endDate: new Date(startDate.getTime() + validatedData.duration * 30 * 24 * 60 * 60 * 1000)
+//         });
+//         await membershipRequest.save();
+//         return res.status(201).json({
+//             success: true,
+//             message: 'Membership request created successfully',
+//             data: membershipRequest
+//         });
+//     } catch (error) {
+//         console.error('[Membership Request API Error]', {
+//             error: error instanceof Error ? error.message : 'Unknown error',
+//             timestamp: new Date().toISOString()
+//         });
+//         if (error instanceof z.ZodError) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'Validation error',
+//                 error: error.errors,
+//                 data: null
+//             });
+//         }
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+// router.get('/membership-request', validateUser, async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         if (!req.authSession || !req.authSession?.value) {
+//             res.status(401).json({
+//                 success: false,
+//                 message: 'Failed to authorize the user',
+//                 data: null
+//             });
+//             return;
+//         }
+//         const userId = req.authSession.value.userId;
+//         // Validate query parameters
+//         const validationResult = membershipRequestQuerySchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+//         const { page, limit, status, count: shouldCount } = validationResult.data;
+//         // Build query
+//         const query: any = { requesterID: userId };
+//         if (status && status !== 'all') {
+//             query.requestStatus = status;
+//         }
+//         // Execute query with pagination
+//         const requests = await MembershipRequest.find(query)
+//             .sort({ requestDate: -1 })
+//             .skip((page - 1) * limit)
+//             .limit(limit)
+//             .lean()
+//             .maxTimeMS(10000); // Set maximum execution time
+//         // Get total count if requested
+//         let totalCount: number | undefined;
+//         if (shouldCount === 'yes') {
+//             totalCount = await MembershipRequest.countDocuments(query)
+//                 .maxTimeMS(5000);
+//         }
+//         // Prepare pagination info
+//         let pagination: object = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+//         if (totalCount !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(totalCount / limit),
+//                 totalRequests: totalCount
+//             };
+//         }
+//         // Set cache headers
+//         res.set('Cache-Control', 'private, max-age=30'); // Cache for 30 seconds, private because it's user-specific
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 requests,
+//                 pagination,
+//                 filterCriteria: {
+//                     status
+//                 }
+//             }
+//         });
+//     } catch (error) {
+//         console.error('[Get Membership History API Error]', {
+//             error: error instanceof Error ? error.message : 'Unknown error',
+//             timestamp: new Date().toISOString(),
+//             userId: req.authSession?.value?.userId
+//         });
+//         if (error instanceof z.ZodError) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'Validation error',
+//                 error: error.errors,
+//                 data: null
+//             });
+//         }
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+// router.put('/membership-request/cancel', validateUser, async function (req: Request, res: Response): Promise<any> {
+//     try {
+//         if (!req.authSession || !req.authSession?.value) {
+//             res.status(401).json({
+//                 success: false,
+//                 message: 'Failed to authorize the user',
+//                 data: null
+//             });
+//             return;
+//         }
+//         const userId = req.authSession.value.userId;
+//         const membershipRequest = await MembershipRequest.findOne({
+//             requesterID: userId,
+//             requestStatus: MembershipRequestStatus.PENDING
+//         });
+//         if (!membershipRequest) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: 'No pending membership request found',
+//                 data: null
+//             });
+//         }
+//         membershipRequest.cancel();
+//         await membershipRequest.save();
+//         return res.status(200).json({
+//             success: true,
+//             message: 'Membership request cancelled successfully',
+//             data: membershipRequest
+//         });
+//     } catch (error) {
+//         console.error('[Cancel Membership Request API Error]', {
+//             error: error instanceof Error ? error.message : 'Unknown error',
+//             timestamp: new Date().toISOString()
+//         });
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+// router.delete('/membership-request', validateUser, async function (req: Request, res: Response): Promise<any> {
+//     try {
+//         if (!req.authSession || !req.authSession?.value) {
+//             res.status(401).json({
+//                 success: false,
+//                 message: 'Failed to authorize the user',
+//                 data: null
+//             });
+//             return;
+//         }
+//         const userId = req.authSession.value.userId;
+//         const membershipRequest = await MembershipRequest.findOne({
+//             requesterID: userId,
+//             requestStatus: MembershipRequestStatus.CANCELLED
+//         });
+//         if (!membershipRequest) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: 'No cancelled membership request found',
+//                 data: null
+//             });
+//         }
+//         await membershipRequest.deleteOne();
+//         return res.status(200).json({
+//             success: true,
+//             message: 'Membership request deleted successfully',
+//             data: null
+//         });
+//     } catch (error) {
+//         console.error('[Delete Membership Request API Error]', {
+//             error: error instanceof Error ? error.message : 'Unknown error',
+//             timestamp: new Date().toISOString()
+//         });
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
 exports.default = router;

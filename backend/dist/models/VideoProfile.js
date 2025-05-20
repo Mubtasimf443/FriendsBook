@@ -74,10 +74,6 @@ const videoProfileSchema = new mongoose_1.Schema({
         type: Date,
         default: Date.now
     },
-    socketId: {
-        type: String,
-        default: null
-    },
     passwordDetails: {
         type: {
             hashed: String,
