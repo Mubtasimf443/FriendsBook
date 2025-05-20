@@ -4,27 +4,14 @@ import React, { useId } from 'react';
 import { Separator } from "@/components/ui/separator";
 import {
     LayoutDashboard,
-
     UserCheck,
-    MessageSquare,
-    Mail,
     LogOut,
-
-    UserPlus,
-    HeartHandshake,
-    Star,
     User,
     UserRoundSearch,
-    UsersRound,
-    LayoutDashboardIcon,
-    ChartBarIcon,
     StarIcon,
-
-    MessageCircleIcon,
-    InboxIcon,
     Bell,
     DollarSign,
-
+    Gift
 } from 'lucide-react';
 import SideBarLinksSection from './SideBarLinksSection';
 import SideBarNavLink from './SideBarNavLink';
@@ -80,7 +67,6 @@ const Sidebar = () => {
                     }}
                 />
 
-             
                 
                 <SideBarNavLink
                     icon={Bell}
@@ -90,12 +76,21 @@ const Sidebar = () => {
                 />
 
                 <SideBarNavLink
-                    icon={DollarSign}
-                    label={"Video Diamonds"}
-                    href={"/admin/video-currency"}
+                    icon={Gift}
+                    label={"Gifts"}
+                    href={"/admin/gift-management"}
                     description={"Manage video currency settings"}
                 />
 
+
+                <SideBarNavLink
+                    icon={DollarSign}
+                    label={"Coins"}
+                    href={"/admin/coin-management"}
+                    description={"Manage video currency settings"}
+                />
+                
+              
 
                 <Separator className="my-4" />
 
@@ -107,6 +102,7 @@ const Sidebar = () => {
                     href={"/loggout"}
                     description={"Sign out of admin panel"}
                 />
+
 
             </div>
         </div>

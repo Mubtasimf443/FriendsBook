@@ -15,6 +15,8 @@ import PushNotification from './pages/tabs/PushNotification';
 import { MembershipPricing } from './pages/tabs/MembershipPricing';
 import MembershipRequest from './pages/tabs/MembershipRequest';
 import Login from './pages/Login';
+import Gift from './pages/tabs/Gift';
+import CoinManagement from './pages/tabs/CoinManagement';
 
 const LazyDashboard = Lazy(() => import('./pages/DashBoard'))
 
@@ -75,7 +77,15 @@ function App() {
             path : 'membership-request' ,
             Component : MembershipRequest
           },
-
+          
+          {
+            path : "gift-management",
+            Component : Gift
+          }, 
+          {
+            path : 'coin-management',
+            Component : CoinManagement 
+          },
           {
             path: '*',
             Component: NotFoundTab

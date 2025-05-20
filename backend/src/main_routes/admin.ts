@@ -10,39 +10,39 @@ import { number, z } from "zod";
 import { MembershipRequest } from "../models/membershipRequest";
 import { MembershipRequestStatus } from "../lib/types/memberdship.types";
 
-const router : Router = Router();
+const router: Router = Router();
 
 
 router.post('/login', async function (req: Request, res: Response,): Promise<any> {
   try {
     const { email, password } = req.body;
 
-    let adminSettings = JSON.parse(readFileSync(path.join(__dirname , '../../data/admin.panal.settings.json') , 'utf-8'))
-   
-    let {email: validEmail, password: validPassword} = adminSettings;
-    
-    if (email === validEmail && password === validPassword) {
-        let authToken = giveAuthSessionId();
+    let adminSettings = JSON.parse(readFileSync(path.join(__dirname, '../../data/admin.panal.settings.json'), 'utf-8'))
 
-        writeFileSync(path.join(__dirname , '../../data/admin.panal.settings.json'), JSON.stringify({
-            email: validEmail,
-            password: validPassword,
-            auth_session: authToken 
-        }));
-      
-        // Set auth token as cookie
-        res.cookie('admin_auth_token', authToken, {
-            httpOnly: true,
-            sameSite : true , 
-            secure: process.env.NODE_ENV === 'production',
-            maxAge:24 * 60 * 60 * 1000 // 24 hours
-        });
-        
-        return res.status(200).json({
-            success: true,
-            message: 'Admin login successful',
-            data: { email: email , authToken}
-        });
+    let { email: validEmail, password: validPassword } = adminSettings;
+
+    if (email === validEmail && password === validPassword) {
+      let authToken = giveAuthSessionId();
+
+      writeFileSync(path.join(__dirname, '../../data/admin.panal.settings.json'), JSON.stringify({
+        email: validEmail,
+        password: validPassword,
+        auth_session: authToken
+      }));
+
+      // Set auth token as cookie
+      res.cookie('admin_auth_token', authToken, {
+        httpOnly: true,
+        sameSite: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Admin login successful',
+        data: { email: email, authToken }
+      });
     } else {
       return res.status(401).json({
         success: false,
@@ -51,34 +51,35 @@ router.post('/login', async function (req: Request, res: Response,): Promise<any
     }
   } catch (error) {
     console.error(error);
-        
+
     return res.status(500).json({
-        success: false,
-        message: 'Internal server error during authentication',
-        error: error instanceof Error ? error.message : 'Unknown error'
+      success: false,
+      message: 'Internal server error during authentication',
+      error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
-router.post('/is-loggedin', async function (req: Request, res: Response, ): Promise<any> {
+
+router.post('/is-loggedin', async function (req: Request, res: Response,): Promise<any> {
   try {
     const authToken = req.cookies?.admin_auth_token;
-    let adminSettings =JSON.parse(readFileSync(path.join(__dirname , '../../data/admin.panal.settings.json') , 'utf-8'))
-   
+    let adminSettings = JSON.parse(readFileSync(path.join(__dirname, '../../data/admin.panal.settings.json'), 'utf-8'))
+
     if (!authToken) {
       return res.status(401).json({
         success: false,
         message: 'Admin is not logged in'
       });
     }
-    
-    
+
+
     if (adminSettings.auth_session === authToken) {
       return res.status(200).json({
         success: true,
         message: 'Admin is logged in',
         data: {
-          email: adminSettings.email, 
-          token : authToken
+          email: adminSettings.email,
+          token: authToken
         }
       });
     } else {
@@ -89,47 +90,47 @@ router.post('/is-loggedin', async function (req: Request, res: Response, ): Prom
     }
   } catch (error) {
     console.error(error);
-        
+
     return res.status(500).json({
-        success: false,
-        message: 'Internal server error during authentication',
-        error: error instanceof Error ? error.message : 'Unknown error'
+      success: false,
+      message: 'Internal server error during authentication',
+      error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
+
 router.use(async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    try {
-      const authToken = req.cookies?.admin_auth_token;
-      
-      if (!authToken) {
-        return res.status(401).json({
-          success: false,
-          message: 'Unauthorized: Admin authentication required'
-        });
-      }
-      
-      let adminSettings = JSON.parse(readFileSync(path.join(__dirname , '../../data/admin.panal.settings.json') , 'utf-8'))
-   
-      if (adminSettings.auth_session === authToken) {
-        // Admin is authenticated, proceed to the next middleware or route handler
-        next();
-      } else {
-        return res.status(401).json({
-          success: false,
-          message: 'Unauthorized: Invalid admin authentication token'
-        });
-      }
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({
+  try {
+    const authToken = req.cookies?.admin_auth_token;
+
+    if (!authToken) {
+      return res.status(401).json({
         success: false,
-        message: 'Internal server error during authentication',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        message: 'Unauthorized: Admin authentication required'
       });
     }
-  }
-)
 
+    let adminSettings = JSON.parse(readFileSync(path.join(__dirname, '../../data/admin.panal.settings.json'), 'utf-8'))
+
+    if (adminSettings.auth_session === authToken) {
+      // Admin is authenticated, proceed to the next middleware or route handler
+      next();
+    } else {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized: Invalid admin authentication token'
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error during authentication',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}
+)
 
 router.get('/overview-statistics', async function (req: Request, res: Response, next: NextFunction): Promise<any> {
   try {
@@ -156,11 +157,11 @@ router.get('/overview-statistics', async function (req: Request, res: Response, 
     });
   } catch (error) {
     console.error(error);
-        return res.status(500).json({
-        success: false,
-        message: 'Internal server error during authentication',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error during authentication',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 
@@ -169,26 +170,26 @@ router.get('/users', async function (req: Request, res: Response, next: NextFunc
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const userType = req.query.usertype as string || 'all';
-    
+
     const skip = (page - 1) * limit;
-    
+
     let query = {};
-    
+
     // Filter based on user type
     switch (userType) {
       case 'premium':
-        query = { 
-            'membership.currentMembership.requestId': { $exists: true },
-            'membership.currentMembership.membership_exipation_date': { $exists: true } 
+        query = {
+          'membership.currentMembership.requestId': { $exists: true },
+          'membership.currentMembership.membership_exipation_date': { $exists: true }
         };
         break;
       case 'active':
         query = {
-            'onlineStatus.isOnline': true,
+          'onlineStatus.isOnline': true,
         };
         break;
       case 'suspended':
-        query = {  'suspension.isSuspended': true };
+        query = { 'suspension.isSuspended': true };
         break;
       case 'new':
         // Users created in the last 7 days
@@ -198,17 +199,17 @@ router.get('/users', async function (req: Request, res: Response, next: NextFunc
         // 'all' - no filter
         break;
     }
-    
+
     const users = await User.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .select('_id name email profileImage.url suspension onlineStatus membership address phoneInfo');
-      
+
     const totalUsers = await User.countDocuments(query);
     const totalPages = Math.ceil(totalUsers / limit);
-    
-    
+
+
     return res.status(200).json({
       success: true,
       data: {
@@ -231,333 +232,386 @@ router.get('/users/search', async function (req: Request, res: Response, next: N
   try {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^\d{10,15}$/;
-    
 
-    const {  searchTerm, userType } = req.query;
+
+    const { searchTerm, userType } = req.query;
 
     if (typeof searchTerm !== 'string' || !(userType === 'video' || userType == 'matrimony')) {
-        return res.sendStatus(400);
+      return res.sendStatus(400);
     }
 
-    let filterbyEmail = true ;
-    if (emailRegex.test( searchTerm )) {
-        filterbyEmail = true ;
+    let filterbyEmail = true;
+    if (emailRegex.test(searchTerm)) {
+      filterbyEmail = true;
     }
-    if (phoneRegex.test( searchTerm )) {
-        filterbyEmail= false;
+    if (phoneRegex.test(searchTerm)) {
+      filterbyEmail = false;
     }
 
-  
+
     if (userType === 'matrimony') {
-        let query = {};
-        if (filterbyEmail ) query = { email: searchTerm.trim() };
-        if (!filterbyEmail) query = { "phoneInfo.number": searchTerm.trim() };
-        const user = await User.findOne(query)
+      let query = {};
+      if (filterbyEmail) query = { email: searchTerm.trim() };
+      if (!filterbyEmail) query = { "phoneInfo.number": searchTerm.trim() };
+      const user = await User.findOne(query)
         .select('-password')
         .limit(20);
-        
-        if (!user) return res.sendStatus(204);
-        return res.status(200).json({
-            success: true,
-            data: {
-              user
-              
-            }
-          });
+
+      if (!user) return res.sendStatus(204);
+      return res.status(200).json({
+        success: true,
+        data: {
+          user
+
+        }
+      });
     }
-    
+
     if (userType === 'video') {
-        let query = {};
-        if (filterbyEmail ) query = { email: searchTerm.trim() };
-        if (!filterbyEmail) query = {  "phone": searchTerm.trim() };
-        const user = await VideoProfile.findOne(query)
+      let query = {};
+      if (filterbyEmail) query = { email: searchTerm.trim() };
+      if (!filterbyEmail) query = { "phone": searchTerm.trim() };
+      const user = await VideoProfile.findOne(query)
         .select('-passwordDetails')
         .limit(20);
-        
-        if (!user) return res.sendStatus(204);
-        return res.status(200).json({
-            success: true,
-            data: {
-              user 
-            }
-          });
+
+      if (!user) return res.sendStatus(204);
+      return res.status(200).json({
+        success: true,
+        data: {
+          user
+        }
+      });
     }
     return res.sendStatus(400)
   } catch (error) {
     console.error(error);
-        return res.status(500).json({
-        success: false,
-        message: 'Internal server error during authentication',
-        error: error instanceof Error ? error.message : 'Unknown error'
-  });
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error during authentication',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 
 router.put('/users/:id', async function (req: Request, res: Response, next: NextFunction): Promise<any> {
-    try {
-        let schema = z.object({
-            name : z.string().min(6).max(30).optional(),
-            email : z.string().email().optional(),
-            phoneInfo:z.object({ number :  z.string().min(8).max(16).regex(/^\d{10,15}$/).optional()}).optional()
-        });
+  try {
+    let schema = z.object({
+      name: z.string().min(6).max(30).optional(),
+      email: z.string().email().optional(),
+      phoneInfo: z.object({ number: z.string().min(8).max(16).regex(/^\d{10,15}$/).optional() }).optional()
+    });
 
-        
 
-        let data = schema.parse(req.body);
 
-        await User.findByIdAndUpdate(req.params.id , data)
+    let data = schema.parse(req.body);
 
-        return res.sendStatus(200);
-    } catch (error) {
-        console.error(error);
-        
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error during authentication',
-            error: error instanceof Error ? error.message : 'Unknown error'
-        });
-    }
+    await User.findByIdAndUpdate(req.params.id, data)
+
+    return res.sendStatus(200);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error during authentication',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 });
 
 router.put('/users/:id/suspend', async function (req: Request, res: Response, next: NextFunction): Promise<any> {
-    try {
-        await User.findByIdAndUpdate(req.params.id || '' , {'suspension.isSuspended': true });
-        return res.sendStatus(200)
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error during authentication',
-            error: error instanceof Error ? error.message : 'Unknown error'
-        });
-    }
+  try {
+    await User.findByIdAndUpdate(req.params.id || '', { 'suspension.isSuspended': true });
+    return res.sendStatus(200)
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error during authentication',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 })
 
 router.put('/users/:id/unsuspend', async function (req: Request, res: Response, next: NextFunction): Promise<any> {
-    try {
-        await User.findByIdAndUpdate(req.params.id || '' , {'suspension.isSuspended': false });
-        return res.sendStatus(200)
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error during authentication',
-            error: error instanceof Error ? error.message : 'Unknown error'
-        });
-    }
+  try {
+    await User.findByIdAndUpdate(req.params.id || '', { 'suspension.isSuspended': false });
+    return res.sendStatus(200)
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error during authentication',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 });
 
 router.delete('/users/:id', async function (req: Request, res: Response, next: NextFunction): Promise<any> {
-    try {
-        await User.findByIdAndDelete(req.params.id  );
-        return res.sendStatus(200)
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error during authentication',
-            error: error instanceof Error ? error.message : 'Unknown error'
-        });
-    }
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    return res.sendStatus(200)
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error during authentication',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 })
 
-router.get('/membership/pricing' ,  async function (req:Request , res : Response ) :Promise<any> {
-    try {
-        let data: any = JSON.parse(readFileSync(path.join(__dirname , '../../data/membership.config.json') , 'utf-8' ));
-        return res.status(200).json({
-            success : true ,
-            data : {
-                membership_data : data
-            }
-        })
-    } catch (error) {
-        console.error('[/membership/pricing api error]', error);
-        return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
-        });   
+router.get('/membership/pricing', async function (req: Request, res: Response): Promise<any> {
+  try {
+    let data: any = JSON.parse(readFileSync(path.join(__dirname, '../../data/membership.config.json'), 'utf-8'));
+    return res.status(200).json({
+      success: true,
+      data: {
+        membership_data: data
+      }
+    })
+  } catch (error) {
+    console.error('[/membership/pricing api error]', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: null
+    });
+  }
+});
+
+
+router.put('/membership/pricing', async function (req: Request, res: Response): Promise<any> {
+  try {
+    interface PlanPricing {
+      price: number;
+      sms: number;
     }
-}) ;
 
-
-router.put('/membership/pricing' ,  async function (req:Request , res : Response ) :Promise<any> {
-    try {
-          interface PlanPricing {
-            price: number;
-            sms: number;
-          }
-          
-          interface Plan {
-            name: string;
-            prices: {
-              [durationInMonths: string]: PlanPricing;
-            };
-          }
-          
-          interface SubscriptionPlans {
-            premium: Plan;
-            gold: Plan;
-            diamond: Plan;
-          }
-
-          let memberships :SubscriptionPlans =  JSON.parse(readFileSync(path.join(__dirname , '../../data/membership.config.json') , 'utf-8'));
-
-          let schema = z.object({
-            plan : z.enum(['premium' , 'gold' , 'diamond']), 
-            duration : z.enum(['3' , '6'  , '12']), 
-            field : z.enum(['sms' , 'price']),
-            value : z.number().min(1).max(10000)
-          });
-
-
-        let {plan , duration , field , value} = schema.parse(req.body) ; 
-
-        memberships[plan].prices[duration][field] = value;
-        writeFileSync(path.join(__dirname , '../../data/membership.config.json') , JSON.stringify(memberships ));
-
-        return res.sendStatus(200);
-
-    } catch (error) {
-        console.error('[/membership/pricing api error]', error);
-        return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
-        });   
+    interface Plan {
+      name: string;
+      prices: {
+        [durationInMonths: string]: PlanPricing;
+      };
     }
-}) ;
+
+    interface SubscriptionPlans {
+      premium: Plan;
+      gold: Plan;
+      diamond: Plan;
+    }
+
+    let memberships: SubscriptionPlans = JSON.parse(readFileSync(path.join(__dirname, '../../data/membership.config.json'), 'utf-8'));
+
+    let schema = z.object({
+      plan: z.enum(['premium', 'gold', 'diamond']),
+      duration: z.enum(['3', '6', '12']),
+      field: z.enum(['sms', 'price']),
+      value: z.number().min(1).max(10000)
+    });
+
+
+    let { plan, duration, field, value } = schema.parse(req.body);
+
+    memberships[plan].prices[duration][field] = value;
+    writeFileSync(path.join(__dirname, '../../data/membership.config.json'), JSON.stringify(memberships));
+
+    return res.sendStatus(200);
+
+  } catch (error) {
+    console.error('[/membership/pricing api error]', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: null
+    });
+  }
+});
 
 router.get('/membership/request', async function (req: Request, res: Response): Promise<any> {
-    try {
-        // Parse pagination params, default to page 1, limit 10
-        let page = parseInt(req.query.page as string) || 1;
-        let limit = parseInt(req.query.limit as string) || 10;
-        if (page < 1) page = 1;
-        if (limit < 1) limit = 10;
+  try {
+    // Parse pagination params, default to page 1, limit 10
+    let page = parseInt(req.query.page as string) || 1;
+    let limit = parseInt(req.query.limit as string) || 10;
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 10;
 
-        const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
-        const total = await MembershipRequest.countDocuments({requestStatus : MembershipRequestStatus.PENDING});
-        const membershipRequests = await MembershipRequest.find({ requestStatus : MembershipRequestStatus.PENDING})
-            .skip(skip)
-            .limit(limit)
-            .sort({ createdAt: -1 });
+    const total = await MembershipRequest.countDocuments({ requestStatus: MembershipRequestStatus.PENDING });
+    const membershipRequests = await MembershipRequest.find({ requestStatus: MembershipRequestStatus.PENDING })
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 });
 
-        return res.status(200).json({
-            success: true,
-            message: 'Membership requests fetched successfully',
-            data: {
-                requests: membershipRequests,
-                pagination: {
-                    page,
-                    limit,
-                    total,
-                    totalPages: Math.ceil(total / limit)
-                }
-            }
-        });
-    } catch (error) {
-        console.error('[/membership/request api error]', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
-
-router.put('/membership/request/:id/accept' ,  async function (req:Request , res : Response ,) :Promise<any> {
-    try {
-        let {} = (z.object({})).parse(req.body);
-
-        let memberdshipRequest =  await MembershipRequest.findById(req.params.id );
-        if (!memberdshipRequest) {
-            res.status(400).json({
-                success: false,
-                message: 'Invalid request parameters', 
-                data: null
-            });
-            return;
+    return res.status(200).json({
+      success: true,
+      message: 'Membership requests fetched successfully',
+      data: {
+        requests: membershipRequests,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
         }
-
-        memberdshipRequest.requestStatus = MembershipRequestStatus.APPROVED;
-        memberdshipRequest.startDate =new Date()
-        memberdshipRequest.endDate =new Date(Date.now() +( memberdshipRequest.duration * 30 *24 *60*60*1000 ));;
-        let user = await User.findById(
-            memberdshipRequest.requesterID , 
-            {
-                "membership.currentMembership.requestId" :memberdshipRequest._id ,
-               "membership.currentMembership.membership_exipation_date" :memberdshipRequest.endDate 
-            }
-        );
-
-        await memberdshipRequest.save();
-        res.status(200);
-
-
-    } catch (error) {
-        console.error('[/membership/pricing api error]', error);
-        return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
-        }); 
-    }
+      }
+    });
+  } catch (error) {
+    console.error('[/membership/request api error]', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: null
+    });
+  }
 });
 
-router.put('/membership/request/:id/reject' ,  async function (req:Request , res : Response ,) :Promise<any> {
-    try {
-        let {reason} = (z.object({
-            reason : z.string().min(1).max(120)
-        })).parse(req.body);
+router.put('/membership/request/:id/accept', async function (req: Request, res: Response,): Promise<any> {
+  try {
+    let { } = (z.object({})).parse(req.body);
 
-        let m =await MembershipRequest.findByIdAndUpdate(req.params.id , {
-            requestStatus : MembershipRequestStatus.REJECTED ,
-            adminNote : reason
-        });
-        res.status(200).json({
-            success : true,
-            data : {
-        
-            },
-            error : null,
-            message : 'OK'
-        })
-        return;
-    } catch (error) {
-        console.error('[/membership/pricing api error]', error);
-        return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
-        }); 
+    let memberdshipRequest = await MembershipRequest.findById(req.params.id);
+    if (!memberdshipRequest) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid request parameters',
+        data: null
+      });
+      return;
     }
+
+    memberdshipRequest.requestStatus = MembershipRequestStatus.APPROVED;
+    memberdshipRequest.startDate = new Date()
+    memberdshipRequest.endDate = new Date(Date.now() + (memberdshipRequest.duration * 30 * 24 * 60 * 60 * 1000));;
+    let user = await User.findById(
+      memberdshipRequest.requesterID,
+      {
+        "membership.currentMembership.requestId": memberdshipRequest._id,
+        "membership.currentMembership.membership_exipation_date": memberdshipRequest.endDate
+      }
+    );
+
+    await memberdshipRequest.save();
+    res.status(200);
+
+
+  } catch (error) {
+    console.error('[/membership/pricing api error]', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: null
+    });
+  }
+});
+
+router.put('/membership/request/:id/reject', async function (req: Request, res: Response,): Promise<any> {
+  try {
+    let { reason } = (z.object({
+      reason: z.string().min(1).max(120)
+    })).parse(req.body);
+
+    let m = await MembershipRequest.findByIdAndUpdate(req.params.id, {
+      requestStatus: MembershipRequestStatus.REJECTED,
+      adminNote: reason
+    });
+    res.status(200).json({
+      success: true,
+      data: {
+
+      },
+      error: null,
+      message: 'OK'
+    })
+    return;
+  } catch (error) {
+    console.error('[/membership/pricing api error]', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: null
+    });
+  }
+});
+
+router.put('/coins-data', async function (req: Request, res: Response): Promise<any> {
+  try {
+    interface PackageInfo {
+      name: string;
+      price: string;
+      coins: string;
+    }
+
+    interface CoinPackages {
+      [packageId: string]: PackageInfo;
+    }
+
+    let coinPackages: CoinPackages = JSON.parse(
+      readFileSync(path.join(__dirname, '../../data/coin.packages.json'), 'utf-8')
+    );
+
+    // Validate input data
+    const schema = z.object({
+      packageId: z.enum(['package_1', 'package_2', 'package_3', 'package_4']),
+      field: z.enum(['name', 'price', 'coins']),
+      value: z.union([z.string(), z.number()])
+    });
+
+    let { packageId, field, value } = schema.parse(req.body);
+
+    // Convert number to string for storage
+    if (typeof value === 'number') {
+      value = value.toString();
+    }
+
+    // Update the package data
+    coinPackages[packageId][field] = value;
+
+    // Save the updated data
+    writeFileSync(
+      path.join(__dirname, '../../data/coin.packages.json'),
+      JSON.stringify(coinPackages, null, 2)
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Coin package updated successfully'
+    });
+  } catch (error) {
+    console.error('[/coins/pricing api error]', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: null
+    });
+  }
+})
+
+
+
+router.post('/log-out', async function (req: Request, res: Response,): Promise<any> {
+  try {
+    res.clearCookie('admin_auth_token', {
+      httpOnly: true,
+      sameSite: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    })
+      .status(200)
+      .json({});
+    return;
+
+  } catch (error) {
+    console.error('[Admin Log out error]', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: null
+    });
+  }
 });
 
 
-
-router.post('/log-out' ,async function (req:Request , res : Response ,) :Promise<any> {
-    try {
-        res.clearCookie('admin_auth_token', {
-            httpOnly: true,
-            sameSite : true , 
-            secure: process.env.NODE_ENV === 'production',
-            maxAge:24 * 60 * 60 * 1000 // 24 hours
-        })
-        .status(200)
-        .json({});
-        return;
-    
-    } catch (error) {
-        console.error('[Admin Log out error]', error);
-        return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
-        });
-    }
-} );
-
-
-export default  router;
+export default router;

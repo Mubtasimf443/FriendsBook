@@ -22,6 +22,7 @@ import path from 'node:path';
 import membershipRouter from './main_routes/Membership';
 import configureChatMessagingSocket from './sockets/chat.messaging.socket';
 import { configOnlineStatusSocket } from './sockets/OnlineStatus.socket';
+import coinManagementRouter from './main_routes/coinManagement';
 
 const app: express.Application = express();
 const port: number = Number(PORT ?? 4000) 
@@ -63,6 +64,7 @@ async function main() {
     app.use('/api/data', dataRouter);
     app.use('/api/admin', adminRouter);
     app.use('/api/membership', membershipRouter);
+    app.use('/api/coins' , coinManagementRouter);
     // app.use('/api/cron-jobs', cronJobsRouter);
 
     app.get('*', async function (req , res ) {
