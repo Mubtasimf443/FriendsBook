@@ -16,16 +16,36 @@ import { Language, MaritalStatus, Religion } from "../lib/types/user.types";
 import rateLimiter from "../config/rateRimiter";
 import getEducationCertificates from "../lib/core/getEducationCertificates";
 import { ReligiousBranch } from "../lib/types/userProfile.types";
+import Gifts from "../models/Gifts";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 
 
 const router: Router = Router();
 router.use(rateLimiter(30 * 1000, 100))
-router.use(function (req: Request, res: Response, next: NextFunction) {
-    res.set("cache-control", "max-age=3600, public");
-    next();
-    return;
+
+
+
+router.get('/coins-data' ,  async function (req: Request, res: Response): Promise<any> {
+    try {
+        let data: any = JSON.parse(readFileSync(path.join(__dirname, '../../data/coin.packages.json'), 'utf-8'));
+        return res.status(200).json({
+            success: true,
+            data: {    coin_packages: data
+            }
+        });
+    } catch (error) {
+        console.error('[/coins/pricing api error]', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
 });
+
+
 
 router.get("/location/country-names", async function (req: Request, res: Response): Promise<any> {
     return res.status(200).json({ success: true, message: "ok", data: { names: countryNames } })
@@ -153,6 +173,8 @@ router.get('/currency', async function (req: Request, res: Response): Promise<an
         data: { countryAndCurrency }
     })
 });
+
+
 router.get('/languages', async function (req: Request, res: Response): Promise<any> {
     return res.status(200).json({
         success: true,
@@ -197,14 +219,14 @@ router.get('/certificates', async function (req: Request, res: Response): Promis
         const educationLevel = validationResult.data as EducationLevel;
         const certificates = getEducationCertificates(educationLevel);
 
-        
+
         return res.status(200).json({
             success: true,
             message: `Certificates for ${educationLevel}`,
             data: { certificates }
         });
     } catch (error) {
-        console.error('/data/certificate api error ' , error);
+        console.error('/data/certificate api error ', error);
         return res.status(500).json({
             success: false,
             message: "Internal server error",
@@ -222,7 +244,6 @@ router.get('/religions', async function (req: Request, res: Response): Promise<a
     })
 });
 
-
 router.get('/religional-branch', async function (req: Request, res: Response): Promise<any> {
     try {
         let regionalBranches: any = {};
@@ -232,14 +253,14 @@ router.get('/religional-branch', async function (req: Request, res: Response): P
         regionalBranches[Religion.CHRISTIANITY] = Object.values(ReligiousBranch).slice(11, 13);
         regionalBranches["OHTERS"] = Object.values(ReligiousBranch).slice(13, 15);
 
-        let schema = z.enum([Religion.ISLAM, Religion.HINDUISM, Religion.BUDDHISM, Religion.CHRISTIANITY , "OHTERS"]);
+        let schema = z.enum([Religion.ISLAM, Religion.HINDUISM, Religion.BUDDHISM, Religion.CHRISTIANITY, "OHTERS"]);
 
         let religion = schema.parse(req.query.religion);
 
         return res.status(200).json({
             success: true,
             data: {
-                branches : regionalBranches[religion]
+                branches: regionalBranches[religion]
             }
         })
     } catch (error) {
@@ -247,19 +268,40 @@ router.get('/religional-branch', async function (req: Request, res: Response): P
             res.status(400).json({
                 success: false,
                 message: 'Invalid request parameters',
-                error : error , 
+                error: error,
                 data: null
             });
             return;
         }
         console.error('[religional Branch error]', error);
         return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
+            success: false,
+            message: 'Internal server error',
+            data: null
         });
     }
 });
+
+router.get('/gifts', async (req: Request, res: Response) => {
+    try {
+        const gifts = await Gifts.find().sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            success: true,
+            message: "Gifts fetched successfully",
+            data: {
+                gifts
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching gifts:', error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch gifts",
+            error: "Internal server error"
+        });
+    }
+})
 
 
 

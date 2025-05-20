@@ -15,8 +15,9 @@ import PushNotification from './pages/tabs/PushNotification';
 import { MembershipPricing } from './pages/tabs/MembershipPricing';
 import MembershipRequest from './pages/tabs/MembershipRequest';
 import Login from './pages/Login';
-import Gift from './pages/tabs/Gift';
+import  { GiftsManagement } from './pages/tabs/GiftsManagement';
 import CoinManagement from './pages/tabs/CoinManagement';
+import { GiftContextProvider } from './context/gifts.context';
 
 const LazyDashboard = Lazy(() => import('./pages/DashBoard'))
 
@@ -80,7 +81,7 @@ function App() {
           
           {
             path : "gift-management",
-            Component : Gift
+            element :<GiftContextProvider children={<GiftsManagement />} />
           }, 
           {
             path : 'coin-management',

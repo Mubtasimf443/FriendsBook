@@ -1,8 +1,8 @@
 {
   "package_1": {
-    "name": "Premium Pac",
-    "price": "100",
-    "coins": "325"
+    "name": "Premium",
+    "price": "1000",
+    "coins": "32547"
   },
   "package_2": {
     "name": "Gold",

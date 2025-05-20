@@ -15,7 +15,7 @@ export const CoinManagement = () => {
     (async function () {
       try {
         setLoading(true);
-        let response = await fetch(server_origin + '/api/coins/coins-data');
+        let response = await fetch(server_origin + '/api/data/coins-data');
         if (response.status === 200) {
           let data = await response.json();
           setCoinPackages(data.data.coin_packages);

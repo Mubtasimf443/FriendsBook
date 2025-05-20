@@ -9,6 +9,7 @@ import VideoProfile from "../models/VideoProfile";
 import { number, z } from "zod";
 import { MembershipRequest } from "../models/membershipRequest";
 import { MembershipRequestStatus } from "../lib/types/memberdship.types";
+import Gifts from "../models/Gifts";
 
 const router: Router = Router();
 
@@ -590,6 +591,106 @@ router.put('/coins-data', async function (req: Request, res: Response): Promise<
 })
 
 
+router.post('/gifts', async function (req: Request, res: Response,): Promise<any> {
+  try {
+    const giftSchema = z.object({
+      name: z.string().min(1, "Gift name is required").max(50, "Gift name is too long"),
+      coins: z.number().int().positive("Coins must be a positive number"),
+      image: z.object({
+        id: z.string().uuid(),
+        url: z.string().url("Invalid image URL")
+      })
+    });
+
+    const validationResult = giftSchema.safeParse(req.body);
+
+    if (!validationResult.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        error: validationResult.error.errors.map(err => err.message).join(', ')
+      });
+    }
+
+    const { name, coins, image } = validationResult.data;
+
+    const newGift = await Gifts.create({ name, coins, image });
+
+    return res.status(201).json({
+      success: true,
+      message: "Gift created successfully",
+      data: {
+        gift: newGift
+      }
+    });
+  } catch (error) {
+    console.error('[Gifts Posting Api error]', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: null
+    });
+  }
+})
+
+router.put('/gifts/:id', async function (req: Request, res: Response,): Promise<any> {
+  try {
+    const giftSchema = z.object({
+      name: z.string().min(1, "Gift name is required").max(50, "Gift name is too long"),
+      coins: z.number().int().positive("Coins must be a positive number"),
+    });
+
+    const validationResult = giftSchema.safeParse(req.body);
+
+    if (!validationResult.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        error: validationResult.error.errors.map(err => err.message).join(', ')
+      });
+    }
+
+    const { name, coins } = validationResult.data;
+
+    const updatedGift = await Gifts.findByIdAndUpdate(req.params.id ,  { name, coins });
+
+    return res.status(200).json({
+      success: true,
+      message: "Gift updated SuccessFully successfully",
+      data: {
+        gift: updatedGift
+      }
+    });
+  } catch (error) {
+    console.error('[Gifts Posting Api error]', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: null
+    });
+  }
+})
+
+router.delete('/gifts/:id' , async function (req: Request, res: Response,): Promise<any> {
+  try {
+    let deletedGift= await Gifts.findByIdAndDelete(req.params.id);
+    res.status(200).json({
+        success : true,
+      data: { deletedGift },
+        error : null,
+        message : 'Gift Deleted Success Fully'
+    })
+    return;
+  } catch (error) {
+    console.error('[delete api error]', error);
+    return res.status(500).json({
+       success: false,
+       message: 'Internal server error',
+       data: null
+    });
+  }
+} )
+
 
 router.post('/log-out', async function (req: Request, res: Response,): Promise<any> {
   try {
@@ -612,6 +713,8 @@ router.post('/log-out', async function (req: Request, res: Response,): Promise<a
     });
   }
 });
+
+
 
 
 export default router;
