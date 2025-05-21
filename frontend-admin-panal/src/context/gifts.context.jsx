@@ -279,7 +279,7 @@ export const GiftContextProvider = ({ children }) => {
             setUploadProgress,
             isUploading,
             setIsUploading,
-            handleAddGift,
+       
             uploadImage,
             handleFileChange,
             cancelAction,

@@ -45,6 +45,29 @@ router.get('/coins-data' ,  async function (req: Request, res: Response): Promis
     }
 });
 
+router.get('/gifts', async (req: Request, res: Response) => {
+    try {
+        const gifts = await Gifts.find().sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            success: true,
+            message: "Gifts fetched successfully",
+            data: {
+                gifts
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching gifts:', error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch gifts",
+            error: "Internal server error"
+        });
+    }
+})
+
+
+
 
 
 router.get("/location/country-names", async function (req: Request, res: Response): Promise<any> {
@@ -281,29 +304,6 @@ router.get('/religional-branch', async function (req: Request, res: Response): P
         });
     }
 });
-
-router.get('/gifts', async (req: Request, res: Response) => {
-    try {
-        const gifts = await Gifts.find().sort({ createdAt: -1 });
-
-        return res.status(200).json({
-            success: true,
-            message: "Gifts fetched successfully",
-            data: {
-                gifts
-            }
-        });
-    } catch (error) {
-        console.error('Error fetching gifts:', error);
-        return res.status(500).json({
-            success: false,
-            message: "Failed to fetch gifts",
-            error: "Internal server error"
-        });
-    }
-})
-
-
 
 
 export default router;

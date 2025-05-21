@@ -1,10 +1,14 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
-import { Socket } from "socket.io";
+import { ExtendedError, Socket } from "socket.io";
 import { Namespace } from "socket.io";
 import { verifiyToken } from "../lib/middlewares/socket.middleware";
 import { NextFunction } from "express";
 import { z } from "zod";
+import { authSessionValidation } from "../lib/schema/auth.schema";
+import VideoProfile from "../models/VideoProfile";
+import AuthSession from "../models/AuthSession";
+import { User } from "../models/user";
 
 export enum NotificationFor {
     ALL= 'all_users',
@@ -31,12 +35,38 @@ export class NotificationSocketService {
    
     constructor(io: Namespace) {
         this.io = io;
+        io.use(async function (socket, next: (error?: ExtendedError | undefined) => void): Promise<any> {
+            try {
+                let { token, profileType } = await socket.handshake.auth;
+                token = authSessionValidation.parse(token);
+                if (profileType === 'video_calling_member') {
+                    let videoCallingMember = await VideoProfile.findOne({ 'auth.authSession': token });
+                    if (videoCallingMember) {
+                        socket.user_id = videoCallingMember._id.toString();
+                        socket.userProfileType = 'videoProfile';
+                        videoCallingMember.socket_ids.messaging_socket = socket.id;
+                        await videoCallingMember.save();
+                        return next();
+                    } else return next(new Error('Failed To Authenticate the User'));
+                } else {
+                    let matrimonyProfile = await AuthSession.findOne({ key: token }, 'value.userId');
+                    if (matrimonyProfile) {
+                        socket.user_id = matrimonyProfile.value.userId.toString();
+                        socket.userProfileType = 'matrimonyProfile';
+                        await User.findByIdAndUpdate(socket.user_id, { 'socket_ids.messaging_socket': socket.id })
+                        return next();
+                    } else return next(new Error('Failed To Authenticate the User'));
+                }
+            } catch (error) {
+                next(new Error('Failed to Authenticate User'));
+            }
+        });
         this.initializeListeners();
     }
 
     private async initializeListeners() {
         this.io.on('connection', async (socket: Socket) => {
-           
+          
             socket.emit('connection-success' , null) 
        
             socket.on('video-users-notification-request' , (data)  => {

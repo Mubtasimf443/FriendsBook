@@ -45,3 +45,17 @@ export const EMAIL_BACKGROUND_COLOR = '#FFFFFF';
 
 // Cron-Jobs 
 export const JOB_SECRET: ENV_VALUE = process.env.JOB_SECRET;
+
+// currency
+export const PAYPAP_CURRENCY: ENV_VALUE = process.env.PAYPAP_CURRENCY;
+export const STRIPE_CURRENCY: ENV_VALUE = process.env.STRIPE_CURRENCY;
+
+// Paypal Payment Info
+export const PAYPAL_CLIENT_ID: ENV_VALUE = process.env.PAYPAL_CLIENT_ID;
+export const PAYPAL_CLIENT_SECRET: ENV_VALUE = process.env.PAYPAL_CLIENT_SECRET;
+
+// Stripe Keys
+export const STRIPE_SECRET_KEY: ENV_VALUE = process.env.STRIPE_SECRET_KEY;
+
+// Payment Mode
+export const PAYMENT_MODE: ENV_VALUE = process.env.PAYMENT_MODE;

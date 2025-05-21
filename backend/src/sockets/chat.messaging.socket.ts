@@ -275,7 +275,7 @@ export default async function configureChatMessagingSocket(io: Namespace) {
         });
 
 
-        socket.on('send-image-event', async function (msg, roomId) {
+        socket.on('send-image-event', async function (img_id, roomId) {
             try {
                 
             } catch (error) {
@@ -294,6 +294,15 @@ export default async function configureChatMessagingSocket(io: Namespace) {
             }
         });
 
+
+        socket.on('send-pdf-event', async function (msg, roomId) {
+            try {
+
+            } catch (error) {
+                console.error(error);
+                socket.emit('sent-message-failed', { message: "Failed To send Message" });
+            }
+        });
 
 
 

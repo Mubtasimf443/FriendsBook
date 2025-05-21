@@ -18,6 +18,7 @@ import Login from './pages/Login';
 import  { GiftsManagement } from './pages/tabs/GiftsManagement';
 import CoinManagement from './pages/tabs/CoinManagement';
 import { GiftContextProvider } from './context/gifts.context';
+import PurchaseStatus from './pages/PurchaseStatus';
 
 const LazyDashboard = Lazy(() => import('./pages/DashBoard'))
 
@@ -97,6 +98,10 @@ function App() {
       {
         path: '/loggout',
         element: <Logout />
+      },
+      {
+        path : "purchase_status",
+        element : <PurchaseStatus />
       },
       {
         path: "*",
