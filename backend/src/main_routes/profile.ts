@@ -19,6 +19,7 @@ import { log } from "console";
 import { partnerPreferenceSchema } from "../lib/schema/partnerPreference.schema";
 import "../lib/types/express.decratation";
 import VideoProfile from "../models/VideoProfile";
+import CoinsTransection from "../models/CoinsTransection";
 const router: Router = Router();
 
 // Constants
@@ -45,6 +46,7 @@ router.get('/user-details/video-profile', validateVideoProfile ,async function (
             lastActive : req.videoProfile.lastActive,
             profileImage : req.videoProfile.profileImage,
             coverImage : req.videoProfile.coverImage,
+            coins : req.videoProfile.video_calling_coins 
         });
 
 
