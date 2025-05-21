@@ -1,0 +1,2733 @@
+"use strict";
+/* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const rateRimiter_1 = __importDefault(require("../config/rateRimiter"));
+const auth_middleware_1 = require("../lib/middlewares/auth.middleware");
+const country_names_enum_1 = require("../lib/types/country_names.enum");
+const search_controller_1 = require("../controllers/search.controller");
+const user_1 = require("../models/user");
+const search_schema_1 = require("../lib/schema/search.schema");
+const ProfileView_1 = require("../models/ProfileView");
+const query_middleware_1 = __importDefault(require("../lib/middlewares/query.middleware"));
+const userEducation_types_1 = require("../lib/types/userEducation.types");
+const schemaComponents_1 = require("../lib/schema/schemaComponents");
+const zod_1 = require("zod");
+const ConnectionRequest_1 = require("../models/ConnectionRequest");
+const countryWithLatLong_1 = require("../lib/data/countryWithLatLong");
+const VideoProfile_1 = __importDefault(require("../models/VideoProfile"));
+require("../lib/types/express.decratation");
+const router = (0, express_1.Router)();
+router.use((0, rateRimiter_1.default)(120 * 1000, 200));
+router.use(query_middleware_1.default);
+router.use(auth_middleware_1.validateBothProfiledUser);
+router.use(function (req, res, next) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            // console.log(req.authSession);
+            console.log(req.profileType);
+            console.log(req.bearerAccessToken);
+            // console.log(req.videoProfile);
+            next();
+        }
+        catch (error) {
+        }
+    });
+});
+router.get('/users/explore/country', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const getOnlineUsersSchema = zod_1.z.object({
+                country: zod_1.z.nativeEnum(country_names_enum_1.CountryNamesEnum).optional(),
+                page: zod_1.z.string().regex(/^\d+$/).transform(Number).pipe(zod_1.z.number().min(1).max(100)).optional().default('1'),
+                limit: zod_1.z.string().regex(/^\d+$/).transform(Number).pipe(zod_1.z.number().min(1).max(50)).optional().default('20'),
+            });
+            // Validate query parameters
+            const validation = getOnlineUsersSchema.safeParse(req.query);
+            if (!validation.success) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid query parameters",
+                    errors: validation.error.errors,
+                    data: null
+                });
+            }
+            const { country, page, limit } = validation.data;
+            const skip = (page - 1) * limit;
+            // Base query using your existing helper
+            const baseQuery = {};
+            // Handle country filtering
+            if (country && country.toLowerCase() !== 'any') {
+                baseQuery['location.country'] = country;
+            }
+            // Get list of all unique countries where users have signed up
+            let userCountries = [];
+            if (!country || country.toLowerCase() === 'any') {
+                userCountries = yield VideoProfile_1.default.distinct('location.country');
+            }
+            // Fetch users with sorting by online status
+            const aggregationPipeline = [
+                { $match: baseQuery },
+                {
+                    $addFields: {
+                        onlineSortOrder: {
+                            $cond: [
+                                { $eq: ["$status", "online"] },
+                                0, // Online users first
+                                1 // Offline users second
+                            ]
+                        }
+                    }
+                },
+                {
+                    $sort: {
+                        onlineSortOrder: 1,
+                        "lastActive": -1
+                    }
+                },
+                { $skip: skip },
+                { $limit: limit },
+                {
+                    $project: {
+                        name: 1,
+                        email: 1,
+                        'profileImage.url': 1,
+                        status: 1,
+                        lastActive: 1,
+                        age: 1,
+                        gender: 1,
+                        "location.country": 1
+                    }
+                }
+            ];
+            const [users, totalCount] = yield Promise.all([
+                VideoProfile_1.default.aggregate(aggregationPipeline),
+                VideoProfile_1.default.countDocuments(baseQuery)
+            ]);
+            // Prepare response data
+            const responseData = {
+                success: true,
+                data: {
+                    users: (0, search_controller_1.getUserWithCountryFlagsEmoji)(users),
+                    pagination: {
+                        currentPage: page,
+                        pageSize: limit,
+                        totalPages: Math.ceil(totalCount / limit),
+                        totalUsers: totalCount
+                    }
+                }
+            };
+            // Add countries list if 'any' was requested
+            if (!country || country.toLowerCase() === 'any') {
+                responseData.data.countries = (0, search_controller_1.shuffleArray)(userCountries);
+            }
+            else {
+                responseData.data.country = country;
+            }
+            // Set cache control headers
+            res.set('Cache-Control', 'public, max-age=30'); // Cache for 30 seconds since this is real-time data
+            return res.status(200).json(responseData);
+        }
+        catch (error) {
+            console.error('[Online Users API Error]:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
+            });
+        }
+    });
+});
+router.get('/users/explore/country/near-by-me', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const getOnlineUsersSchema = zod_1.z.object({
+                country_count: zod_1.z.string()
+                    .regex(/^\d+$/)
+                    .transform(Number)
+                    .pipe(zod_1.z.number().min(1).max(countryWithLatLong_1.countryCoordinates.length - 1))
+                    .optional()
+                    .default('50'),
+                page: zod_1.z.string()
+                    .regex(/^\d+$/)
+                    .transform(Number)
+                    .pipe(zod_1.z.number().min(1).max(100))
+                    .optional()
+                    .default('1'),
+                limit: schemaComponents_1.limitValidation,
+                latitude: zod_1.z.string()
+                    .transform(Number)
+                    .refine((val) => !isNaN(val), {
+                    message: "Latitude must be a valid number",
+                })
+                    .refine((val) => val >= -90 && val <= 90, {
+                    message: "Latitude must be between -90 and 90",
+                }),
+                longitude: zod_1.z.string()
+                    .transform(Number)
+                    .refine((val) => !isNaN(val), {
+                    message: "Longitude must be a valid number",
+                })
+                    .refine((val) => val >= -180 && val <= 180, {
+                    message: "Longitude must be between -180 and 180",
+                }),
+            });
+            // Validate query parameters
+            const validation = getOnlineUsersSchema.safeParse(req.query);
+            if (!validation.success) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid query parameters",
+                    errors: validation.error.errors,
+                    data: null
+                });
+            }
+            const { page, limit, country_count, latitude, longitude } = validation.data;
+            const skip = (page - 1) * limit;
+            // Base query using your existing helper
+            const baseQuery = {};
+            // Get coordinates - either from request or from user's country
+            let userLat = latitude;
+            let userLong = longitude;
+            // Find nearby countries based on coordinates
+            let nearbyCountries = countryWithLatLong_1.countryCoordinates
+                .map(({ name, latitude, longitude }) => ({
+                name,
+                distance: (0, search_controller_1.getDistance)(userLat, userLong, latitude, longitude)
+            }))
+                .sort((a, b) => a.distance - b.distance)
+                .slice(0, country_count)
+                .map(el => el.name);
+            baseQuery['location.country'] = { $in: nearbyCountries };
+            // Build aggregation pipeline
+            let aggregate = [];
+            aggregate.push({ $match: baseQuery });
+            aggregate.push({
+                $addFields: {
+                    onlineSortOrder: {
+                        $cond: [
+                            { $eq: ["$status", "online"] },
+                            0, // Online users first
+                            1 // Offline users second
+                        ]
+                    }
+                }
+            });
+            aggregate.push({
+                $sort: {
+                    onlineSortOrder: 1,
+                    "lastActive": -1
+                }
+            });
+            aggregate.push({ $skip: skip });
+            aggregate.push({ $limit: limit });
+            aggregate.push({
+                $project: {
+                    name: 1,
+                    email: 1,
+                    'profileImage.url': 1,
+                    status: 1,
+                    lastActive: 1,
+                    age: 1,
+                    gender: 1,
+                    "location.country": 1
+                }
+            });
+            const [users, totalCount] = yield Promise.all([
+                VideoProfile_1.default.aggregate(aggregate),
+                VideoProfile_1.default.countDocuments(baseQuery)
+            ]);
+            // Set cache control headers
+            let responseUsers = (0, search_controller_1.getUserWithCountryFlagsEmoji)(users);
+            res.set('Cache-Control', 'public, max-age=60');
+            return res.status(200).json({
+                success: true,
+                data: {
+                    users: responseUsers,
+                    pagination: {
+                        currentPage: page,
+                        pageSize: limit,
+                        totalPages: Math.ceil(totalCount / limit),
+                        totalUsers: totalCount
+                    },
+                    nearbyCountries: nearbyCountries,
+                    coordinates: {
+                        latitude: userLat,
+                        longitude: userLong
+                    }
+                }
+            });
+        }
+        catch (error) {
+            console.error('[Nearby Users API Error]:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
+            });
+        }
+    });
+});
+let userField = 'name _id email profileImage.url gender age onlineStatus';
+router.get('/users/just-joined', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const validationResult = search_schema_1.justJoinedSchema.safeParse(req.query);
+            if (!validationResult.success) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid query parameters",
+                    error: validationResult.error.errors,
+                    data: null
+                });
+            }
+            const { timeRange, limit, page, count: shouldCount } = validationResult.data;
+            // Calculate the date range
+            const daysAgo = parseInt(timeRange);
+            const startDate = new Date(Date.now() - (daysAgo * 24 * 60 * 60 * 1000));
+            let userInfo = (0, search_controller_1.getUserDataFromRequest)(req);
+            // Calculate pagination
+            const skip = (page - 1) * limit;
+            // Base query for finding users
+            const baseQuery = {
+                createdAt: { $gte: startDate },
+                gender: { $ne: userInfo.gender },
+            };
+            // Find users using aggregation
+            let aggregate = [
+                { $match: baseQuery },
+                { $sort: {
+                        'onlineStatus.isOnline': -1,
+                        'onlineStatus.lastActive': 1,
+                        createdAt: -1
+                    } },
+                { $skip: skip },
+                { $limit: limit },
+                { $project: {
+                        name: 1,
+                        _id: 1,
+                        email: 1,
+                        'profileImage.url': 1,
+                        gender: 1,
+                        age: 1,
+                        onlineStatus: 1
+                    } }
+            ];
+            let users = yield user_1.User.aggregate(aggregate);
+            // Get total count if requested
+            let totalCount = undefined;
+            if (shouldCount === 'yes') {
+                totalCount = yield user_1.User.countDocuments(baseQuery).maxTimeMS(10000);
+            }
+            // Prepare pagination info
+            let pagination = {
+                currentPage: page,
+                pageSize: limit,
+            };
+            if (totalCount !== undefined) {
+                pagination = Object.assign(Object.assign({}, pagination), { totalPages: Math.ceil(totalCount / limit), totalUsers: totalCount });
+            }
+            return res.status(200).json({
+                success: true,
+                data: {
+                    users,
+                    pagination,
+                    timeRange: `${timeRange} days`,
+                }
+            });
+        }
+        catch (error) {
+            console.error(`recent profile listing api error:`, error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
+            });
+        }
+    });
+});
+router.get('/users/online', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            let userInfo = (0, search_controller_1.getUserDataFromRequest)(req);
+            // Validate query parameters
+            const validationResult = search_schema_1.paginationSchema.safeParse(req.query);
+            if (!validationResult.success) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid query parameters",
+                    error: validationResult.error.errors,
+                    data: null
+                });
+            }
+            const { page, limit, count: shouldCount } = validationResult.data;
+            // Base query for finding online users
+            const baseQuery = {
+                'onlineStatus.isOnline': true,
+                gender: { $ne: userInfo.gender }
+            };
+            // Calculate pagination
+            const skip = (page - 1) * limit;
+            // Find online users with aggregation
+            let aggregate = [
+                { $match: baseQuery },
+                { $sort: { 'onlineStatus.lastActive': 1 } }, // Sort by most recently active
+                { $skip: skip },
+                { $limit: limit },
+                { $project: {
+                        name: 1,
+                        _id: 1,
+                        email: 1,
+                        'profileImage.url': 1,
+                        gender: 1,
+                        age: 1,
+                        onlineStatus: 1
+                    } }
+            ];
+            let users = yield user_1.User.aggregate(aggregate);
+            // Get total count if requested
+            let totalCount = undefined;
+            if (shouldCount === 'yes') {
+                totalCount = yield user_1.User.countDocuments(baseQuery).maxTimeMS(8000);
+            }
+            // Prepare pagination info
+            let pagination = {
+                currentPage: page,
+                pageSize: limit,
+            };
+            if (totalCount !== undefined) {
+                pagination = Object.assign(Object.assign({}, pagination), { totalPages: Math.ceil(totalCount / limit), totalUsers: totalCount });
+            }
+            // Add cache control headers
+            res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+            return res.status(200).json({
+                success: true,
+                data: {
+                    users,
+                    pagination,
+                }
+            });
+        }
+        catch (error) {
+            console.error('Online users API error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
+            });
+        }
+    });
+});
+router.get('/users/premium', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            let userInfo = (0, search_controller_1.getUserDataFromRequest)(req);
+            const validationResult = search_schema_1.paginationSchema.safeParse(req.query);
+            if (!validationResult.success) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid query parameters",
+                    error: validationResult.error.errors,
+                    data: null
+                });
+            }
+            const { page, limit, count: shouldCount } = validationResult.data;
+            const baseQuery = {
+                gender: { $ne: userInfo.gender },
+                'membership.currentMembership.requestId': { $exists: true },
+                'membership.currentMembership.membership_exipation_date': { $exists: true }
+            };
+            const skip = (page - 1) * limit;
+            // Use aggregation to prioritize online users
+            let aggregate = [
+                { $match: baseQuery },
+                { $sort: {
+                        'onlineStatus.isOnline': -1,
+                        'onlineStatus.lastActive': 1
+                    } },
+                { $skip: skip },
+                { $limit: limit },
+                { $project: {
+                        name: 1,
+                        _id: 1,
+                        email: 1,
+                        'profileImage.url': 1,
+                        gender: 1,
+                        age: 1,
+                        onlineStatus: 1,
+                        membership: 1
+                    } }
+            ];
+            let users = yield user_1.User.aggregate(aggregate);
+            let totalCount = undefined;
+            if (shouldCount === 'yes') {
+                totalCount = yield user_1.User.countDocuments(baseQuery).maxTimeMS(10000);
+            }
+            let pagination = {
+                currentPage: page,
+                pageSize: limit,
+            };
+            if (totalCount !== undefined) {
+                pagination = Object.assign(Object.assign({}, pagination), { totalPages: Math.ceil(totalCount / limit), totalUsers: totalCount });
+            }
+            res.set('Cache-Control', 'private, max-age=60');
+            res.status(200).json({
+                success: true,
+                data: {
+                    users
+                },
+                error: null,
+                message: 'PREMIUM_USERS_FOUND'
+            });
+            return;
+        }
+        catch (error) {
+            console.error('[Premium Users Search Api error]', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
+            });
+        }
+    });
+});
+router.get('/users/preferred-education', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            let userInfo = (0, search_controller_1.getUserDataFromRequest)(req);
+            Array.isArray(req.query.educationLevels) === false && (req.query.educationLevels = [req.query.educationLevels || userEducation_types_1.EducationLevel.BACHELORS_DEGREE]);
+            const validationResult = search_schema_1.preferredEducationSearchSchema.safeParse(req.query);
+            if (!validationResult.success) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid query parameters",
+                    error: validationResult.error.errors,
+                    data: null
+                });
+            }
+            const { page, limit, count: shouldCount, educationLevels } = validationResult.data;
+            // Calculate pagination
+            const skip = (page - 1) * limit;
+            // Base query for finding users
+            const baseQuery = {
+                gender: { $ne: userInfo.gender },
+                isEducated: true,
+                "education.level": { $in: educationLevels }
+            };
+            // Use aggregation to prioritize online users
+            let aggregate = [
+                { $match: baseQuery },
+                { $sort: {
+                        'onlineStatus.isOnline': -1,
+                        'onlineStatus.lastActive': 1
+                    } },
+                { $skip: skip },
+                { $limit: limit },
+                { $project: {
+                        name: 1,
+                        _id: 1,
+                        email: 1,
+                        'profileImage.url': 1,
+                        gender: 1,
+                        age: 1,
+                        onlineStatus: 1
+                    } }
+            ];
+            let users = yield user_1.User.aggregate(aggregate);
+            // Get total count if requested
+            let totalCount = undefined;
+            if (shouldCount === 'yes') {
+                totalCount = yield user_1.User.countDocuments(baseQuery).maxTimeMS(10000);
+            }
+            // Prepare pagination info
+            let pagination = {
+                currentPage: page,
+                pageSize: limit,
+            };
+            if (totalCount !== undefined) {
+                pagination = Object.assign(Object.assign({}, pagination), { totalPages: Math.ceil(totalCount / limit), totalUsers: totalCount });
+            }
+            res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+            return res.status(200).json({
+                success: true,
+                data: {
+                    users,
+                    pagination,
+                    searchCriteria: {
+                        educationLevels
+                    }
+                }
+            });
+        }
+        catch (error) {
+            console.error('Preferred education API error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
+            });
+        }
+    });
+});
+router.get('/users/preferred-location', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            let userInfo = (0, search_controller_1.getUserDataFromRequest)(req);
+            (typeof req.query.countries === "string") && (req.query.countries = [req.query.countries]);
+            (typeof req.query.division_ids === "string") && (req.query.division_ids = [req.query.division_ids]);
+            const validationResult = search_schema_1.preferredLocationSearchSchema.safeParse(req.query);
+            if (!validationResult.success) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid query parameters",
+                    error: validationResult.error.errors,
+                    data: null
+                });
+            }
+            const { page, limit, count: shouldCount, countries, division_ids } = validationResult.data;
+            // Calculate pagination
+            const skip = (page - 1) * limit;
+            // Base query for finding users
+            const baseQuery = {
+                gender: { $ne: userInfo.gender },
+                'address.country': { $in: countries }
+            };
+            // Add division filter if country includes Bangladesh
+            if (countries.includes(country_names_enum_1.CountryNamesEnum.BANGLADESH) && division_ids.length > 0) {
+                baseQuery['address.division.id'] = { $in: division_ids.map(e => e.toString()) };
+            }
+            console.log(baseQuery);
+            // Use aggregation to prioritize online users
+            let aggregate = [
+                { $match: baseQuery },
+                { $sort: {
+                        'onlineStatus.isOnline': -1,
+                        'onlineStatus.lastActive': 1
+                    } },
+                { $skip: skip },
+                { $limit: limit },
+                { $project: {
+                        name: 1,
+                        _id: 1,
+                        email: 1,
+                        'profileImage.url': 1,
+                        gender: 1,
+                        age: 1,
+                        onlineStatus: 1
+                    } }
+            ];
+            let users = yield user_1.User.aggregate(aggregate);
+            // Get total count if requested
+            let totalCount = undefined;
+            if (shouldCount === 'yes') {
+                totalCount = yield user_1.User.countDocuments(baseQuery).maxTimeMS(10000);
+            }
+            // Prepare pagination info
+            let pagination = {
+                currentPage: page,
+                pageSize: limit,
+            };
+            if (totalCount !== undefined) {
+                pagination = Object.assign(Object.assign({}, pagination), { totalPages: Math.ceil(totalCount / limit), totalUsers: totalCount });
+            }
+            res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+            return res.status(200).json({
+                success: true,
+                data: {
+                    users,
+                    pagination,
+                    searchCriteria: {
+                        countries,
+                        divisions_ids: division_ids || []
+                    }
+                }
+            });
+        }
+        catch (error) {
+            console.error('Preferred location API error:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
+            });
+        }
+    });
+});
+router.get('/users/matching/daily', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a;
+        try {
+            if (req.profileType !== 'matrimony_profile' || !((_a = req.authSession) === null || _a === void 0 ? void 0 : _a.value)) {
+                res.status(400).json({
+                    success: false,
+                    message: 'This Api is Only Availble for Matrimony Account Users',
+                    data: null
+                });
+                return;
+            }
+            const validationResult = search_schema_1.todaysMatchSchema.safeParse(req.query);
+            if (!validationResult.success) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid query parameters",
+                    error: validationResult.error.errors,
+                    data: null
+                });
+            }
+            const { limit } = validationResult.data;
+            let userData = req.authSession.value;
+            if (!userData.address.lat || !userData.address.long) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Todays Match are only available for Bangladeshi Users",
+                    data: null,
+                });
+            }
+            let lat = userData.address.lat, long = userData.address.long;
+            let nearestDistricts = (0, search_controller_1.findNearestDistricts)(lat, long, 7);
+            const baseQuery = Object.assign({ 'address.country': country_names_enum_1.CountryNamesEnum.BANGLADESH, 'address.district.id': { $in: nearestDistricts.map(district => district.id) } }, (0, search_controller_1.getBaseSearchQuery)(req.authSession.value));
+            let totalCount = yield user_1.User.countDocuments(baseQuery).maxTimeMS(5000);
+            let skip = Math.floor(Math.random() * ((totalCount || limit) - limit));
+            // Use aggregation to prioritize online users
+            let aggregate = [
+                { $match: baseQuery },
+                { $sort: {
+                        'onlineStatus.isOnline': -1,
+                        'onlineStatus.lastActive': 1
+                    } },
+                { $skip: skip },
+                { $limit: limit },
+                { $project: {
+                        name: 1,
+                        _id: 1,
+                        email: 1,
+                        'profileImage.url': 1,
+                        gender: 1,
+                        age: 1,
+                        onlineStatus: 1
+                    } }
+            ];
+            let users = yield user_1.User.aggregate(aggregate);
+            return res.status(200).json({
+                success: true,
+                data: { users }
+            });
+        }
+        catch (error) {
+            console.error(`daily match recommendation api error:`, error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
+            });
+        }
+    });
+});
+router.get('/users/matching/location', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a;
+        try {
+            if (!req.authSession || !((_a = req.authSession) === null || _a === void 0 ? void 0 : _a.value)) {
+                res.status(401).json({
+                    success: false,
+                    message: 'Failed to authorize the user',
+                    data: null
+                });
+                return;
+            }
+            let userId = req.authSession.value.userId;
+            let userData = req.authSession.value;
+            const validationResult = search_schema_1.paginationSchema.safeParse(req.query);
+            if (!validationResult.success) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid query parameters",
+                    error: validationResult.error.errors,
+                    data: null
+                });
+            }
+            const { page, limit, count: shouldCount } = validationResult.data;
+            if (!userData.address.lat || !userData.address.long) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Matching Users are only available for Bangladeshi Users",
+                    data: null,
+                });
+            }
+            let lat = userData.address.lat, long = userData.address.long;
+            let nearestDistricts = (0, search_controller_1.findNearestDistricts)(lat, long, 60);
+            const skip = (page - 1) * limit;
+            const baseQuery = Object.assign(Object.assign({}, (0, search_controller_1.getBaseSearchQuery)(userData)), { 'address.country': country_names_enum_1.CountryNamesEnum.BANGLADESH, 'address.district.id': { $in: nearestDistricts.map(district => district.id) } });
+            // Use aggregation to prioritize online users
+            let aggregate = [
+                { $match: baseQuery },
+                { $sort: {
+                        'onlineStatus.isOnline': -1,
+                        'onlineStatus.lastActive': 1
+                    } },
+                { $skip: skip },
+                { $limit: limit },
+                { $project: {
+                        name: 1,
+                        _id: 1,
+                        email: 1,
+                        'profileImage.url': 1,
+                        gender: 1,
+                        age: 1,
+                        onlineStatus: 1,
+                        enhancedSettings: 1
+                    } }
+            ];
+            let users = yield user_1.User.aggregate(aggregate);
+            let totalCount = undefined;
+            if (shouldCount === 'yes') {
+                totalCount = yield user_1.User.countDocuments(baseQuery).maxTimeMS(10000);
+            }
+            let pagination = {
+                currentPage: page,
+                pageSize: limit,
+            };
+            if (totalCount !== undefined) {
+                pagination = Object.assign(Object.assign({}, pagination), { totalPages: Math.ceil(totalCount / limit), totalUsers: totalCount });
+            }
+            users = users.filter((user) => {
+                if (!user.enhancedSettings.blocked.some((u) => u.userId === userId))
+                    return user;
+            });
+            return res.status(200).json({
+                success: false,
+                data: {
+                    districts: nearestDistricts.map(({ name, bn_name }) => ({ name, bn_name })),
+                    pagination,
+                    users,
+                }
+            });
+        }
+        catch (error) {
+            console.error(`match suggestion api error:`, error);
+            return res.status(500).json({
+                success: false,
+                message: "Internal server error",
+                data: null
+            });
+        }
+    });
+});
+router.get('/users/mutual', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a;
+        try {
+            if (!req.authSession || !((_a = req.authSession) === null || _a === void 0 ? void 0 : _a.value)) {
+                res.status(401).json({
+                    success: false,
+                    message: 'Failed to authorize the user',
+                    data: null
+                });
+                return;
+            }
+            // Validate query parameters
+            const validationResult = search_schema_1.paginationSchema.safeParse(req.query);
+            if (!validationResult.success) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid query parameters",
+                    error: validationResult.error.errors,
+                    data: null
+                });
+            }
+            const { page, limit, count: shouldCount } = validationResult.data;
+            const userId = req.authSession.value.userId;
+            // Get the current user's connections
+            const currentUser = yield user_1.User.findById(userId, 'connections')
+                .lean();
+            if (!currentUser) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                    error: { code: 'USER_NOT_FOUND' },
+                    data: null
+                });
+            }
+            const baseQuery = {
+                _id: {
+                    $in: currentUser.connections
+                },
+                'suspension.isSuspended': false
+            };
+            // Calculate pagination
+            const skip = (page - 1) * limit;
+            // Use aggregation to prioritize online users
+            let aggregate = [
+                { $match: baseQuery },
+                { $sort: {
+                        'onlineStatus.isOnline': -1,
+                        'onlineStatus.lastActive': 1
+                    } },
+                { $skip: skip },
+                { $limit: limit },
+                { $project: {
+                        name: 1,
+                        _id: 1,
+                        email: 1,
+                        'profileImage.url': 1,
+                        gender: 1,
+                        age: 1,
+                        onlineStatus: 1
+                    } }
+            ];
+            let users = yield user_1.User.aggregate(aggregate);
+            // Get total count if requested
+            let totalCount = undefined;
+            if (shouldCount === 'yes') {
+                totalCount = yield user_1.User.countDocuments(baseQuery)
+                    .maxTimeMS(10000);
+            }
+            // Prepare pagination info
+            let pagination = {
+                currentPage: page,
+                pageSize: limit,
+            };
+            if (totalCount !== undefined) {
+                pagination = Object.assign(Object.assign({}, pagination), { totalPages: Math.ceil(totalCount / limit), totalUsers: totalCount });
+            }
+            // Set cache control headers
+            res.set('Cache-Control', 'private, max-age=60'); // Cache for 1 minute, private because it's user-specific
+            return res.status(200).json({
+                success: true,
+                data: {
+                    users,
+                    pagination
+                }
+            });
+        }
+        catch (error) {
+            console.error('[Mutual Connections API Error]', {
+                error: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined,
+                timestamp: new Date().toISOString()
+            });
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                error: { code: 'INTERNAL_SERVER_ERROR' },
+                data: null
+            });
+        }
+    });
+});
+router.get('/users/viewed-not-contact', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a;
+        try {
+            if (!req.authSession || !((_a = req.authSession) === null || _a === void 0 ? void 0 : _a.value)) {
+                res.status(401).json({
+                    success: false,
+                    message: 'Failed to authorize the user',
+                    data: null
+                });
+                return;
+            }
+            // Validate query parameters
+            const validationResult = search_schema_1.paginationSchema.safeParse(req.query);
+            if (!validationResult.success) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid query parameters",
+                    error: validationResult.error.errors,
+                    data: null
+                });
+            }
+            const { page, limit, count: shouldCount } = validationResult.data;
+            const userId = req.authSession.value.userId;
+            // Get IDs of users who viewed the profile
+            const viewerIds = yield ProfileView_1.ProfileView.distinct('viewerId', {
+                viewedId: userId
+            });
+            // Get IDs of users who sent connection requests
+            const connectionRequestSenderIds = yield ConnectionRequest_1.ConnectionRequest.distinct('sender', {
+                recipient: userId,
+            });
+            // Find viewers who haven't sent connection requests
+            const baseQuery = {
+                _id: {
+                    $in: viewerIds,
+                    $nin: [...connectionRequestSenderIds, userId] // Exclude users who sent requests and self
+                },
+                'suspension.isSuspended': false
+            };
+            // Calculate pagination
+            const skip = (page - 1) * limit;
+            // Use aggregation to prioritize online users and get view timestamps
+            const viewerDetails = yield ProfileView_1.ProfileView.find({
+                viewerId: { $in: viewerIds },
+                viewedId: userId
+            }, 'viewerId viewedAt')
+                .sort({ viewedAt: -1 })
+                .lean();
+            const viewerIdsWithTimestamps = viewerDetails.map(v => v.viewerId.toString());
+            // Use aggregation to prioritize online users
+            let aggregate = [
+                { $match: baseQuery },
+                { $sort: {
+                        'onlineStatus.isOnline': -1,
+                        'onlineStatus.lastActive': 1
+                    } },
+                { $skip: skip },
+                { $limit: limit },
+                { $project: {
+                        name: 1,
+                        _id: 1,
+                        email: 1,
+                        'profileImage.url': 1,
+                        gender: 1,
+                        age: 1,
+                        onlineStatus: 1
+                    } }
+            ];
+            let users = yield user_1.User.aggregate(aggregate);
+            // Get total count if requested
+            let totalCount = undefined;
+            if (shouldCount === 'yes') {
+                totalCount = yield user_1.User.countDocuments(baseQuery)
+                    .maxTimeMS(10000);
+            }
+            // Prepare pagination info
+            let pagination = {
+                currentPage: page,
+                pageSize: limit,
+            };
+            if (totalCount !== undefined) {
+                pagination = Object.assign(Object.assign({}, pagination), { totalPages: Math.ceil(totalCount / limit), totalUsers: totalCount });
+            }
+            // Enhance user objects with view timestamps
+            let notContactedUsers = users.map(function (user) {
+                const viewInfo = viewerDetails.find(v => v.viewerId.toString() === user._id.toString());
+                if (viewInfo) {
+                    return Object.assign(Object.assign({}, user), { viewedAt: viewInfo.viewedAt });
+                }
+                return user;
+            });
+            // Set cache headers
+            res.set('Cache-Control', 'private, max-age=60'); // Cache for 1 minute, private because it's user-specific
+            return res.status(200).json({
+                success: true,
+                data: {
+                    users: notContactedUsers,
+                    pagination
+                }
+            });
+        }
+        catch (error) {
+            console.error('[Viewed Not Connected API Error]', {
+                error: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined,
+                timestamp: new Date().toISOString()
+            });
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                error: { code: 'INTERNAL_SERVER_ERROR' },
+                data: null
+            });
+        }
+    });
+});
+// router.get('/users/not-viewed', 
+// async function (req: Request, res: Response): Promise<Response | any> {
+//  try {
+//         const validationResult = paginationSchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+//         const { page, limit, count: shouldCount, } = validationResult.data;
+//         const userData = req.authSession.value;
+//         // Get IDs of profiles already viewed by the user
+//         const viewedProfileIds = await ProfileView.distinct('viewedId', {
+//             viewerId: userData.userId
+//         });
+//         const baseQuery: any = {
+//             ...getBaseSearchQuery(req.authSession.value),
+//             'address.country': userData.address.country,
+//             _id: {
+//                 $nin: [...viewedProfileIds, userData.userId]
+//             },
+//         };
+//         // Calculate pagination
+//         const skip = (page - 1) * limit;
+//         // Find users with pagination
+//         let users = await User.find(baseQuery, userField)
+//             .skip(skip)
+//             .limit(limit)
+//             .lean()
+//             .maxTimeMS(20000);
+//         // Get total count if requested
+//         let totalCount: number | undefined = undefined;
+//         if (shouldCount === 'yes') {
+//             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+//         }
+//         // Prepare pagination info
+//         let pagination: object = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+//         if (totalCount !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(totalCount / limit),
+//                 totalUsers: totalCount
+//             };
+//         }
+//         res.set("cache-control", "max-age=60, public");
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 users,
+//                 pagination,
+//             }
+//         });
+//     } catch (error) {
+//         console.error(`unviewed profile listing api error:`, error);
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+// router.get('/users/others-viewed-my-profile', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const userData = req.authSession.value;
+//         // Get IDs of profiles already viewed by the user
+//         const viewedMyProfileIds = (
+//             await ProfileView.find({}, 'viewerId')
+//                 .where('viewedId').equals(userData.userId)
+//                 .where('viewerId').ne(userData.userId)
+//                 .lean()
+//         )
+//             .map(el => el.viewerId);
+//         const baseQuery: any = {
+//             _id: {
+//                 $in: viewedMyProfileIds // Exclude viewed profiles
+//             },
+//             'suspension.isSuspended': false,
+//         };
+//         // Find users with pagination
+//         let users = await User.find(baseQuery, userField)
+//             .lean()
+//             .maxTimeMS(20000);
+//         res.set("cache-control", "max-age=60, public");
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 users,
+//             }
+//         });
+//     } catch (error) {
+//         console.error(`others viewed Your Profile api error:`, error);
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+// // Complete the shortlist APIs in search.ts
+// router.get('/users/my-shortlist', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         // Validate query parameters
+//         const validationResult = paginationSchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+//         const { page, limit, count: shouldCount } = validationResult.data;
+//         const userId = req.authSession.value.userId;
+//         // Get shortlisted user IDs
+//         let shortlistedIds = await ShortList.distinct('shortListedId', {
+//             shortListerId: userId
+//         });
+//         // Base query
+//         const baseQuery = {
+//             _id: {
+//                 $in: shortlistedIds,
+//             },
+//             'suspension.isSuspended': false,
+//         };
+//         // Calculate pagination
+//         const skip = (page - 1) * limit;
+//         // Find users with pagination
+//         let users = await User.find(baseQuery, userField)
+//             .sort({ createdAt: -1 })
+//             .skip(skip)
+//             .limit(limit)
+//             .lean()
+//             .maxTimeMS(20000);
+//         // Get total count if requested
+//         let totalCount: number | undefined = undefined;
+//         if (shouldCount === 'yes') {
+//             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+//         }
+//         // Prepare pagination info
+//         let pagination: object = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+//         if (totalCount !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(totalCount / limit),
+//                 totalUsers: totalCount
+//             };
+//         }
+//         // Set cache headers
+//         res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 users,
+//                 pagination
+//             }
+//         });
+//     } catch (error) {
+//         console.error('[Shortlist search api error]', {
+//             error: error instanceof Error ? error.message : 'Unknown error',
+//             stack: error instanceof Error ? error.stack : undefined,
+//             timestamp: new Date().toISOString()
+//         });
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+// router.get('/users/others-shortlisted-me', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         // Validate query parameters
+//         const validationResult = paginationSchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+//         const { page, limit, count: shouldCount } = validationResult.data;
+//         const userId = req.authSession.value.userId;
+//         // Get IDs of users who shortlisted the current user
+//         let shortlistedByIds = await ShortList.distinct('shortListerId', {
+//             shortListedId: userId
+//         });
+//         // Base query for finding users
+//         const baseQuery = {
+//             _id: {
+//                 $in: shortlistedByIds,
+//             },
+//             'suspension.isSuspended': false,
+//         };
+//         // Calculate pagination
+//         const skip = (page - 1) * limit;
+//         // Find users with pagination
+//         let users = await User.find(baseQuery, userField)
+//             .sort({ createdAt: -1 })
+//             .skip(skip)
+//             .limit(limit)
+//             .lean()
+//             .maxTimeMS(20000);
+//         // Get total count if requested
+//         let totalCount: number | undefined = undefined;
+//         if (shouldCount === 'yes') {
+//             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+//         }
+//         // Prepare pagination info
+//         let pagination: object = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+//         if (totalCount !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(totalCount / limit),
+//                 totalUsers: totalCount
+//             };
+//         }
+//         // Set cache headers
+//         res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 users,
+//                 pagination
+//             }
+//         });
+//     } catch (error) {
+//         console.error('[Others shortlisted me api error]', {
+//             error: error instanceof Error ? error.message : 'Unknown error',
+//             stack: error instanceof Error ? error.stack : undefined,
+//             timestamp: new Date().toISOString()
+//         });
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+// router.get('/users/preferred-occupation', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         Array.isArray(req.query.occupations) === false && (req.query.occupations = [req.query.occupations || Occupation.DOCTOR]);
+//         // Validate query parameters
+//         const validationResult = preferredOccupationSearchSchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+//         const {
+//             page,
+//             limit,
+//             count: shouldCount,
+//             occupations
+//         } = validationResult.data;
+//         const userData = req.authSession.value;
+//         // Calculate pagination
+//         const skip = (page - 1) * limit;
+//         // Construct base query with occupation filter
+//         const baseQuery = {
+//             ...getBaseSearchQuery(req.authSession.value),
+//             occupation: { $in: occupations }
+//         };
+//         // Find matching users with occupation details
+//         const users = await User.find(baseQuery, userField)
+//             .skip(skip)
+//             .limit(limit)
+//             .lean();
+//         // Get total count if requested
+//         let totalCount: number | undefined = undefined;
+//         if (shouldCount === 'yes') {
+//             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+//         }
+//         // Get occupation distribution for analytics
+//         const occupationDistribution = await User.find(baseQuery, userField);
+//         // Prepare pagination info
+//         let pagination: object = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+//         if (totalCount !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(totalCount / limit),
+//                 totalUsers: totalCount
+//             };
+//         }
+//         // Set cache control header for 1 minute
+//         // Short cache time because occupation data might change frequently
+//         res.set('Cache-Control', 'public, max-age=60');
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 users,
+//                 pagination,
+//             }
+//         });
+//     } catch (error) {
+//         // Log the error with request details for debugging
+//         console.error('Preferred occupation API error:', {
+//             error,
+//             query: req.query,
+//             userId: req.authSession?.value?.userId
+//         });
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+// // router.get('/users/preferred-location', async function (req: Request, res: Response): Promise<Response | any> {
+// //     try {
+// //         (typeof req.query.countries === "string") && (req.query.countries = [req.query.countries]);
+// //         (typeof req.query.division_ids === "string") && (req.query.division_ids = [req.query.division_ids]);
+// //         const validationResult = preferredLocationSearchSchema.safeParse(req.query);
+// //         if (!validationResult.success) {
+// //             return res.status(400).json({
+// //                 success: false,
+// //                 message: "Invalid query parameters",
+// //                 error: validationResult.error.errors,
+// //                 data: null
+// //             });
+// //         }
+// //         const {
+// //             page,
+// //             limit,
+// //             count: shouldCount,
+// //             countries,
+// //             division_ids
+// //         } = validationResult.data;
+// //         const userData = req.authSession.value;
+// //         // Calculate pagination
+// //         const skip = (page - 1) * limit;
+// //         // Base query for finding users
+// //         const baseQuery: any = {
+// //             ...getBaseSearchQuery(req.authSession.value),
+// //             'address.country': { $in: countries }
+// //         };
+// //         // Add division filter if country includes Bangladesh
+// //         if (countries.includes(CountryNamesEnum.BANGLADESH) && division_ids.length > 0) {
+// //             baseQuery['address.division.id'] = { $in: division_ids.map(e => e.toString()) };
+// //         }
+// //         console.log(baseQuery)
+// //         // Find users
+// //         let users = await User.find(baseQuery, userField)
+// //             .sort({ createdAt: -1 })
+// //             .skip(skip)
+// //             .limit(limit)
+// //             .lean()
+// //             .maxTimeMS(20000);
+// //         // Get total count if requested
+// //         let totalCount: number | undefined = undefined;
+// //         if (shouldCount === 'yes') {
+// //             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+// //         }
+// //         // Prepare pagination info
+// //         let pagination: object = {
+// //             currentPage: page,
+// //             pageSize: limit,
+// //         };
+// //         if (totalCount !== undefined) {
+// //             pagination = {
+// //                 ...pagination,
+// //                 totalPages: Math.ceil(totalCount / limit),
+// //                 totalUsers: totalCount
+// //             };
+// //         }
+// //         res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+// //         return res.status(200).json({
+// //             success: true,
+// //             data: {
+// //                 users,
+// //                 pagination,
+// //                 searchCriteria: {
+// //                     countries,
+// //                     divisions_ids: division_ids || []
+// //                 }
+// //             }
+// //         });
+// //     } catch (error) {
+// //         console.error('Preferred location API error:', error);
+// //         return res.status(500).json({
+// //             success: false,
+// //             message: 'Internal server error',
+// //             data: null
+// //         });
+// //     }
+// // });
+// // Explore users by country
+// // router.get('/users/explore/by-country', async function (req: Request, res: Response): Promise<Response | any> {
+// //     try {
+// //         // Handle array conversion if single string
+// //         (typeof req.query.countries === "string") && (req.query.countries = [req.query.countries]);
+// //         const validationResult = exploreByCountrySchema.safeParse(req.query);
+// //         if (!validationResult.success) {
+// //             return res.status(400).json({
+// //                 success: false,
+// //                 message: "Invalid query parameters",
+// //                 error: validationResult.error.errors,
+// //                 data: null
+// //             });
+// //         }
+// //         const {
+// //             page,
+// //             limit,
+// //             count: shouldCount,
+// //             countries
+// //         } = validationResult.data;
+// //         // Calculate pagination
+// //         const skip = (page - 1) * limit;
+// //         // Base query for finding users
+// //         const baseQuery: any = {
+// //             // ...getBaseSearchQuery(req.authSession.value),
+// //             'address.country': { $in: countries }
+// //         };
+// //         // Find users
+// //         let users = await User.find(baseQuery, userField)
+// //             .sort({ createdAt: -1 })
+// //             .skip(skip)
+// //             .limit(limit)
+// //             .lean()
+// //             .maxTimeMS(20000);
+// //         // Get total count if requested
+// //         let totalCount: number | undefined = undefined;
+// //         if (shouldCount === 'yes') {
+// //             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+// //         }
+// //         // Prepare pagination info
+// //         let pagination: object = {
+// //             currentPage: page,
+// //             pageSize: limit,
+// //         };
+// //         if (totalCount !== undefined) {
+// //             pagination = {
+// //                 ...pagination,
+// //                 totalPages: Math.ceil(totalCount / limit),
+// //                 totalUsers: totalCount
+// //             };
+// //         }
+// //         res.set('Cache-Control', 'public, max-age=60');
+// //         return res.status(200).json({
+// //             success: true,
+// //             data: {
+// //                 users,
+// //                 pagination,
+// //                 searchCriteria: { countries }
+// //             }
+// //         });
+// //     } catch (error) {
+// //         console.error('Explore by country API error:', error);
+// //         return res.status(500).json({
+// //             success: false,
+// //             message: 'Internal server error',
+// //             data: null
+// //         });
+// //     }
+// // });
+// // // Explore users by division (Bangladesh only)
+// // router.get('/users/explore/by-division', async function (req: Request, res: Response): Promise<Response | any> {
+// //     try {
+// //         // Handle array conversion if single string
+// //         (typeof req.query.division_ids === "string") && (req.query.division_ids = [req.query.division_ids]);
+// //         const validationResult = exploreByDivisionSchema.safeParse(req.query);
+// //         if (!validationResult.success) {
+// //             return res.status(400).json({
+// //                 success: false,
+// //                 message: "Invalid query parameters",
+// //                 error: validationResult.error.errors,
+// //                 data: null
+// //             });
+// //         }
+// //         const {
+// //             page,
+// //             limit,
+// //             count: shouldCount,
+// //             division_ids
+// //         } = validationResult.data;
+// //         const userData = req.authSession.value;
+// //         // Calculate pagination
+// //         const skip = (page - 1) * limit;
+// //         // Base query for finding users
+// //         const baseQuery: any = {
+// //             // ...getBaseSearchQuery(req.authSession.value),
+// //             // 'address.country': CountryNamesEnum.BANGLADESH,
+// //             'address.division.id': { $in: division_ids.map(id => id.toString()) }
+// //         };
+// //         // Find users
+// //         let users = await User.find(baseQuery, userField)
+// //             .sort({ createdAt: -1 })
+// //             .skip(skip)
+// //             .limit(limit)
+// //             .lean()
+// //             .maxTimeMS(20000);
+// //         // Get total count if requested
+// //         let totalCount: number | undefined = undefined;
+// //         if (shouldCount === 'yes') {
+// //             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+// //         }
+// //         // Prepare pagination info
+// //         let pagination: object = {
+// //             currentPage: page,
+// //             pageSize: limit,
+// //         };
+// //         if (totalCount !== undefined) {
+// //             pagination = {
+// //                 ...pagination,
+// //                 totalPages: Math.ceil(totalCount / limit),
+// //                 totalUsers: totalCount
+// //             };
+// //         }
+// //         res.set('Cache-Control', 'public, max-age=60');
+// //         return res.status(200).json({
+// //             success: true,
+// //             data: {
+// //                 users,
+// //                 pagination,
+// //                 searchCriteria: {
+// //                     country: CountryNamesEnum.BANGLADESH,
+// //                     division_ids
+// //                 }
+// //             }
+// //         });
+// //     } catch (error) {
+// //         console.error('Explore by division API error:', error);
+// //         return res.status(500).json({
+// //             success: false,
+// //             message: 'Internal server error',
+// //             data: null
+// //         });
+// //     }
+// // });
+// router.get('/user', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const validationResult = getUserByMIDSchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+//         const { mid } = validationResult.data;
+//         const user = await User.findOne(
+//             { mid, 'suspension.isSuspended': false },
+//             userField
+//         ).lean();
+//         if (!user) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: "User not found",
+//                 data: null
+//             });
+//         }
+//         // Cache response for 5 minutes
+//         res.set('Cache-Control', 'public, max-age=300');
+//         return res.status(200).json({
+//             success: true,
+//             data: { user }
+//         });
+//     } catch (error) {
+//         console.error('Get user by MID error:', error);
+//         return res.status(500).json({
+//             success: false,
+//             message: "Internal server error",
+//             data: null
+//         });
+//     }
+// });
+// router.get('/user/:id', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         let _id = await _idValidator.parseAsync(req.params.id);
+//         const user = await User.findById(
+//             _id,
+//             userField
+//         ).lean();
+//         if (!user) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: "User not found",
+//                 data: null
+//             });
+//         }
+//         // Cache response for 5 minutes
+//         res.set('Cache-Control', 'public, max-age=600');
+//         return res.status(200).json({
+//             success: true,
+//             data: { user }
+//         });
+//     } catch (error) {
+//         console.error('Get user by MID error:', error);
+//         return res.status(500).json({
+//             success: false,
+//             message: "Internal server error",
+//             data: null
+//         });
+//     }
+// });
+// router.get('/users/filter', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         // Handle array parameters that might come as strings
+//         (typeof req.query.languages === "string") && (req.query.languages = [req.query.languages]);
+//         (typeof req.query.countries === "string") && (req.query.countries = [req.query.countries]);
+//         (typeof req.query.division_ids === "string") && (req.query.division_ids = [req.query.division_ids]);
+//         (typeof req.query.maritalStatuses === "string") && (req.query.maritalStatuses = [req.query.maritalStatuses]);
+//         (typeof req.query.occupations === "string") && (req.query.occupations = [req.query.occupations]);
+//         const queryResult = filterUsersSchema.safeParse(req.query);
+//         if (!queryResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 errors: queryResult.error.errors,
+//                 data: null
+//             });
+//         }
+//         const validatedQuery = queryResult.data;
+//         const userData = req.authSession.value;
+//         // Destructure all query parameters
+//         const {
+//             page,
+//             limit,
+//             count: shouldCount,
+//             religion,
+//             languages,
+//             countries,
+//             division_ids,
+//             isEducated,
+//             minWeight,
+//             maxWeight,
+//             minHeight,
+//             maxHeight,
+//             minAge,
+//             maxAge,
+//             maritalStatuses,
+//             occupations,
+//             minAnnualIncome,
+//             maxAnnualIncome,
+//             incomeCurrency,
+//         } = validatedQuery;
+//         // Build the base query
+//         const baseQuery: any = getBaseSearchQuery(req.authSession.value);
+//         // Add optional filters
+//         if (religion) baseQuery.religion = religion;
+//         if (languages?.length > 0) baseQuery.languages = { $all: languages };
+//         if (countries?.length > 0) baseQuery['address.country'] = { $in: countries };
+//         if (countries?.includes(CountryNamesEnum.BANGLADESH) && division_ids?.length > 0) {
+//             baseQuery['address.division.id'] = { $in: division_ids };
+//         }
+//         if (isEducated) baseQuery.isEducated = isEducated;
+//         // Add range-based filters
+//         if (minWeight || maxWeight) {
+//             baseQuery.weight = {};
+//             if (minWeight) baseQuery.weight.$gte = minWeight;
+//             if (maxWeight) baseQuery.weight.$lte = maxWeight;
+//         }
+//         if (minAge || maxAge) {
+//             baseQuery.age = {};
+//             if (minAge) baseQuery.age.$gte = minAge;
+//             if (maxAge) baseQuery.age.$lte = maxAge;
+//         }
+//         if (minHeight && maxHeight) {
+//             baseQuery.height = { $in: searchHeightGenerator(minHeight, maxHeight) };
+//         }
+//         // Add array-based filters
+//         if (maritalStatuses?.length > 0) {
+//             baseQuery.maritalStatus = { $in: maritalStatuses };
+//         }
+//         if (occupations?.length > 0) {
+//             baseQuery.occupation = { $in: occupations };
+//         }
+//         // Add income-based filters
+//         if (minAnnualIncome && maxAnnualIncome) {
+//             baseQuery['annualIncome.currency'] = incomeCurrency;
+//             baseQuery['annualIncome.amount'] = {};
+//             if (minAnnualIncome) baseQuery['annualIncome.amount'].$gte = minAnnualIncome;
+//             if (maxAnnualIncome) baseQuery['annualIncome.amount'].$lte = maxAnnualIncome;
+//         }
+//         // Calculate pagination
+//         const skip = (page - 1) * limit;
+//         // Execute the query with pagination
+//         const users = await User.find(baseQuery, userField)
+//             .skip(skip)
+//             .limit(limit)
+//             .lean()
+//             .maxTimeMS(20000); // Set maximum execution time
+//         // Get total count if requested
+//         let totalCount: number | undefined = undefined;
+//         if (shouldCount === 'yes') {
+//             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+//         }
+//         // Prepare pagination info
+//         let pagination: object = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+//         if (totalCount !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(totalCount / limit),
+//                 totalUsers: totalCount
+//             };
+//         }
+//         // Set cache headers for better performance
+//         res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 users,
+//                 pagination,
+//                 filterCriteria: {
+//                     religion,
+//                     languages,
+//                     countries,
+//                     division_ids,
+//                     isEducated,
+//                     weightRange: minWeight || maxWeight ? { min: minWeight, max: maxWeight } : undefined,
+//                     ageRange: minAge || maxAge ? { min: minAge, max: maxAge } : undefined,
+//                     heightRange: minHeight || maxHeight ? { min: minHeight, max: maxHeight } : undefined,
+//                     maritalStatuses,
+//                     occupations,
+//                     incomeRange: minAnnualIncome || maxAnnualIncome ? {
+//                         min: minAnnualIncome,
+//                         max: maxAnnualIncome,
+//                         currency: incomeCurrency
+//                     } : undefined
+//                 }
+//             }
+//         });
+//     } catch (error) {
+//         console.error('Filter users API error:', error);
+//         return res.status(500).json({
+//             success: false,
+//             message: "Internal server error",
+//             data: null
+//         });
+//     }
+// });
+// router.get('/search-history', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const userId = req.authSession.value.userId;
+//         // Get search history
+//         const searchHistory = await SearchHistory.find({ userId, }, 'title query savedAt userId')
+//             .sort({ savedAt: -1 })
+//             .lean()
+//             .maxTimeMS(10000);
+//         if (searchHistory.length > 50) {
+//             for (let i = 0; i < searchHistory.length; i++) {
+//                 const { savedAt, _id } = searchHistory[i];
+//                 if (savedAt.getTime() < (Date.now() - 7 * 24 * 3600 * 1000)) await SearchHistory.findByIdAndDelete(_id);
+//             }
+//         }
+//         // Set cache headers
+//         res.set('Cache-Control', 'private, max-age=60'); // Cache for 1 minute, private because it's user-specific
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 searchHistory,
+//             }
+//         });
+//     } catch (error) {
+//         console.error('[Get Search History API Error]', {
+//             error: error instanceof Error ? error.message : 'Unknown error',
+//             stack: error instanceof Error ? error.stack : undefined,
+//             timestamp: new Date().toISOString()
+//         });
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+// router.post('/search-history', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         // Validate request body
+//         const validationResult = searchHistorySchema.safeParse(req.body);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid request parameters",
+//                 error: 'VALIDATION_ERROR',
+//                 errors: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+//         const { searchQuery, title } = validationResult.data;
+//         const userId = req.authSession.value.userId;
+//         // Check if title already exists for this user
+//         const isHistoryExists = await SearchHistory.findOne(
+//             { userId, title },
+//             '_id'
+//         ).lean();
+//         if (isHistoryExists) {
+//             return res.status(409).json({
+//                 success: false,
+//                 message: 'A search history with this title already exists',
+//                 error: 'DUPLICATE_TITLE',
+//                 data: null
+//             });
+//         }
+//         // Create new search history
+//         const newSearchHistory = await SearchHistory.create({
+//             title,
+//             userId,
+//             searchQuery,
+//             savedAt: new Date()
+//         });
+//         // Return success response
+//         return res.status(201).json({
+//             success: true,
+//             data: {
+//                 id: newSearchHistory._id,
+//                 title: newSearchHistory.title,
+//                 createdAt: newSearchHistory.savedAt
+//             },
+//             error: null,
+//             message: 'Search history saved successfully'
+//         });
+//     } catch (error) {
+//         console.error('[Save search history API error]', {
+//             error: error instanceof Error ? error.message : 'Unknown error',
+//             stack: error instanceof Error ? error.stack : undefined,
+//             timestamp: new Date().toISOString(),
+//             userId: req.authSession?.value?.userId
+//         });
+//         return res.status(500).json({
+//             success: false,
+//             message: 'An error occurred while saving search history',
+//             error: 'INTERNAL_SERVER_ERROR',
+//             data: null
+//         });
+//     }
+// });
+// router.delete('/search-history/:id', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         // Validate ID parameter
+//         const historyId = _idValidator.parse(req.params.id);
+//         const userId = req.authSession.value.userId;
+//         // Find and delete the search history
+//         const searchHistory = await SearchHistory.findById(historyId);
+//         if (!searchHistory) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: 'Search history not found or you do not have permission to delete it',
+//                 error: 'NOT_FOUND',
+//                 data: null
+//             });
+//         }
+//         await searchHistory.deleteOne();
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 id: historyId,
+//                 deletedAt: new Date()
+//             },
+//             error: null,
+//             message: 'Search history deleted successfully'
+//         });
+//     } catch (error) {
+//         // Handle validation errors
+//         if (error instanceof z.ZodError) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'Invalid search history ID',
+//                 error: 'INVALID_ID',
+//                 errors: error.errors,
+//                 data: null
+//             });
+//         }
+//         console.error('[Delete search history API error]', {
+//             error: error instanceof Error ? error.message : 'Unknown error',
+//             stack: error instanceof Error ? error.stack : undefined,
+//             timestamp: new Date().toISOString(),
+//             userId: req.authSession?.value?.userId,
+//             historyId: req.params.id
+//         });
+//         return res.status(500).json({
+//             success: false,
+//             message: 'An error occurred while deleting search history',
+//             error: 'INTERNAL_SERVER_ERROR',
+//             data: null
+//         });
+//     }
+// });
+// router.get('/users/suggested-for-you', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         // Validate pagination parameters using zod schema
+//         const validationResult = paginationSchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+//         const { page, limit, count: shouldCount } = validationResult.data;
+//         const userData = req.authSession.value;
+//         // Get current user's partner preferences and gender
+//         const currentUser = await User.findById(userData.userId, 'partnerPreference gender')
+//             .lean();
+//         if (!currentUser) {
+//             throw new Error("currentUser is null");
+//         }
+//         if (!currentUser?.partnerPreference) {
+//             // If no preferences exist, create them automatically
+//             const userForPrefs = await User.findById(userData.userId);
+//             if (userForPrefs) {
+//                 userForPrefs.createPreference();
+//                 await userForPrefs.save();
+//                 currentUser.partnerPreference = userForPrefs.partnerPreference;
+//             } else {
+//                 return res.status(404).json({
+//                     success: false,
+//                     message: "User not found",
+//                     data: null
+//                 });
+//             }
+//         }
+//         // Build base query including base search criteria
+//         const baseQuery: any = {
+//             ...getBaseSearchQuery(userData), // Use existing helper for base query
+//             _id: { $ne: userData.userId }, // Exclude current user
+//             'suspension.isSuspended': false,
+//             // Match opposite gender
+//             gender: currentUser.gender === 'male' ? 'female' : 'male'
+//         };
+//         const pref = currentUser.partnerPreference;
+//         // Add age preferences
+//         if (pref.ageRange?.min || pref.ageRange?.max) {
+//             baseQuery.age = {};
+//             if (pref.ageRange.min) baseQuery.age.$gte = pref.ageRange.min;
+//             if (pref.ageRange.max) baseQuery.age.$lte = pref.ageRange.max;
+//         }
+//         // Add height preferences with proper validation
+//         if (pref.heightRange?.min && pref.heightRange?.max) {
+//             baseQuery.height = {
+//                 $in: searchHeightGenerator(
+//                     pref.heightRange.min,
+//                     pref.heightRange.max
+//                 )
+//             };
+//         }
+//         // Add religion preferences
+//         if (pref.religion?.length > 0) {
+//             baseQuery.religion = { $in: pref.religion };
+//         }
+//         // Add marital status preferences
+//         if (pref.maritalStatus?.length > 0) {
+//             baseQuery.maritalStatus = { $in: pref.maritalStatus };
+//         }
+//         // Add education preferences with null handling
+//         if (pref.education?.minimumLevel) {
+//             const educationLevels = Object.values(EducationLevel);
+//             const minLevelIndex = educationLevels.indexOf(pref.education.minimumLevel);
+//             if (minLevelIndex !== -1) {
+//                 const acceptableLevels = educationLevels.slice(minLevelIndex);
+//                 baseQuery['education.level'] = { $in: acceptableLevels };
+//             }
+//         }
+//         // Add location preferences
+//         if (pref.locationPreference?.preferredCountries?.length > 0) {
+//             baseQuery['address.country'] = { $in: pref.locationPreference.preferredCountries };
+//             // Add division/district preferences for Bangladesh
+//             if (!!pref.locationPreference?.preferredRegions?.length && pref.locationPreference.preferredRegions?.length > 0 &&
+//                 pref.locationPreference.preferredCountries.includes(CountryNamesEnum.BANGLADESH)) {
+//                 baseQuery['address.division.id'] = { $in: pref.locationPreference.preferredRegions };
+//             }
+//         }
+//         // Add occupation preferences
+//         if (!!pref.profession?.acceptedOccupations?.length && pref.profession?.acceptedOccupations?.length > 0) {
+//             baseQuery.occupation = { $in: pref.profession.acceptedOccupations };
+//         }
+//         // Add income preferences with currency matching
+//         if (pref.profession?.minimumAnnualIncome) {
+//             baseQuery.annualIncome = {
+//                 amount: { $gte: pref.profession.minimumAnnualIncome.min },
+//                 currency: pref.profession.minimumAnnualIncome.currency
+//             };
+//         }
+//         // Calculate pagination
+//         const skip = (page - 1) * limit;
+//         // Find matching users with pagination and proper fields
+//         let users = await User.find(baseQuery, userField)
+//             .sort({
+//                 'membership.currentMembership.membership_exipation_date': -1, // Premium users first
+//                 createdAt: -1 // Then by newest
+//             })
+//             .skip(skip)
+//             .limit(limit)
+//             .lean()
+//             .maxTimeMS(20000);
+//         // Get total count if requested
+//         let totalCount: number | undefined = undefined;
+//         if (shouldCount === 'yes') {
+//             totalCount = await User.countDocuments(baseQuery)
+//                 .maxTimeMS(10000);
+//         }
+//         // Prepare pagination info
+//         let pagination: object = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+//         if (totalCount !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(totalCount / limit),
+//                 totalUsers: totalCount
+//             };
+//         }
+//         // Cache control - short cache due to frequent updates
+//         res.set('Cache-Control', 'private, max-age=60');
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 users,
+//                 pagination
+//             },
+//             message: 'SUGGESTED_USERS_FOUND'
+//         });
+//     } catch (error) {
+//         console.error('[Suggested For You API error]', error);
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+// router.get('/users/viewed-profiles', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const validationResult = paginationSchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+//         const { page, limit, count: shouldCount, } = validationResult.data;
+//         const userData = req.authSession.value;
+//         // Get IDs of profiles already viewed by the user
+//         const viewedProfileIds = await ProfileView.distinct('viewedId', {
+//             viewerId: userData.userId
+//         });
+//         const baseQuery: any = {
+//             _id: {
+//                 $ne: userData.userId,  // Exclude current user
+//                 $in: viewedProfileIds // Exclude viewed profiles
+//             },
+//             'suspension.isSuspended': false,
+//         };
+//         // Calculate pagination
+//         const skip = (page - 1) * limit;
+//         // Find users with pagination
+//         let users = await User.find(baseQuery, userField)
+//             .skip(skip)
+//             .limit(limit)
+//             .lean()
+//             .maxTimeMS(20000);
+//         // Get total count if requested
+//         let totalCount: number | undefined = undefined;
+//         if (shouldCount === 'yes') {
+//             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+//         }
+//         // Prepare pagination info
+//         let pagination: object = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+//         if (totalCount !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(totalCount / limit),
+//                 totalUsers: totalCount
+//             };
+//         }
+//         res.set("cache-control", "max-age=60, public");
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 users,
+//                 pagination,
+//             }
+//         });
+//     } catch (error) {
+//         console.error('[Viewed Profile search api error]', error);
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+// router.get('/users/viewed-my-profile', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const validationResult = paginationSchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+//         const { page, limit, count: shouldCount, } = validationResult.data;
+//         const userData = req.authSession.value;
+//         // Get IDs of profiles already viewed by the user
+//         const viewedProfileIds = await ProfileView.distinct('viewerId', {
+//             viewedId: userData.userId
+//         });
+//         const baseQuery: any = {
+//             ...getBaseSearchQuery(req.authSession.value),
+//             'address.country': userData.address.country,
+//             _id: {
+//                 $ne: userData.userId,  // Exclude current user
+//                 $in: viewedProfileIds // Exclude viewed profiles
+//             },
+//         };
+//         // Calculate pagination
+//         const skip = (page - 1) * limit;
+//         // Find users with pagination
+//         let users = await User.find(baseQuery, userField)
+//             .skip(skip)
+//             .limit(limit)
+//             .lean()
+//             .maxTimeMS(20000);
+//         // Get total count if requested
+//         let totalCount: number | undefined = undefined;
+//         if (shouldCount === 'yes') {
+//             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+//         }
+//         // Prepare pagination info
+//         let pagination: object = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+//         if (totalCount !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(totalCount / limit),
+//                 totalUsers: totalCount
+//             };
+//         }
+//         res.set("cache-control", "max-age=60, public");
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 users,
+//                 pagination,
+//             }
+//         });
+//     } catch (error) {
+//         console.error('[Viewed My Profiles]', error);
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+// // Implement /users/liked-by-me - Get profiles that the current user has liked
+// router.get('/users/liked-by-me', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const validationResult = paginationSchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+//         const { page, limit, count: shouldCount } = validationResult.data;
+//         const userData = req.authSession.value;
+//         // Get IDs of profiles liked by the current user
+//         const likedProfileIds = await LikedProfile.distinct('likedId', {
+//             likerId: userData.userId
+//         });
+//         const baseQuery = {
+//             _id: {
+//                 $in: likedProfileIds
+//             },
+//             'suspension.isSuspended': false,
+//         };
+//         // Calculate pagination
+//         const skip = (page - 1) * limit;
+//         // Find users with pagination
+//         let users = await User.find(baseQuery, userField)
+//             .skip(skip)
+//             .limit(limit)
+//             .lean()
+//             .maxTimeMS(20000);
+//         // Get total count if requested
+//         let totalCount: number | undefined = undefined;
+//         if (shouldCount === 'yes') {
+//             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+//         }
+//         // Prepare pagination info
+//         let pagination: object = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+//         if (totalCount !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(totalCount / limit),
+//                 totalUsers: totalCount
+//             };
+//         }
+//         res.set("cache-control", "max-age=60, public");
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 users,
+//                 pagination,
+//             }
+//         });
+//     } catch (error) {
+//         console.error('[Liked by me profiles API error]', error);
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+// // Implement /users/liked-me - Get profiles that have liked the current user
+// router.get('/users/liked-me', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const validationResult = paginationSchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+//         const { page, limit, count: shouldCount } = validationResult.data;
+//         const userData = req.authSession.value;
+//         // Get IDs of users who liked the current user
+//         const likedByIds = await LikedProfile.distinct('likerId', {
+//             likedId: userData.userId
+//         });
+//         const baseQuery = {
+//             _id: {
+//                 $in: likedByIds
+//             },
+//             'suspension.isSuspended': false,
+//         };
+//         const skip = (page - 1) * limit;
+//         let users = await User.find(baseQuery, userField)
+//             .skip(skip)
+//             .limit(limit)
+//             .lean()
+//             .maxTimeMS(20000);
+//         let totalCount: number | undefined = undefined;
+//         if (shouldCount === 'yes') {
+//             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+//         }
+//         let pagination: object = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+//         if (totalCount !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(totalCount / limit),
+//                 totalUsers: totalCount
+//             };
+//         }
+//         res.set("cache-control", "max-age=60, public");
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 users,
+//                 pagination,
+//             }
+//         });
+//     } catch (error) {
+//         console.error('[Liked me profiles API error]', error);
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+// // Implement /users/send-mails-by-me - Get profiles to whom current user has sent emails
+// router.get('/users/send-mails-by-me', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const validationResult = paginationSchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+//         const { page, limit, count: shouldCount } = validationResult.data;
+//         const userData = req.authSession.value;
+//         // Get IDs of users who received emails from current user
+//         const emailedProfileIds = await SendMailedProfile.distinct('receiverId', {
+//             senderId: userData.userId,
+//             emailStatus: 'SENT'
+//         });
+//         const baseQuery = {
+//             _id: {
+//                 $in: emailedProfileIds
+//             },
+//             'suspension.isSuspended': false,
+//         };
+//         const skip = (page - 1) * limit;
+//         let users = await User.find(baseQuery, userField)
+//             .skip(skip)
+//             .limit(limit)
+//             .lean()
+//             .maxTimeMS(20000);
+//         let totalCount: number | undefined = undefined;
+//         if (shouldCount === 'yes') {
+//             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+//         }
+//         let pagination: object = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+//         if (totalCount !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(totalCount / limit),
+//                 totalUsers: totalCount
+//             };
+//         }
+//         res.set("cache-control", "max-age=60, public");
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 users,
+//                 pagination,
+//             }
+//         });
+//     } catch (error) {
+//         console.error('[Emails sent by me API error]', error);
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+// // Implement /users/send-mails-to-me - Get profiles who have sent emails to current user
+// router.get('/users/send-mails-to-me', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const validationResult = paginationSchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+//         const { page, limit, count: shouldCount } = validationResult.data;
+//         const userData = req.authSession.value;
+//         // Get IDs of users who sent emails to current user
+//         const emailSenderIds = await SendMailedProfile.distinct('senderId', {
+//             receiverId: userData.userId,
+//             emailStatus: 'SENT'
+//         });
+//         const baseQuery = {
+//             _id: {
+//                 $in: emailSenderIds
+//             },
+//             'suspension.isSuspended': false,
+//         };
+//         const skip = (page - 1) * limit;
+//         let users = await User.find(baseQuery, userField)
+//             .skip(skip)
+//             .limit(limit)
+//             .lean()
+//             .maxTimeMS(20000);
+//         let totalCount: number | undefined = undefined;
+//         if (shouldCount === 'yes') {
+//             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+//         }
+//         let pagination: object = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+//         if (totalCount !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(totalCount / limit),
+//                 totalUsers: totalCount
+//             };
+//         }
+//         res.set("cache-control", "max-age=60, public");
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 users,
+//                 pagination,
+//             }
+//         });
+//     } catch (error) {
+//         console.error('[Emails sent to me API error]', error);
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+// // Implement /users/send-sms-by-me - Get profiles to whom current user has sent SMS
+// router.get('/users/send-sms-by-me', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const validationResult = paginationSchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+//         const { page, limit, count: shouldCount } = validationResult.data;
+//         const userData = req.authSession.value;
+//         // Get IDs of users who received SMS from current user
+//         const smsReceiverIds = await SmsSendedProfile.distinct('receiverId', {
+//             senderId: userData.userId,
+//             smsStatus: 'SENT'
+//         });
+//         const baseQuery = {
+//             _id: {
+//                 $in: smsReceiverIds
+//             },
+//             'suspension.isSuspended': false,
+//         };
+//         const skip = (page - 1) * limit;
+//         let users = await User.find(baseQuery, userField)
+//             .skip(skip)
+//             .limit(limit)
+//             .lean()
+//             .maxTimeMS(20000);
+//         let totalCount: number | undefined = undefined;
+//         if (shouldCount === 'yes') {
+//             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+//         }
+//         let pagination: object = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+//         if (totalCount !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(totalCount / limit),
+//                 totalUsers: totalCount
+//             };
+//         }
+//         res.set("cache-control", "max-age=60, public");
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 users,
+//                 pagination,
+//             }
+//         });
+//     } catch (error) {
+//         console.error('[SMS sent by me API error]', error);
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+// // Implement /users/send-sms-to-me - Get profiles who have sent SMS to current user
+// router.get('/users/send-sms-to-me', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const validationResult = paginationSchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+//         const { page, limit, count: shouldCount } = validationResult.data;
+//         const userData = req.authSession.value;
+//         // Get IDs of users who sent SMS to current user
+//         const smsSenderIds = await SmsSendedProfile.distinct('senderId', {
+//             receiverId: userData.userId,
+//             smsStatus: 'SENT'
+//         });
+//         const baseQuery = {
+//             _id: {
+//                 $in: smsSenderIds
+//             },
+//             'suspension.isSuspended': false,
+//         };
+//         const skip = (page - 1) * limit;
+//         let users = await User.find(baseQuery, userField)
+//             .skip(skip)
+//             .limit(limit)
+//             .lean()
+//             .maxTimeMS(20000);
+//         let totalCount: number | undefined = undefined;
+//         if (shouldCount === 'yes') {
+//             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+//         }
+//         let pagination: object = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+//         if (totalCount !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(totalCount / limit),
+//                 totalUsers: totalCount
+//             };
+//         }
+//         res.set("cache-control", "max-age=60, public");
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 users,
+//                 pagination,
+//             }
+//         });
+//     } catch (error) {
+//         console.error('[SMS sent to me API error]', error);
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+// // Implement /users/send-sms-to-me - Get profiles who have sent SMS to current user
+// router.get('/users/seen-phone-details', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const validationResult = paginationSchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+//         const { page, limit, count: shouldCount } = validationResult.data;
+//         const userData = req.authSession.value;
+//         // Get IDs of users who sent SMS to current user
+//         const requestedIds = await RequestMobileNumberView.distinct('requestedId', {
+//             requesterId: userData.userId,
+//         });
+//         const baseQuery = {
+//             _id: {
+//                 $in: requestedIds
+//             },
+//             'suspension.isSuspended': false,
+//         };
+//         const skip = (page - 1) * limit;
+//         let users = await User.find(baseQuery, userField)
+//             .skip(skip)
+//             .limit(limit)
+//             .lean()
+//             .maxTimeMS(20000);
+//         let totalCount: number | undefined = undefined;
+//         if (shouldCount === 'yes') {
+//             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
+//         }
+//         let pagination: object = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+//         if (totalCount !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(totalCount / limit),
+//                 totalUsers: totalCount
+//             };
+//         }
+//         res.set("cache-control", "max-age=60, public");
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 users,
+//                 pagination,
+//             }
+//         });
+//     } catch (error) {
+//         console.error('[SMS sent to me API error]', error);
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+// router.get('/users/seen-my-phone-details', async function (req: Request, res: Response): Promise<Response | any> {
+//     try {
+//         const validationResult = paginationSchema.safeParse(req.query);
+//         if (!validationResult.success) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Invalid query parameters",
+//                 error: validationResult.error.errors,
+//                 data: null
+//             });
+//         }
+//         const { page, limit, count: shouldCount } = validationResult.data;
+//         const skip = (page - 1) * limit;
+//         // Get IDs of users who sent SMS to current user
+//         let requesters = await RequestMobileNumberView.find({
+//             requestedId: req.authSession.value.userId,
+//         }, 'requesterId')
+//             .skip(skip)
+//             .limit(limit)
+//             .lean();
+//         let requestersIds = requesters.map(element => element.requesterId);
+//         const baseQuery = {
+//             _id: {
+//                 $in: requestersIds
+//             },
+//             'suspension.isSuspended': false,
+//         };
+//         let users = await User.find(baseQuery, userField)
+//             .lean()
+//             .maxTimeMS(20000);
+//         let totalCount: number | undefined = undefined;
+//         if (shouldCount === 'yes') {
+//             totalCount = await RequestMobileNumberView.find({
+//                 requestedId: req.authSession.value.userId,
+//             }, '')
+//                 .countDocuments(baseQuery)
+//                 .maxTimeMS(10000);
+//         }
+//         let pagination: object = {
+//             currentPage: page,
+//             pageSize: limit,
+//         };
+//         if (totalCount !== undefined) {
+//             pagination = {
+//                 ...pagination,
+//                 totalPages: Math.ceil(totalCount / limit),
+//                 totalUsers: totalCount
+//             };
+//         }
+//         res.set("cache-control", "max-age=60, public");
+//         return res.status(200).json({
+//             success: true,
+//             data: {
+//                 users,
+//                 pagination,
+//             }
+//         });
+//     } catch (error) {
+//         console.error('[SMS sent to me API error]', error);
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Internal server error',
+//             data: null
+//         });
+//     }
+// });
+exports.default = router;
