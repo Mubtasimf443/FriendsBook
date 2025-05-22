@@ -69,6 +69,7 @@ const Membership_1 = __importDefault(require("./main_routes/Membership"));
 const chat_messaging_socket_1 = __importDefault(require("./sockets/chat.messaging.socket"));
 const OnlineStatus_socket_1 = require("./sockets/OnlineStatus.socket");
 const coinManagement_1 = __importDefault(require("./main_routes/coinManagement"));
+const connectionRequest_1 = __importDefault(require("./main_routes/connectionRequest"));
 const app = (0, express_1.default)();
 const port = Number(env_1.PORT !== null && env_1.PORT !== void 0 ? env_1.PORT : 4000);
 const server = (0, node_http_1.createServer)(app).listen(port);
@@ -106,6 +107,7 @@ function main() {
         app.use('/api/profile', profile_1.default);
         app.use('/api/data', data_1.default);
         app.use('/api/admin', admin_1.default);
+        app.use('/api/friend-request', connectionRequest_1.default);
         app.use('/api/membership', Membership_1.default);
         app.use('/api/coins', coinManagement_1.default);
         // app.use('/api/cron-jobs', cronJobsRouter);

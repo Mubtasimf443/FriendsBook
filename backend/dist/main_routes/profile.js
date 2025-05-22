@@ -49,6 +49,7 @@ router.get('/user-details/video-profile', auth_middleware_1.validateVideoProfile
                 lastActive: req.videoProfile.lastActive,
                 profileImage: req.videoProfile.profileImage,
                 coverImage: req.videoProfile.coverImage,
+                coins: req.videoProfile.video_calling_coins
             });
         }
         catch (error) {

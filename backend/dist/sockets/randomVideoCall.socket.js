@@ -111,18 +111,48 @@ class randomVideoCallSocketService {
                                         socket.emit('not-connected', { data: null });
                                 }
                                 clearTimeout(timeOut);
-                            }), 3000);
+                            }), 5000);
                         }
                     }
                     catch (error) {
-                        console.error(error);
+                        if (error instanceof zod_1.ZodError === false)
+                            console.error(error);
                         socket.emit('connection-creation-failed', { message: 'Failed to connect User in 20s video call' });
                     }
                 }));
                 socket.on('peer-details', (signal, userBRoomId) => {
                     try {
-                        userBRoomId = (zod_1.z.string().uuid()).parse(userBRoomId);
-                        this.io.to(userBRoomId).emit('call-user', signal);
+                        this.io.to(roomIdSchema.parse(userBRoomId)).emit('call-user', signal);
+                        let timeOut;
+                        const endCall = (room1, room2) => __awaiter(this, void 0, void 0, function* () {
+                            try {
+                                this.io.to(room1.roomId).emit('end-call', room1.roomId);
+                                this.io.to(room2.roomId).emit('end-call', room2.roomId);
+                                yield RandomVideoCall_1.RandomVideoCall.updateMany({
+                                    status: 'connected',
+                                    roomId: {
+                                        $in: [room1.roomId, room2.roomId]
+                                    },
+                                    connectedWith: {
+                                        $in: [room1.userId, room2.userId]
+                                    }
+                                }, {
+                                    status: 'ended'
+                                });
+                                clearTimeout(timeOut);
+                            }
+                            catch (error) {
+                                console.error(error);
+                            }
+                        });
+                        timeOut = setTimeout(function () {
+                            return __awaiter(this, void 0, void 0, function* () {
+                                let request1 = yield RandomVideoCall_1.RandomVideoCall.findOne({ roomId: userBRoomId });
+                                let request2 = yield RandomVideoCall_1.RandomVideoCall.findOne({ userId: socket.user_id });
+                                if (request1 && request2)
+                                    endCall(request1, request2);
+                            });
+                        }, VIDEO_CALL_DURATION + 2500);
                     }
                     catch (error) {
                         console.error(error);
@@ -170,6 +200,7 @@ class randomVideoCallSocketService {
                         }
                     }
                     catch (error) {
+                        console.error(error);
                     }
                 }));
                 socket.on('disconnect', () => __awaiter(this, void 0, void 0, function* () { }));
@@ -207,30 +238,6 @@ class randomVideoCallSocketService {
                 this.io.to(request2.roomId).emit('give-peer-details', request1.roomId); // User B Room Id
                 socket.emit('connection-created', { data: null });
                 let timeOut;
-                const endCall = (room1, room2) => __awaiter(this, void 0, void 0, function* () {
-                    try {
-                        this.io.to(room1.roomId).emit('end-call', room1.roomId);
-                        this.io.to(room2.roomId).emit('end-call', room2.roomId);
-                        yield RandomVideoCall_1.RandomVideoCall.updateMany({
-                            status: 'connected',
-                            roomId: {
-                                $in: [room1.roomId, room2.roomId]
-                            },
-                            connectedWith: {
-                                $in: [room1.userId, room2.userId]
-                            }
-                        }, {
-                            status: 'ended'
-                        });
-                        clearTimeout(timeOut);
-                    }
-                    catch (error) {
-                        console.error(error);
-                    }
-                });
-                timeOut = setTimeout(function () {
-                    endCall(request1, request2);
-                }, VIDEO_CALL_DURATION + 2500);
             }
             catch (error) {
                 console.error('Error connecting users:', error);
@@ -246,7 +253,7 @@ class randomVideoCallSocketService {
                     return;
                 yield RandomVideoCall_1.RandomVideoCall.deleteMany({
                     userId: userId,
-                    status: { $in: ['searching', 'connected'] }
+                    status: { $in: ['connected', "searching"] }
                 });
             }
             catch (error) {

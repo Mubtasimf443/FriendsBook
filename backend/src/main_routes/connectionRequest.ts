@@ -32,39 +32,21 @@ router.get('/' , async function (req: Request, res: Response): Promise<any> {
             });
             return;
         }
+
         const userId = req.authSession.value.userId;
-        let reqInfo = 'status acceptedAt rejectedAt createdAt sender recipient';
-        let [sendingRequest , receivingRequest] = await Promise.all([
-            ConnectionRequest.find({ sender : userId } , reqInfo).lean(),
-            ConnectionRequest.find({recipient : userId}, reqInfo).lean()
-        ]);
-
-        let friendRequest :any[]=  sendingRequest.concat(receivingRequest);
-
-        let userB :any = [];
-
-        for (let index = 0; index < friendRequest.length; index++) {
-            const _id = friendRequest[index].sender.toString() === userId.toString() ? friendRequest[index].recipient : friendRequest[index].sender;
-            if (!userB.includes(_id)) userB.push(_id);
-            console.log(_id);
-            
-        }
-
-        let users = await User.find({_id : { $in :userB  }} , 'name profileImage').lean() ;
-
-
-        for (let i = 0; i < friendRequest.length; i++) {
-            const _id = friendRequest[i].sender.toString() === userId.toString() ? friendRequest[i].recipient : friendRequest[i].sender;
-            friendRequest[i].userB = users.find(el => el._id === _id );
-            
-        }
         
+        let user = await User.findOne({} , 'connections pendingIncomingRequests pendingOutgoingRequests').populate('connections').lean();
+       
         res.status(200).json({
-            success : true,
-            data : {
-                friendRequest 
+            success: true,
+            data: {
+                user
             },
+            error: null,
+            message: 'OK'
         })
+      
+
         return;
 
     } catch (error) {

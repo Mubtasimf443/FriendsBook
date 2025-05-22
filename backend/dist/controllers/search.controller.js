@@ -29,7 +29,6 @@ function getDistance(lat1, lon1, lat2, lon2) {
 function findNearestDistricts(lat, lon, count = 5) {
     return districts_1.Districts
         .map((district) => (Object.assign(Object.assign({}, district), { distance: getDistance(lat, lon, district.lat, district.long) })))
-        .sort((a, b) => a.distance - b.distance)
         .slice(0, count);
 }
 function searchHeightGenerator(min, max) {

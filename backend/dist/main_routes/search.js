@@ -23,29 +23,18 @@ const search_schema_1 = require("../lib/schema/search.schema");
 const ProfileView_1 = require("../models/ProfileView");
 const query_middleware_1 = __importDefault(require("../lib/middlewares/query.middleware"));
 const userEducation_types_1 = require("../lib/types/userEducation.types");
+const SearchHistory_1 = require("../models/SearchHistory");
 const schemaComponents_1 = require("../lib/schema/schemaComponents");
 const zod_1 = require("zod");
 const ConnectionRequest_1 = require("../models/ConnectionRequest");
 const countryWithLatLong_1 = require("../lib/data/countryWithLatLong");
 const VideoProfile_1 = __importDefault(require("../models/VideoProfile"));
 require("../lib/types/express.decratation");
+const districts_1 = require("../lib/data/districts");
 const router = (0, express_1.Router)();
 router.use((0, rateRimiter_1.default)(120 * 1000, 200));
 router.use(query_middleware_1.default);
 router.use(auth_middleware_1.validateBothProfiledUser);
-router.use(function (req, res, next) {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            // console.log(req.authSession);
-            console.log(req.profileType);
-            console.log(req.bearerAccessToken);
-            // console.log(req.videoProfile);
-            next();
-        }
-        catch (error) {
-        }
-    });
-});
 router.get('/users/explore/country', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -315,7 +304,8 @@ router.get('/users/just-joined', function (req, res) {
                     } },
                 { $skip: skip },
                 { $limit: limit },
-                { $project: {
+                {
+                    $project: {
                         name: 1,
                         _id: 1,
                         email: 1,
@@ -323,7 +313,8 @@ router.get('/users/just-joined', function (req, res) {
                         gender: 1,
                         age: 1,
                         onlineStatus: 1
-                    } }
+                    }
+                }
             ];
             let users = yield user_1.User.aggregate(aggregate);
             // Get total count if requested
@@ -447,7 +438,7 @@ router.get('/users/premium', function (req, res) {
             const baseQuery = {
                 gender: { $ne: userInfo.gender },
                 'membership.currentMembership.requestId': { $exists: true },
-                'membership.currentMembership.membership_exipation_date': { $exists: true }
+                'membership.currentMembership.membership_exipation_date': { $gt: new Date() }
             };
             const skip = (page - 1) * limit;
             // Use aggregation to prioritize online users
@@ -459,7 +450,8 @@ router.get('/users/premium', function (req, res) {
                     } },
                 { $skip: skip },
                 { $limit: limit },
-                { $project: {
+                {
+                    $project: {
                         name: 1,
                         _id: 1,
                         email: 1,
@@ -468,7 +460,8 @@ router.get('/users/premium', function (req, res) {
                         age: 1,
                         onlineStatus: 1,
                         membership: 1
-                    } }
+                    }
+                }
             ];
             let users = yield user_1.User.aggregate(aggregate);
             let totalCount = undefined;
@@ -507,7 +500,7 @@ router.get('/users/preferred-education', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             let userInfo = (0, search_controller_1.getUserDataFromRequest)(req);
-            Array.isArray(req.query.educationLevels) === false && (req.query.educationLevels = [req.query.educationLevels || userEducation_types_1.EducationLevel.BACHELORS_DEGREE]);
+            req.query.educationLevels && Array.isArray(req.query.educationLevels) === false && (req.query.educationLevels = [req.query.educationLevels]);
             const validationResult = search_schema_1.preferredEducationSearchSchema.safeParse(req.query);
             if (!validationResult.success) {
                 return res.status(400).json({
@@ -520,22 +513,32 @@ router.get('/users/preferred-education', function (req, res) {
             const { page, limit, count: shouldCount, educationLevels } = validationResult.data;
             // Calculate pagination
             const skip = (page - 1) * limit;
+            let allEducationLevels = yield user_1.User.distinct('education.level', { isEducated: true });
             // Base query for finding users
             const baseQuery = {
                 gender: { $ne: userInfo.gender },
                 isEducated: true,
-                "education.level": { $in: educationLevels }
+                "education.level": { $in: educationLevels ? educationLevels : allEducationLevels }
             };
             // Use aggregation to prioritize online users
             let aggregate = [
-                { $match: baseQuery },
-                { $sort: {
+                {
+                    $match: baseQuery
+                },
+                {
+                    $sort: {
                         'onlineStatus.isOnline': -1,
                         'onlineStatus.lastActive': 1
-                    } },
-                { $skip: skip },
-                { $limit: limit },
-                { $project: {
+                    }
+                },
+                {
+                    $skip: skip
+                },
+                {
+                    $limit: limit
+                },
+                {
+                    $project: {
                         name: 1,
                         _id: 1,
                         email: 1,
@@ -543,7 +546,8 @@ router.get('/users/preferred-education', function (req, res) {
                         gender: 1,
                         age: 1,
                         onlineStatus: 1
-                    } }
+                    }
+                }
             ];
             let users = yield user_1.User.aggregate(aggregate);
             // Get total count if requested
@@ -566,8 +570,9 @@ router.get('/users/preferred-education', function (req, res) {
                     users,
                     pagination,
                     searchCriteria: {
-                        educationLevels
-                    }
+                        educationLevels: educationLevels ? educationLevels : allEducationLevels
+                    },
+                    allEducationLevels
                 }
             });
         }
@@ -585,8 +590,7 @@ router.get('/users/preferred-location', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             let userInfo = (0, search_controller_1.getUserDataFromRequest)(req);
-            (typeof req.query.countries === "string") && (req.query.countries = [req.query.countries]);
-            (typeof req.query.division_ids === "string") && (req.query.division_ids = [req.query.division_ids]);
+            (typeof req.query.district_names === "string") && (req.query.district_names = [req.query.district_names]);
             const validationResult = search_schema_1.preferredLocationSearchSchema.safeParse(req.query);
             if (!validationResult.success) {
                 return res.status(400).json({
@@ -596,29 +600,45 @@ router.get('/users/preferred-location', function (req, res) {
                     data: null
                 });
             }
-            const { page, limit, count: shouldCount, countries, division_ids } = validationResult.data;
+            const { page, limit, count: shouldCount, district_names, latitude, longitude } = validationResult.data;
             // Calculate pagination
             const skip = (page - 1) * limit;
+            let existingDistrict = yield user_1.User.distinct('address.district.name', {});
+            let nearestDistrictNames = [];
+            if (district_names === undefined) {
+                nearestDistrictNames = existingDistrict.map((eDistrict) => {
+                    return districts_1.Districts.find(element => element.name === eDistrict);
+                })
+                    .filter((district) => {
+                    if (district)
+                        return district;
+                })
+                    .map((district) => {
+                    return (Object.assign(Object.assign({}, district), { distance: (0, search_controller_1.getDistance)(latitude, longitude, district === null || district === void 0 ? void 0 : district.lat, district === null || district === void 0 ? void 0 : district.long) }));
+                })
+                    .sort((a, b) => a.distance - b.distance)
+                    .map((district) => district === null || district === void 0 ? void 0 : district.name);
+            }
             // Base query for finding users
             const baseQuery = {
                 gender: { $ne: userInfo.gender },
-                'address.country': { $in: countries }
+                'address.district.name': { $in: district_names ? district_names : nearestDistrictNames }
             };
-            // Add division filter if country includes Bangladesh
-            if (countries.includes(country_names_enum_1.CountryNamesEnum.BANGLADESH) && division_ids.length > 0) {
-                baseQuery['address.division.id'] = { $in: division_ids.map(e => e.toString()) };
-            }
-            console.log(baseQuery);
             // Use aggregation to prioritize online users
             let aggregate = [
-                { $match: baseQuery },
-                { $sort: {
+                {
+                    $match: baseQuery
+                },
+                {
+                    $sort: {
                         'onlineStatus.isOnline': -1,
                         'onlineStatus.lastActive': 1
-                    } },
+                    }
+                },
                 { $skip: skip },
                 { $limit: limit },
-                { $project: {
+                {
+                    $project: {
                         name: 1,
                         _id: 1,
                         email: 1,
@@ -626,7 +646,8 @@ router.get('/users/preferred-location', function (req, res) {
                         gender: 1,
                         age: 1,
                         onlineStatus: 1
-                    } }
+                    }
+                }
             ];
             let users = yield user_1.User.aggregate(aggregate);
             // Get total count if requested
@@ -649,8 +670,7 @@ router.get('/users/preferred-location', function (req, res) {
                     users,
                     pagination,
                     searchCriteria: {
-                        countries,
-                        divisions_ids: division_ids || []
+                        district_names: district_names ? district_names : nearestDistrictNames
                     }
                 }
             });
@@ -1044,6 +1064,478 @@ router.get('/users/viewed-not-contact', function (req, res) {
         }
     });
 });
+router.get('/users/filter', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a;
+        try {
+            if (!req.authSession || !((_a = req.authSession) === null || _a === void 0 ? void 0 : _a.value)) {
+                res.status(401).json({
+                    success: false,
+                    message: 'Failed to authorize the user',
+                    data: null
+                });
+                return;
+            }
+            // Handle array parameters that might come as strings
+            (typeof req.query.languages === "string") && (req.query.languages = [req.query.languages]);
+            (typeof req.query.division_ids === "string") && (req.query.division_ids = [req.query.division_ids]);
+            (typeof req.query.maritalStatuses === "string") && (req.query.maritalStatuses = [req.query.maritalStatuses]);
+            (typeof req.query.occupations === "string") && (req.query.occupations = [req.query.occupations]);
+            const queryResult = search_schema_1.filterUsersSchema.safeParse(req.query);
+            if (!queryResult.success) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid query parameters",
+                    errors: queryResult.error.errors,
+                    data: null
+                });
+            }
+            const validatedQuery = queryResult.data;
+            const userData = req.authSession.value;
+            // Destructure all query parameters
+            const { page, limit, count: shouldCount, languages, division_ids, isEducated, minWeight, maxWeight, minHeight, maxHeight, minAge, maxAge, maritalStatuses, occupations, minAnnualIncome, maxAnnualIncome, } = validatedQuery;
+            // Build the base query
+            const baseQuery = (0, search_controller_1.getBaseSearchQuery)(req.authSession.value);
+            if ((languages === null || languages === void 0 ? void 0 : languages.length) > 0)
+                baseQuery.languages = { $in: languages };
+            if (division_ids.length > 0) {
+                baseQuery['address.division.id'] = { $in: division_ids };
+            }
+            if (isEducated)
+                baseQuery.isEducated = isEducated;
+            // Add range-based filters
+            if (minWeight || maxWeight) {
+                baseQuery.weight = {};
+                if (minWeight)
+                    baseQuery.weight.$gte = minWeight;
+                if (maxWeight)
+                    baseQuery.weight.$lte = maxWeight;
+            }
+            if (minAge || maxAge) {
+                baseQuery.age = {};
+                if (minAge)
+                    baseQuery.age.$gte = minAge;
+                if (maxAge)
+                    baseQuery.age.$lte = maxAge;
+            }
+            if (minHeight && maxHeight) {
+                baseQuery.height = { $in: (0, search_controller_1.searchHeightGenerator)(minHeight, maxHeight) };
+            }
+            // Add array-based filters
+            if ((maritalStatuses === null || maritalStatuses === void 0 ? void 0 : maritalStatuses.length) > 0) {
+                baseQuery.maritalStatus = { $in: maritalStatuses };
+            }
+            if ((occupations === null || occupations === void 0 ? void 0 : occupations.length) > 0) {
+                baseQuery.occupation = { $in: occupations };
+            }
+            // Add income-based filters
+            if (minAnnualIncome && maxAnnualIncome) {
+                baseQuery['annualIncome.amount'] = {};
+                if (minAnnualIncome)
+                    baseQuery['annualIncome.amount'].$gte = minAnnualIncome;
+                if (maxAnnualIncome)
+                    baseQuery['annualIncome.amount'].$lte = maxAnnualIncome;
+            }
+            // Calculate pagination
+            const skip = (page - 1) * limit;
+            // Execute the query with pagination
+            const users = yield user_1.User.find(baseQuery, userField)
+                .skip(skip)
+                .limit(limit)
+                .lean()
+                .maxTimeMS(20000); // Set maximum execution time
+            // Get total count if requested
+            let totalCount = undefined;
+            if (shouldCount === 'yes') {
+                totalCount = yield user_1.User.countDocuments(baseQuery).maxTimeMS(10000);
+            }
+            // Prepare pagination info
+            let pagination = {
+                currentPage: page,
+                pageSize: limit,
+            };
+            if (totalCount !== undefined) {
+                pagination = Object.assign(Object.assign({}, pagination), { totalPages: Math.ceil(totalCount / limit), totalUsers: totalCount });
+            }
+            // Set cache headers for better performance
+            res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
+            return res.status(200).json({
+                success: true,
+                data: {
+                    users,
+                    pagination,
+                    filterCriteria: {
+                        languages,
+                        division_ids,
+                        isEducated,
+                        weightRange: minWeight || maxWeight ? { min: minWeight, max: maxWeight } : undefined,
+                        ageRange: minAge || maxAge ? { min: minAge, max: maxAge } : undefined,
+                        heightRange: minHeight || maxHeight ? { min: minHeight, max: maxHeight } : undefined,
+                        maritalStatuses,
+                        occupations,
+                        incomeRange: minAnnualIncome || maxAnnualIncome ? {
+                            min: minAnnualIncome,
+                            max: maxAnnualIncome,
+                        } : undefined
+                    }
+                }
+            });
+        }
+        catch (error) {
+            console.error('Filter users API error:', error);
+            return res.status(500).json({
+                success: false,
+                message: "Internal server error",
+                data: null
+            });
+        }
+    });
+});
+router.get('/search-history', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a;
+        try {
+            if (!req.authSession || !((_a = req.authSession) === null || _a === void 0 ? void 0 : _a.value)) {
+                res.status(401).json({
+                    success: false,
+                    message: 'Failed to authorize the user',
+                    data: null
+                });
+                return;
+            }
+            const userId = req.authSession.value.userId;
+            // Get search history
+            const searchHistory = yield SearchHistory_1.SearchHistory.find({ userId, }, 'title query savedAt userId')
+                .sort({ savedAt: -1 })
+                .lean()
+                .maxTimeMS(10000);
+            if (searchHistory.length > 50) {
+                for (let i = 0; i < searchHistory.length; i++) {
+                    const { savedAt, _id } = searchHistory[i];
+                    if (savedAt.getTime() < (Date.now() - 7 * 24 * 3600 * 1000))
+                        yield SearchHistory_1.SearchHistory.findByIdAndDelete(_id);
+                }
+            }
+            // Set cache headers
+            res.set('Cache-Control', 'private, max-age=60'); // Cache for 1 minute, private because it's user-specific
+            return res.status(200).json({
+                success: true,
+                data: {
+                    searchHistory,
+                }
+            });
+        }
+        catch (error) {
+            console.error('[Get Search History API Error]', {
+                error: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined,
+                timestamp: new Date().toISOString()
+            });
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
+            });
+        }
+    });
+});
+router.post('/search-history', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a, _b, _c;
+        try {
+            if (!req.authSession || !((_a = req.authSession) === null || _a === void 0 ? void 0 : _a.value)) {
+                res.status(401).json({
+                    success: false,
+                    message: 'Failed to authorize the user',
+                    data: null
+                });
+                return;
+            }
+            // Validate request body
+            const validationResult = search_schema_1.searchHistorySchema.safeParse(req.body);
+            if (!validationResult.success) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid request parameters",
+                    error: 'VALIDATION_ERROR',
+                    errors: validationResult.error.errors,
+                    data: null
+                });
+            }
+            const { searchQuery, title } = validationResult.data;
+            const userId = req.authSession.value.userId;
+            // Check if title already exists for this user
+            const isHistoryExists = yield SearchHistory_1.SearchHistory.findOne({ userId, title }, '_id').lean();
+            if (isHistoryExists) {
+                return res.status(409).json({
+                    success: false,
+                    message: 'A search history with this title already exists',
+                    error: 'DUPLICATE_TITLE',
+                    data: null
+                });
+            }
+            // Create new search history
+            const newSearchHistory = yield SearchHistory_1.SearchHistory.create({
+                title,
+                userId,
+                searchQuery,
+                savedAt: new Date()
+            });
+            // Return success response
+            return res.status(201).json({
+                success: true,
+                data: {
+                    id: newSearchHistory._id,
+                    title: newSearchHistory.title,
+                    createdAt: newSearchHistory.savedAt
+                },
+                error: null,
+                message: 'Search history saved successfully'
+            });
+        }
+        catch (error) {
+            console.error('[Save search history API error]', {
+                error: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined,
+                timestamp: new Date().toISOString(),
+                userId: (_c = (_b = req.authSession) === null || _b === void 0 ? void 0 : _b.value) === null || _c === void 0 ? void 0 : _c.userId
+            });
+            return res.status(500).json({
+                success: false,
+                message: 'An error occurred while saving search history',
+                error: 'INTERNAL_SERVER_ERROR',
+                data: null
+            });
+        }
+    });
+});
+router.delete('/search-history/:id', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a, _b, _c;
+        try {
+            if (!req.authSession || !((_a = req.authSession) === null || _a === void 0 ? void 0 : _a.value)) {
+                res.status(401).json({
+                    success: false,
+                    message: 'Failed to authorize the user',
+                    data: null
+                });
+                return;
+            }
+            // Validate ID parameter
+            const historyId = schemaComponents_1._idValidator.parse(req.params.id);
+            const userId = req.authSession.value.userId;
+            // Find and delete the search history
+            const searchHistory = yield SearchHistory_1.SearchHistory.findById(historyId);
+            if (!searchHistory) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Search history not found or you do not have permission to delete it',
+                    error: 'NOT_FOUND',
+                    data: null
+                });
+            }
+            yield searchHistory.deleteOne();
+            return res.status(200).json({
+                success: true,
+                data: {
+                    id: historyId,
+                    deletedAt: new Date()
+                },
+                error: null,
+                message: 'Search history deleted successfully'
+            });
+        }
+        catch (error) {
+            // Handle validation errors
+            if (error instanceof zod_1.z.ZodError) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid search history ID',
+                    error: 'INVALID_ID',
+                    errors: error.errors,
+                    data: null
+                });
+            }
+            console.error('[Delete search history API error]', {
+                error: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined,
+                timestamp: new Date().toISOString(),
+                userId: (_c = (_b = req.authSession) === null || _b === void 0 ? void 0 : _b.value) === null || _c === void 0 ? void 0 : _c.userId,
+                historyId: req.params.id
+            });
+            return res.status(500).json({
+                success: false,
+                message: 'An error occurred while deleting search history',
+                error: 'INTERNAL_SERVER_ERROR',
+                data: null
+            });
+        }
+    });
+});
+router.get('/users/suggested-for-you', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o;
+        try {
+            if (!req.authSession || !((_a = req.authSession) === null || _a === void 0 ? void 0 : _a.value)) {
+                res.status(401).json({
+                    success: false,
+                    message: 'Failed to authorize the user',
+                    data: null
+                });
+                return;
+            }
+            const validationResult = search_schema_1.paginationSchema.safeParse(req.query);
+            if (!validationResult.success) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid query parameters",
+                    error: validationResult.error.errors,
+                    data: null
+                });
+            }
+            const { page, limit, count: shouldCount } = validationResult.data;
+            const userData = req.authSession.value;
+            // Get current user's partner preferences and gender
+            const currentUser = yield user_1.User.findById(userData.userId, 'partnerPreference gender').lean();
+            if (!currentUser)
+                throw new Error("currentUser is null");
+            if (!(currentUser === null || currentUser === void 0 ? void 0 : currentUser.partnerPreference)) {
+                // If no preferences exist, create them automatically
+                const userForPrefs = yield user_1.User.findById(userData.userId);
+                if (userForPrefs) {
+                    userForPrefs.createPreference();
+                    yield userForPrefs.save();
+                    currentUser.partnerPreference = userForPrefs.partnerPreference;
+                }
+                else {
+                    return res.status(404).json({
+                        success: false,
+                        message: "User not found",
+                        data: null
+                    });
+                }
+            }
+            // Build base query including base search criteria
+            const baseQuery = Object.assign({}, (0, search_controller_1.getBaseSearchQuery)(userData));
+            const pref = currentUser.partnerPreference;
+            // Add age preferences
+            if (((_b = pref.ageRange) === null || _b === void 0 ? void 0 : _b.min) || ((_c = pref.ageRange) === null || _c === void 0 ? void 0 : _c.max)) {
+                baseQuery.age = {};
+                if (pref.ageRange.min)
+                    baseQuery.age.$gte = pref.ageRange.min;
+                if (pref.ageRange.max)
+                    baseQuery.age.$lte = pref.ageRange.max;
+            }
+            // Add height preferences with proper validation
+            if (((_d = pref.heightRange) === null || _d === void 0 ? void 0 : _d.min) && ((_e = pref.heightRange) === null || _e === void 0 ? void 0 : _e.max)) {
+                baseQuery.height = {
+                    $in: (0, search_controller_1.searchHeightGenerator)(pref.heightRange.min, pref.heightRange.max)
+                };
+            }
+            // Add religion preferences
+            if (((_f = pref.religion) === null || _f === void 0 ? void 0 : _f.length) > 0) {
+                baseQuery.religion = { $in: pref.religion };
+            }
+            // Add marital status preferences
+            if (((_g = pref.maritalStatus) === null || _g === void 0 ? void 0 : _g.length) > 0) {
+                baseQuery.maritalStatus = { $in: pref.maritalStatus };
+            }
+            // Add education preferences with null handling
+            if ((_h = pref.education) === null || _h === void 0 ? void 0 : _h.minimumLevel) {
+                const educationLevels = Object.values(userEducation_types_1.EducationLevel);
+                const minLevelIndex = educationLevels.indexOf(pref.education.minimumLevel);
+                if (minLevelIndex !== -1) {
+                    const acceptableLevels = educationLevels.slice(minLevelIndex);
+                    baseQuery['education.level'] = { $in: acceptableLevels };
+                    baseQuery['isEducated'] = true;
+                }
+            }
+            // Add occupation preferences
+            if (!!((_k = (_j = pref.profession) === null || _j === void 0 ? void 0 : _j.acceptedOccupations) === null || _k === void 0 ? void 0 : _k.length) && ((_m = (_l = pref.profession) === null || _l === void 0 ? void 0 : _l.acceptedOccupations) === null || _m === void 0 ? void 0 : _m.length) > 0) {
+                baseQuery.occupation = { $in: pref.profession.acceptedOccupations };
+            }
+            // Add income preferences with currency matching
+            if ((_o = pref.profession) === null || _o === void 0 ? void 0 : _o.minimumAnnualIncome) {
+                baseQuery['annualIncome.amount'] = {
+                    $gte: pref.profession.minimumAnnualIncome.min
+                };
+            }
+            // Calculate pagination
+            const skip = (page - 1) * limit;
+            // let users = await User.aggregate([
+            //     {
+            //         $match : baseQuery,
+            //     },
+            //     {
+            //         $sort : {
+            //              createdAt : -1 ,
+            //             "onlineStatus.isOnline" : 1,
+            //             "onlineStatus.lastActive" : -1 
+            //         }
+            //     },
+            //     {
+            //         $skip :skip
+            //     }, 
+            //     {
+            //         $limit : limit
+            //     }, 
+            //     {
+            //         $project: {
+            //             name: 1,
+            //             _id: 1,
+            //             email: 1,
+            //             'profileImage.url': 1,
+            //             gender: 1,
+            //             age: 1,
+            //             onlineStatus: 1
+            //         }
+            //     }
+            // ]);
+            let users = yield user_1.User.find(baseQuery, userField)
+                .sort({
+                createdAt: -1,
+                "onlineStatus.isOnline": 1,
+                "onlineStatus.lastActive": -1
+            })
+                .skip(skip)
+                .limit(limit)
+                .lean();
+            // Get total count if requested
+            let totalCount = undefined;
+            if (shouldCount === 'yes') {
+                totalCount = yield user_1.User.countDocuments(baseQuery)
+                    .maxTimeMS(10000);
+            }
+            // Prepare pagination info
+            let pagination = {
+                currentPage: page,
+                pageSize: limit,
+            };
+            if (totalCount !== undefined) {
+                pagination = Object.assign(Object.assign({}, pagination), { totalPages: Math.ceil(totalCount / limit), totalUsers: totalCount });
+            }
+            // Cache control - short cache due to frequent updates
+            res.set('Cache-Control', 'private, max-age=60');
+            return res.status(200).json({
+                success: true,
+                data: {
+                    users,
+                    pagination,
+                    searchCritiria: baseQuery
+                },
+                message: 'SUGGESTED_USERS_FOUND'
+            });
+        }
+        catch (error) {
+            console.error('[Suggested For You API error]', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
+            });
+        }
+    });
+});
 // router.get('/users/not-viewed', 
 // async function (req: Request, res: Response): Promise<Response | any> {
 //  try {
@@ -1363,725 +1855,6 @@ router.get('/users/viewed-not-contact', function (req, res) {
 //             query: req.query,
 //             userId: req.authSession?.value?.userId
 //         });
-//         return res.status(500).json({
-//             success: false,
-//             message: 'Internal server error',
-//             data: null
-//         });
-//     }
-// });
-// // router.get('/users/preferred-location', async function (req: Request, res: Response): Promise<Response | any> {
-// //     try {
-// //         (typeof req.query.countries === "string") && (req.query.countries = [req.query.countries]);
-// //         (typeof req.query.division_ids === "string") && (req.query.division_ids = [req.query.division_ids]);
-// //         const validationResult = preferredLocationSearchSchema.safeParse(req.query);
-// //         if (!validationResult.success) {
-// //             return res.status(400).json({
-// //                 success: false,
-// //                 message: "Invalid query parameters",
-// //                 error: validationResult.error.errors,
-// //                 data: null
-// //             });
-// //         }
-// //         const {
-// //             page,
-// //             limit,
-// //             count: shouldCount,
-// //             countries,
-// //             division_ids
-// //         } = validationResult.data;
-// //         const userData = req.authSession.value;
-// //         // Calculate pagination
-// //         const skip = (page - 1) * limit;
-// //         // Base query for finding users
-// //         const baseQuery: any = {
-// //             ...getBaseSearchQuery(req.authSession.value),
-// //             'address.country': { $in: countries }
-// //         };
-// //         // Add division filter if country includes Bangladesh
-// //         if (countries.includes(CountryNamesEnum.BANGLADESH) && division_ids.length > 0) {
-// //             baseQuery['address.division.id'] = { $in: division_ids.map(e => e.toString()) };
-// //         }
-// //         console.log(baseQuery)
-// //         // Find users
-// //         let users = await User.find(baseQuery, userField)
-// //             .sort({ createdAt: -1 })
-// //             .skip(skip)
-// //             .limit(limit)
-// //             .lean()
-// //             .maxTimeMS(20000);
-// //         // Get total count if requested
-// //         let totalCount: number | undefined = undefined;
-// //         if (shouldCount === 'yes') {
-// //             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
-// //         }
-// //         // Prepare pagination info
-// //         let pagination: object = {
-// //             currentPage: page,
-// //             pageSize: limit,
-// //         };
-// //         if (totalCount !== undefined) {
-// //             pagination = {
-// //                 ...pagination,
-// //                 totalPages: Math.ceil(totalCount / limit),
-// //                 totalUsers: totalCount
-// //             };
-// //         }
-// //         res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
-// //         return res.status(200).json({
-// //             success: true,
-// //             data: {
-// //                 users,
-// //                 pagination,
-// //                 searchCriteria: {
-// //                     countries,
-// //                     divisions_ids: division_ids || []
-// //                 }
-// //             }
-// //         });
-// //     } catch (error) {
-// //         console.error('Preferred location API error:', error);
-// //         return res.status(500).json({
-// //             success: false,
-// //             message: 'Internal server error',
-// //             data: null
-// //         });
-// //     }
-// // });
-// // Explore users by country
-// // router.get('/users/explore/by-country', async function (req: Request, res: Response): Promise<Response | any> {
-// //     try {
-// //         // Handle array conversion if single string
-// //         (typeof req.query.countries === "string") && (req.query.countries = [req.query.countries]);
-// //         const validationResult = exploreByCountrySchema.safeParse(req.query);
-// //         if (!validationResult.success) {
-// //             return res.status(400).json({
-// //                 success: false,
-// //                 message: "Invalid query parameters",
-// //                 error: validationResult.error.errors,
-// //                 data: null
-// //             });
-// //         }
-// //         const {
-// //             page,
-// //             limit,
-// //             count: shouldCount,
-// //             countries
-// //         } = validationResult.data;
-// //         // Calculate pagination
-// //         const skip = (page - 1) * limit;
-// //         // Base query for finding users
-// //         const baseQuery: any = {
-// //             // ...getBaseSearchQuery(req.authSession.value),
-// //             'address.country': { $in: countries }
-// //         };
-// //         // Find users
-// //         let users = await User.find(baseQuery, userField)
-// //             .sort({ createdAt: -1 })
-// //             .skip(skip)
-// //             .limit(limit)
-// //             .lean()
-// //             .maxTimeMS(20000);
-// //         // Get total count if requested
-// //         let totalCount: number | undefined = undefined;
-// //         if (shouldCount === 'yes') {
-// //             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
-// //         }
-// //         // Prepare pagination info
-// //         let pagination: object = {
-// //             currentPage: page,
-// //             pageSize: limit,
-// //         };
-// //         if (totalCount !== undefined) {
-// //             pagination = {
-// //                 ...pagination,
-// //                 totalPages: Math.ceil(totalCount / limit),
-// //                 totalUsers: totalCount
-// //             };
-// //         }
-// //         res.set('Cache-Control', 'public, max-age=60');
-// //         return res.status(200).json({
-// //             success: true,
-// //             data: {
-// //                 users,
-// //                 pagination,
-// //                 searchCriteria: { countries }
-// //             }
-// //         });
-// //     } catch (error) {
-// //         console.error('Explore by country API error:', error);
-// //         return res.status(500).json({
-// //             success: false,
-// //             message: 'Internal server error',
-// //             data: null
-// //         });
-// //     }
-// // });
-// // // Explore users by division (Bangladesh only)
-// // router.get('/users/explore/by-division', async function (req: Request, res: Response): Promise<Response | any> {
-// //     try {
-// //         // Handle array conversion if single string
-// //         (typeof req.query.division_ids === "string") && (req.query.division_ids = [req.query.division_ids]);
-// //         const validationResult = exploreByDivisionSchema.safeParse(req.query);
-// //         if (!validationResult.success) {
-// //             return res.status(400).json({
-// //                 success: false,
-// //                 message: "Invalid query parameters",
-// //                 error: validationResult.error.errors,
-// //                 data: null
-// //             });
-// //         }
-// //         const {
-// //             page,
-// //             limit,
-// //             count: shouldCount,
-// //             division_ids
-// //         } = validationResult.data;
-// //         const userData = req.authSession.value;
-// //         // Calculate pagination
-// //         const skip = (page - 1) * limit;
-// //         // Base query for finding users
-// //         const baseQuery: any = {
-// //             // ...getBaseSearchQuery(req.authSession.value),
-// //             // 'address.country': CountryNamesEnum.BANGLADESH,
-// //             'address.division.id': { $in: division_ids.map(id => id.toString()) }
-// //         };
-// //         // Find users
-// //         let users = await User.find(baseQuery, userField)
-// //             .sort({ createdAt: -1 })
-// //             .skip(skip)
-// //             .limit(limit)
-// //             .lean()
-// //             .maxTimeMS(20000);
-// //         // Get total count if requested
-// //         let totalCount: number | undefined = undefined;
-// //         if (shouldCount === 'yes') {
-// //             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
-// //         }
-// //         // Prepare pagination info
-// //         let pagination: object = {
-// //             currentPage: page,
-// //             pageSize: limit,
-// //         };
-// //         if (totalCount !== undefined) {
-// //             pagination = {
-// //                 ...pagination,
-// //                 totalPages: Math.ceil(totalCount / limit),
-// //                 totalUsers: totalCount
-// //             };
-// //         }
-// //         res.set('Cache-Control', 'public, max-age=60');
-// //         return res.status(200).json({
-// //             success: true,
-// //             data: {
-// //                 users,
-// //                 pagination,
-// //                 searchCriteria: {
-// //                     country: CountryNamesEnum.BANGLADESH,
-// //                     division_ids
-// //                 }
-// //             }
-// //         });
-// //     } catch (error) {
-// //         console.error('Explore by division API error:', error);
-// //         return res.status(500).json({
-// //             success: false,
-// //             message: 'Internal server error',
-// //             data: null
-// //         });
-// //     }
-// // });
-// router.get('/user', async function (req: Request, res: Response): Promise<Response | any> {
-//     try {
-//         const validationResult = getUserByMIDSchema.safeParse(req.query);
-//         if (!validationResult.success) {
-//             return res.status(400).json({
-//                 success: false,
-//                 message: "Invalid query parameters",
-//                 error: validationResult.error.errors,
-//                 data: null
-//             });
-//         }
-//         const { mid } = validationResult.data;
-//         const user = await User.findOne(
-//             { mid, 'suspension.isSuspended': false },
-//             userField
-//         ).lean();
-//         if (!user) {
-//             return res.status(404).json({
-//                 success: false,
-//                 message: "User not found",
-//                 data: null
-//             });
-//         }
-//         // Cache response for 5 minutes
-//         res.set('Cache-Control', 'public, max-age=300');
-//         return res.status(200).json({
-//             success: true,
-//             data: { user }
-//         });
-//     } catch (error) {
-//         console.error('Get user by MID error:', error);
-//         return res.status(500).json({
-//             success: false,
-//             message: "Internal server error",
-//             data: null
-//         });
-//     }
-// });
-// router.get('/user/:id', async function (req: Request, res: Response): Promise<Response | any> {
-//     try {
-//         let _id = await _idValidator.parseAsync(req.params.id);
-//         const user = await User.findById(
-//             _id,
-//             userField
-//         ).lean();
-//         if (!user) {
-//             return res.status(404).json({
-//                 success: false,
-//                 message: "User not found",
-//                 data: null
-//             });
-//         }
-//         // Cache response for 5 minutes
-//         res.set('Cache-Control', 'public, max-age=600');
-//         return res.status(200).json({
-//             success: true,
-//             data: { user }
-//         });
-//     } catch (error) {
-//         console.error('Get user by MID error:', error);
-//         return res.status(500).json({
-//             success: false,
-//             message: "Internal server error",
-//             data: null
-//         });
-//     }
-// });
-// router.get('/users/filter', async function (req: Request, res: Response): Promise<Response | any> {
-//     try {
-//         // Handle array parameters that might come as strings
-//         (typeof req.query.languages === "string") && (req.query.languages = [req.query.languages]);
-//         (typeof req.query.countries === "string") && (req.query.countries = [req.query.countries]);
-//         (typeof req.query.division_ids === "string") && (req.query.division_ids = [req.query.division_ids]);
-//         (typeof req.query.maritalStatuses === "string") && (req.query.maritalStatuses = [req.query.maritalStatuses]);
-//         (typeof req.query.occupations === "string") && (req.query.occupations = [req.query.occupations]);
-//         const queryResult = filterUsersSchema.safeParse(req.query);
-//         if (!queryResult.success) {
-//             return res.status(400).json({
-//                 success: false,
-//                 message: "Invalid query parameters",
-//                 errors: queryResult.error.errors,
-//                 data: null
-//             });
-//         }
-//         const validatedQuery = queryResult.data;
-//         const userData = req.authSession.value;
-//         // Destructure all query parameters
-//         const {
-//             page,
-//             limit,
-//             count: shouldCount,
-//             religion,
-//             languages,
-//             countries,
-//             division_ids,
-//             isEducated,
-//             minWeight,
-//             maxWeight,
-//             minHeight,
-//             maxHeight,
-//             minAge,
-//             maxAge,
-//             maritalStatuses,
-//             occupations,
-//             minAnnualIncome,
-//             maxAnnualIncome,
-//             incomeCurrency,
-//         } = validatedQuery;
-//         // Build the base query
-//         const baseQuery: any = getBaseSearchQuery(req.authSession.value);
-//         // Add optional filters
-//         if (religion) baseQuery.religion = religion;
-//         if (languages?.length > 0) baseQuery.languages = { $all: languages };
-//         if (countries?.length > 0) baseQuery['address.country'] = { $in: countries };
-//         if (countries?.includes(CountryNamesEnum.BANGLADESH) && division_ids?.length > 0) {
-//             baseQuery['address.division.id'] = { $in: division_ids };
-//         }
-//         if (isEducated) baseQuery.isEducated = isEducated;
-//         // Add range-based filters
-//         if (minWeight || maxWeight) {
-//             baseQuery.weight = {};
-//             if (minWeight) baseQuery.weight.$gte = minWeight;
-//             if (maxWeight) baseQuery.weight.$lte = maxWeight;
-//         }
-//         if (minAge || maxAge) {
-//             baseQuery.age = {};
-//             if (minAge) baseQuery.age.$gte = minAge;
-//             if (maxAge) baseQuery.age.$lte = maxAge;
-//         }
-//         if (minHeight && maxHeight) {
-//             baseQuery.height = { $in: searchHeightGenerator(minHeight, maxHeight) };
-//         }
-//         // Add array-based filters
-//         if (maritalStatuses?.length > 0) {
-//             baseQuery.maritalStatus = { $in: maritalStatuses };
-//         }
-//         if (occupations?.length > 0) {
-//             baseQuery.occupation = { $in: occupations };
-//         }
-//         // Add income-based filters
-//         if (minAnnualIncome && maxAnnualIncome) {
-//             baseQuery['annualIncome.currency'] = incomeCurrency;
-//             baseQuery['annualIncome.amount'] = {};
-//             if (minAnnualIncome) baseQuery['annualIncome.amount'].$gte = minAnnualIncome;
-//             if (maxAnnualIncome) baseQuery['annualIncome.amount'].$lte = maxAnnualIncome;
-//         }
-//         // Calculate pagination
-//         const skip = (page - 1) * limit;
-//         // Execute the query with pagination
-//         const users = await User.find(baseQuery, userField)
-//             .skip(skip)
-//             .limit(limit)
-//             .lean()
-//             .maxTimeMS(20000); // Set maximum execution time
-//         // Get total count if requested
-//         let totalCount: number | undefined = undefined;
-//         if (shouldCount === 'yes') {
-//             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
-//         }
-//         // Prepare pagination info
-//         let pagination: object = {
-//             currentPage: page,
-//             pageSize: limit,
-//         };
-//         if (totalCount !== undefined) {
-//             pagination = {
-//                 ...pagination,
-//                 totalPages: Math.ceil(totalCount / limit),
-//                 totalUsers: totalCount
-//             };
-//         }
-//         // Set cache headers for better performance
-//         res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
-//         return res.status(200).json({
-//             success: true,
-//             data: {
-//                 users,
-//                 pagination,
-//                 filterCriteria: {
-//                     religion,
-//                     languages,
-//                     countries,
-//                     division_ids,
-//                     isEducated,
-//                     weightRange: minWeight || maxWeight ? { min: minWeight, max: maxWeight } : undefined,
-//                     ageRange: minAge || maxAge ? { min: minAge, max: maxAge } : undefined,
-//                     heightRange: minHeight || maxHeight ? { min: minHeight, max: maxHeight } : undefined,
-//                     maritalStatuses,
-//                     occupations,
-//                     incomeRange: minAnnualIncome || maxAnnualIncome ? {
-//                         min: minAnnualIncome,
-//                         max: maxAnnualIncome,
-//                         currency: incomeCurrency
-//                     } : undefined
-//                 }
-//             }
-//         });
-//     } catch (error) {
-//         console.error('Filter users API error:', error);
-//         return res.status(500).json({
-//             success: false,
-//             message: "Internal server error",
-//             data: null
-//         });
-//     }
-// });
-// router.get('/search-history', async function (req: Request, res: Response): Promise<Response | any> {
-//     try {
-//         const userId = req.authSession.value.userId;
-//         // Get search history
-//         const searchHistory = await SearchHistory.find({ userId, }, 'title query savedAt userId')
-//             .sort({ savedAt: -1 })
-//             .lean()
-//             .maxTimeMS(10000);
-//         if (searchHistory.length > 50) {
-//             for (let i = 0; i < searchHistory.length; i++) {
-//                 const { savedAt, _id } = searchHistory[i];
-//                 if (savedAt.getTime() < (Date.now() - 7 * 24 * 3600 * 1000)) await SearchHistory.findByIdAndDelete(_id);
-//             }
-//         }
-//         // Set cache headers
-//         res.set('Cache-Control', 'private, max-age=60'); // Cache for 1 minute, private because it's user-specific
-//         return res.status(200).json({
-//             success: true,
-//             data: {
-//                 searchHistory,
-//             }
-//         });
-//     } catch (error) {
-//         console.error('[Get Search History API Error]', {
-//             error: error instanceof Error ? error.message : 'Unknown error',
-//             stack: error instanceof Error ? error.stack : undefined,
-//             timestamp: new Date().toISOString()
-//         });
-//         return res.status(500).json({
-//             success: false,
-//             message: 'Internal server error',
-//             data: null
-//         });
-//     }
-// });
-// router.post('/search-history', async function (req: Request, res: Response): Promise<Response | any> {
-//     try {
-//         // Validate request body
-//         const validationResult = searchHistorySchema.safeParse(req.body);
-//         if (!validationResult.success) {
-//             return res.status(400).json({
-//                 success: false,
-//                 message: "Invalid request parameters",
-//                 error: 'VALIDATION_ERROR',
-//                 errors: validationResult.error.errors,
-//                 data: null
-//             });
-//         }
-//         const { searchQuery, title } = validationResult.data;
-//         const userId = req.authSession.value.userId;
-//         // Check if title already exists for this user
-//         const isHistoryExists = await SearchHistory.findOne(
-//             { userId, title },
-//             '_id'
-//         ).lean();
-//         if (isHistoryExists) {
-//             return res.status(409).json({
-//                 success: false,
-//                 message: 'A search history with this title already exists',
-//                 error: 'DUPLICATE_TITLE',
-//                 data: null
-//             });
-//         }
-//         // Create new search history
-//         const newSearchHistory = await SearchHistory.create({
-//             title,
-//             userId,
-//             searchQuery,
-//             savedAt: new Date()
-//         });
-//         // Return success response
-//         return res.status(201).json({
-//             success: true,
-//             data: {
-//                 id: newSearchHistory._id,
-//                 title: newSearchHistory.title,
-//                 createdAt: newSearchHistory.savedAt
-//             },
-//             error: null,
-//             message: 'Search history saved successfully'
-//         });
-//     } catch (error) {
-//         console.error('[Save search history API error]', {
-//             error: error instanceof Error ? error.message : 'Unknown error',
-//             stack: error instanceof Error ? error.stack : undefined,
-//             timestamp: new Date().toISOString(),
-//             userId: req.authSession?.value?.userId
-//         });
-//         return res.status(500).json({
-//             success: false,
-//             message: 'An error occurred while saving search history',
-//             error: 'INTERNAL_SERVER_ERROR',
-//             data: null
-//         });
-//     }
-// });
-// router.delete('/search-history/:id', async function (req: Request, res: Response): Promise<Response | any> {
-//     try {
-//         // Validate ID parameter
-//         const historyId = _idValidator.parse(req.params.id);
-//         const userId = req.authSession.value.userId;
-//         // Find and delete the search history
-//         const searchHistory = await SearchHistory.findById(historyId);
-//         if (!searchHistory) {
-//             return res.status(404).json({
-//                 success: false,
-//                 message: 'Search history not found or you do not have permission to delete it',
-//                 error: 'NOT_FOUND',
-//                 data: null
-//             });
-//         }
-//         await searchHistory.deleteOne();
-//         return res.status(200).json({
-//             success: true,
-//             data: {
-//                 id: historyId,
-//                 deletedAt: new Date()
-//             },
-//             error: null,
-//             message: 'Search history deleted successfully'
-//         });
-//     } catch (error) {
-//         // Handle validation errors
-//         if (error instanceof z.ZodError) {
-//             return res.status(400).json({
-//                 success: false,
-//                 message: 'Invalid search history ID',
-//                 error: 'INVALID_ID',
-//                 errors: error.errors,
-//                 data: null
-//             });
-//         }
-//         console.error('[Delete search history API error]', {
-//             error: error instanceof Error ? error.message : 'Unknown error',
-//             stack: error instanceof Error ? error.stack : undefined,
-//             timestamp: new Date().toISOString(),
-//             userId: req.authSession?.value?.userId,
-//             historyId: req.params.id
-//         });
-//         return res.status(500).json({
-//             success: false,
-//             message: 'An error occurred while deleting search history',
-//             error: 'INTERNAL_SERVER_ERROR',
-//             data: null
-//         });
-//     }
-// });
-// router.get('/users/suggested-for-you', async function (req: Request, res: Response): Promise<Response | any> {
-//     try {
-//         // Validate pagination parameters using zod schema
-//         const validationResult = paginationSchema.safeParse(req.query);
-//         if (!validationResult.success) {
-//             return res.status(400).json({
-//                 success: false,
-//                 message: "Invalid query parameters",
-//                 error: validationResult.error.errors,
-//                 data: null
-//             });
-//         }
-//         const { page, limit, count: shouldCount } = validationResult.data;
-//         const userData = req.authSession.value;
-//         // Get current user's partner preferences and gender
-//         const currentUser = await User.findById(userData.userId, 'partnerPreference gender')
-//             .lean();
-//         if (!currentUser) {
-//             throw new Error("currentUser is null");
-//         }
-//         if (!currentUser?.partnerPreference) {
-//             // If no preferences exist, create them automatically
-//             const userForPrefs = await User.findById(userData.userId);
-//             if (userForPrefs) {
-//                 userForPrefs.createPreference();
-//                 await userForPrefs.save();
-//                 currentUser.partnerPreference = userForPrefs.partnerPreference;
-//             } else {
-//                 return res.status(404).json({
-//                     success: false,
-//                     message: "User not found",
-//                     data: null
-//                 });
-//             }
-//         }
-//         // Build base query including base search criteria
-//         const baseQuery: any = {
-//             ...getBaseSearchQuery(userData), // Use existing helper for base query
-//             _id: { $ne: userData.userId }, // Exclude current user
-//             'suspension.isSuspended': false,
-//             // Match opposite gender
-//             gender: currentUser.gender === 'male' ? 'female' : 'male'
-//         };
-//         const pref = currentUser.partnerPreference;
-//         // Add age preferences
-//         if (pref.ageRange?.min || pref.ageRange?.max) {
-//             baseQuery.age = {};
-//             if (pref.ageRange.min) baseQuery.age.$gte = pref.ageRange.min;
-//             if (pref.ageRange.max) baseQuery.age.$lte = pref.ageRange.max;
-//         }
-//         // Add height preferences with proper validation
-//         if (pref.heightRange?.min && pref.heightRange?.max) {
-//             baseQuery.height = {
-//                 $in: searchHeightGenerator(
-//                     pref.heightRange.min,
-//                     pref.heightRange.max
-//                 )
-//             };
-//         }
-//         // Add religion preferences
-//         if (pref.religion?.length > 0) {
-//             baseQuery.religion = { $in: pref.religion };
-//         }
-//         // Add marital status preferences
-//         if (pref.maritalStatus?.length > 0) {
-//             baseQuery.maritalStatus = { $in: pref.maritalStatus };
-//         }
-//         // Add education preferences with null handling
-//         if (pref.education?.minimumLevel) {
-//             const educationLevels = Object.values(EducationLevel);
-//             const minLevelIndex = educationLevels.indexOf(pref.education.minimumLevel);
-//             if (minLevelIndex !== -1) {
-//                 const acceptableLevels = educationLevels.slice(minLevelIndex);
-//                 baseQuery['education.level'] = { $in: acceptableLevels };
-//             }
-//         }
-//         // Add location preferences
-//         if (pref.locationPreference?.preferredCountries?.length > 0) {
-//             baseQuery['address.country'] = { $in: pref.locationPreference.preferredCountries };
-//             // Add division/district preferences for Bangladesh
-//             if (!!pref.locationPreference?.preferredRegions?.length && pref.locationPreference.preferredRegions?.length > 0 &&
-//                 pref.locationPreference.preferredCountries.includes(CountryNamesEnum.BANGLADESH)) {
-//                 baseQuery['address.division.id'] = { $in: pref.locationPreference.preferredRegions };
-//             }
-//         }
-//         // Add occupation preferences
-//         if (!!pref.profession?.acceptedOccupations?.length && pref.profession?.acceptedOccupations?.length > 0) {
-//             baseQuery.occupation = { $in: pref.profession.acceptedOccupations };
-//         }
-//         // Add income preferences with currency matching
-//         if (pref.profession?.minimumAnnualIncome) {
-//             baseQuery.annualIncome = {
-//                 amount: { $gte: pref.profession.minimumAnnualIncome.min },
-//                 currency: pref.profession.minimumAnnualIncome.currency
-//             };
-//         }
-//         // Calculate pagination
-//         const skip = (page - 1) * limit;
-//         // Find matching users with pagination and proper fields
-//         let users = await User.find(baseQuery, userField)
-//             .sort({
-//                 'membership.currentMembership.membership_exipation_date': -1, // Premium users first
-//                 createdAt: -1 // Then by newest
-//             })
-//             .skip(skip)
-//             .limit(limit)
-//             .lean()
-//             .maxTimeMS(20000);
-//         // Get total count if requested
-//         let totalCount: number | undefined = undefined;
-//         if (shouldCount === 'yes') {
-//             totalCount = await User.countDocuments(baseQuery)
-//                 .maxTimeMS(10000);
-//         }
-//         // Prepare pagination info
-//         let pagination: object = {
-//             currentPage: page,
-//             pageSize: limit,
-//         };
-//         if (totalCount !== undefined) {
-//             pagination = {
-//                 ...pagination,
-//                 totalPages: Math.ceil(totalCount / limit),
-//                 totalUsers: totalCount
-//             };
-//         }
-//         // Cache control - short cache due to frequent updates
-//         res.set('Cache-Control', 'private, max-age=60');
-//         return res.status(200).json({
-//             success: true,
-//             data: {
-//                 users,
-//                 pagination
-//             },
-//             message: 'SUGGESTED_USERS_FOUND'
-//         });
-//     } catch (error) {
-//         console.error('[Suggested For You API error]', error);
 //         return res.status(500).json({
 //             success: false,
 //             message: 'Internal server error',

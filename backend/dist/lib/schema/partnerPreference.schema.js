@@ -7,7 +7,6 @@ const partnerPreference_1 = require("../types/partnerPreference");
 const user_types_1 = require("../types/user.types");
 const userEducation_types_1 = require("../types/userEducation.types");
 const userProfile_types_1 = require("../types/userProfile.types");
-const currencyCodes_enum_1 = require("../types/currencyCodes.enum");
 exports.partnerPreferenceSchema = zod_1.z.object({
     ageRange: zod_1.z.object({
         min: zod_1.z.number().min(18).max(70).optional(),
@@ -24,7 +23,8 @@ exports.partnerPreferenceSchema = zod_1.z.object({
     heightRange: zod_1.z.object({
         min: zod_1.z.number().min(4).max(8).optional(),
         max: zod_1.z.number().min(5).max(9).optional()
-    }).refine(({ min, max }) => {
+    })
+        .refine(({ min, max }) => {
         if ((!min && max) || (!max && min)) {
             return false;
         }
@@ -32,18 +32,21 @@ exports.partnerPreferenceSchema = zod_1.z.object({
             return min < max;
     }, {
         message: "Minimum height must be less than to maximum height"
-    }).optional(),
+    })
+        .optional(),
     weightRange: zod_1.z.object({
         min: zod_1.z.number().min(30).max(200).optional(),
         max: zod_1.z.number().min(30).max(200).optional()
-    }).refine((data) => {
+    })
+        .refine((data) => {
         if ((data === null || data === void 0 ? void 0 : data.min) !== undefined && (data === null || data === void 0 ? void 0 : data.max) !== undefined) {
             return data.min <= data.max;
         }
         return true; // If either min or max is undefined, the refine doesn't apply
     }, {
         message: "Minimum weight must be less than or equal to maximum weight"
-    }).optional(),
+    })
+        .optional(),
     maritalStatus: zod_1.z.array(zod_1.z.nativeEnum(user_types_1.MaritalStatus)).min(1).optional(),
     complexion: zod_1.z.array(zod_1.z.nativeEnum(partnerPreference_1.ComplexionPreference)).optional(),
     physicalStatus: zod_1.z.array(zod_1.z.nativeEnum(userProfile_types_1.PhysicalStatus)).min(1).optional(),
@@ -51,20 +54,22 @@ exports.partnerPreferenceSchema = zod_1.z.object({
     dealBreakers: zod_1.z.array(zod_1.z.nativeEnum(userProfile_types_1.BadHabits)).optional(),
     locationPreference: zod_1.z.object({
         preferredDistrictIds: zod_1.z.array(zod_1.z.number().min(1).max(64)).default([]).optional()
-    }).optional(),
+    })
+        .optional(),
     education: zod_1.z.object({
         minimumLevel: zod_1.z.nativeEnum(userEducation_types_1.EducationLevel).optional(),
         preferredLevels: zod_1.z.array(zod_1.z.nativeEnum(userEducation_types_1.EducationLevel)).optional(),
         mustBeEducated: zod_1.z.boolean().optional(),
         preferredInstitutions: zod_1.z.array(zod_1.z.string()).optional()
-    }).optional(),
+    })
+        .optional(),
     profession: zod_1.z.object({
         acceptedOccupations: zod_1.z.array(zod_1.z.nativeEnum(user_types_1.Occupation)).optional(),
         preferredSectors: zod_1.z.array(zod_1.z.nativeEnum(partnerPreference_1.EmploymentSector)).optional(),
         minimumAnnualIncome: zod_1.z.object({
             min: zod_1.z.number().optional(),
             max: zod_1.z.number().optional(),
-            currency: zod_1.z.nativeEnum(currencyCodes_enum_1.CurrencyCode).optional()
+            currency: zod_1.z.optional(zod_1.z.enum(['BDT']).default('BDT'))
         }).optional()
     }).optional(),
     religion: zod_1.z.array(zod_1.z.nativeEnum(user_types_1.Religion)).min(1).optional(),

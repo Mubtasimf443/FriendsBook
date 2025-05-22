@@ -131,7 +131,7 @@ const phoneInfoSchema = zod_1.z.object({
 }).optional();
 const annualIncomeSchema = zod_1.z.object({
     amount: zod_1.z.number().min(0).max(1000000000).int(),
-    currency: zod_1.z.string().length(3).toUpperCase()
+    currency: zod_1.z.enum(['BDT']).default('BDT')
 }).optional();
 const aboutMeSchema = zod_1.z.object({
     description: zod_1.z.string().max(1000).optional(),

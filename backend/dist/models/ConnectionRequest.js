@@ -140,13 +140,4 @@ connectionRequestSchema.pre('save', function (next) {
     this.updatedAt = new Date();
     next();
 });
-// // Static methods for the model
-// connectionRequestSchema.statics.findActiveRequest = async function(senderId: mongoose.Types.ObjectId, recipientId: mongoose.Types.ObjectId) {
-//     return this.findOne({
-//         sender: senderId,
-//         recipient: recipientId,
-//         status: ConnectionRequestStatus.PENDING
-//     });
-// };
-// Create model
 exports.ConnectionRequest = mongoose_1.default.model('ConnectionRequest', connectionRequestSchema);
