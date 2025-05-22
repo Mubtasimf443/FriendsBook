@@ -5,9 +5,7 @@ import mongoose, { Schema } from 'mongoose';
 export interface ISearchHistory extends Document {
     userId: mongoose.Types.ObjectId;
     searchQuery: {
-        religion?: string;
         languages?: string[];
-        countries?: string[];
         division_ids?: string[];
         isEducated?: boolean;
         minWeight?: number;
@@ -20,7 +18,6 @@ export interface ISearchHistory extends Document {
         occupations?: string[];
         minAnnualIncome?: number;
         maxAnnualIncome?: number;
-        incomeCurrency?: string;
     };
     title : string;
     savedAt : Date

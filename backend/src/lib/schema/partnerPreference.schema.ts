@@ -34,7 +34,8 @@ export const partnerPreferenceSchema = z.object({
     heightRange: z.object({
         min: z.number().min(4).max(8).optional(),
         max: z.number().min(5).max(9).optional()
-    }).refine(
+    })
+    .refine(
         ({ min, max }) => {
             if ((!min && max) || (!max && min)) {
                 return false;
@@ -44,12 +45,14 @@ export const partnerPreferenceSchema = z.object({
         {
             message: "Minimum height must be less than to maximum height"
         }
-    ).optional(),
+    )
+    .optional(),
 
     weightRange: z.object({
         min: z.number().min(30).max(200).optional(),
         max: z.number().min(30).max(200).optional()
-    }).refine(
+    })
+    .refine(
         (data) => {
             if (data?.min !== undefined && data?.max !== undefined) {
                 return data.min <= data.max;
@@ -59,7 +62,8 @@ export const partnerPreferenceSchema = z.object({
         {
             message: "Minimum weight must be less than or equal to maximum weight"
         }
-    ).optional(),
+    )
+    .optional(),
 
     maritalStatus: z.array(z.nativeEnum(MaritalStatus)).min(1).optional(),
     complexion: z.array(z.nativeEnum(ComplexionPreference)).optional(),
@@ -69,14 +73,16 @@ export const partnerPreferenceSchema = z.object({
 
     locationPreference: z.object({
         preferredDistrictIds:z.array( z.number().min(1).max(64)).default([]).optional()
-    }).optional(),
+    })
+    .optional(),
 
     education: z.object({
         minimumLevel: z.nativeEnum(EducationLevel).optional(),
         preferredLevels: z.array(z.nativeEnum(EducationLevel)).optional(),
         mustBeEducated: z.boolean().optional(),
         preferredInstitutions: z.array(z.string()).optional()
-    }).optional(),
+    })
+    .optional(),
 
     profession: z.object({
         acceptedOccupations: z.array(z.nativeEnum(Occupation)).optional(),
@@ -84,7 +90,7 @@ export const partnerPreferenceSchema = z.object({
         minimumAnnualIncome: z.object({
             min: z.number().optional(),
             max: z.number().optional(),
-            currency: z.nativeEnum(CurrencyCode).optional()
+            currency: z.optional(z.enum(['BDT']).default('BDT'))
         }).optional()
     }).optional(),
 

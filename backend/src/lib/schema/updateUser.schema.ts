@@ -187,7 +187,7 @@ const phoneInfoSchema = z.object({
 
 const annualIncomeSchema = z.object({
     amount: z.number().min(0).max(1000000000).int(),
-    currency: z.string().length(3).toUpperCase()
+    currency: z.enum(['BDT']).default('BDT')
 }).optional();
 
 const aboutMeSchema = z.object({

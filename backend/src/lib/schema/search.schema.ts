@@ -6,6 +6,8 @@ import { CountryNamesEnum } from '../types/country_names.enum';
 import countryNames from '../data/countryNames';
 import { CurrencyCode } from '../types/currencyCodes.enum';
 import { countriesValidator, countValidation, division_ids_valdator, educationLevelsValidator, incomeCurrencyValidator, languagesValdator, limitValidation, maritalStatusesValdator, occupationsValidator, pageValidation, religionValidator } from './schemaComponents';
+import { Districts } from '../data/districts';
+import { DistrictName } from '../types/district.types';
 
 
 export const paginationSchema = z.object({
@@ -48,27 +50,41 @@ export type FilterUsersQueryParams = z.infer<typeof filterUsersSchema>;
 // Add these new schemas for preferred searches
 
 export const preferredEducationSearchSchema =  paginationSchema.extend({
-    educationLevels: educationLevelsValidator
+    educationLevels: z.optional(educationLevelsValidator)
 });
 
-export const preferredLocationSearchSchema =  paginationSchema.extend({
-    countries: countriesValidator,
-    division_ids: division_ids_valdator,
+
+export const preferredLocationSearchSchema = paginationSchema.extend({
+    district_names: z.array(z.nativeEnum(DistrictName)).optional(),
+    latitude:z.optional( z.string()
+        .transform(Number)
+        .refine((val) => !isNaN(val), { // Add validation after transform
+            message: "Latitude must be a valid number",
+        })
+        .refine((val) => val >= -90 && val <= 90, {
+            message: "Latitude must be between -90 and 90",
+        })),
+    longitude:z.optional( z.string()
+        .transform(Number)
+        .refine((val) => !isNaN(val), { // Add validation after transform
+            message: "Longitude must be a valid number",
+        })
+        .refine((val) => val >= -180 && val <= 180, {
+            message: "Longitude must be between -180 and 180",
+        })),
 })
-    .refine(
-        (data) => {
-            if (data.countries.includes(CountryNamesEnum.BANGLADESH)) {
-                if (data.division_ids.length === 0) {
-                    return false;
-                }
-            }
-            return true;
-        },
-        {
-            message: "Division IDs must be provided when country is Bangladesh",
-            path: ["division_ids"]
-        }
-    );
+.refine(({ district_names , latitude ,  longitude}) => {
+    if (district_names === undefined) {
+        if (latitude === undefined || longitude ===undefined  ) return false ;
+        else return true;
+    }
+    else return true
+},
+{ 
+    path :[ 'latitude' , 'longitude'],
+    message  : " latitude and longitude is required when district_names is undefined "
+}
+);
 
 
 
@@ -80,11 +96,7 @@ export const preferredOccupationSearchSchema =  paginationSchema.extend({
 });
 
 export const filterUsersSchema =  paginationSchema.extend({
-
-    // Enums (keeping existing validation)
-    religion: religionValidator,
     languages: languagesValdator,
-    countries: countriesValidator,
     division_ids: division_ids_valdator,
     isEducated: z.enum(['yes', 'no']).optional().default('yes').transform(val => val === 'yes'),
     maritalStatuses: maritalStatusesValdator,
@@ -164,7 +176,7 @@ export const filterUsersSchema =  paginationSchema.extend({
                 .max(1000000000, "Maximum annual income cannot exceed 1 billion")
         )
         .optional(),
-    incomeCurrency: incomeCurrencyValidator
+  
 })
     .refine(
         (data) => {
@@ -213,33 +225,9 @@ export const filterUsersSchema =  paginationSchema.extend({
             message: "Minimum annual income must be less than or equal to maximum annual income",
             path: ["minAnnualIncome", "maxAnnualIncome"]
         }
-    )
-    .refine(
-        (data) => {
-            if (data.minAnnualIncome && data.maxAnnualIncome) {
-                return !!data.incomeCurrency;
-            }
-            return true;
-        },
-        {
-            message: "incomeCurrency is required if You have given minAnnualIncome, maxAnnualIncome",
-            path: ["minAnnualIncome", "maxAnnualIncome"]
-        }
-    )
-    .refine(
-        (data) => {
-            if (data.countries.includes(CountryNamesEnum.BANGLADESH)) {
-                if (data.division_ids.length === 0) {
-                    return false;
-                }
-            }
-            return true;
-        },
-        {
-            message: "Division IDs must be provided when country is Bangladesh",
-            path: ["division_ids"]
-        }
     );
+   
+    
 
 
 

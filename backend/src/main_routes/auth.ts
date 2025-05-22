@@ -1297,7 +1297,7 @@ router.post('/login/video-profile', async function (req: Request, res: Response)
         }
 
         if (!existingUser) {
-            return res.status(404).json({
+            return res.status(400).json({
                 success: false,
                 message: "No account found with these credentials",
                 data: null

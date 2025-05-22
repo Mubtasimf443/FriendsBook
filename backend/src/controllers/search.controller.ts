@@ -32,7 +32,7 @@ export function findNearestDistricts(lat: number, lon: number, count = 5): IDist
       ...district,
       distance: getDistance(lat, lon, district.lat, district.long),
     }))
-    .sort((a, b) => a.distance - b.distance)
+   
     .slice(0, count);
 }
 
