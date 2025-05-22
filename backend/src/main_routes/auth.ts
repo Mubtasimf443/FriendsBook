@@ -971,7 +971,7 @@ router.post("/create-registration-session/video-profile", async function (req: R
             data: null
         });
     }
-})
+});
 
 router.post("/request-registration-otp/video-profile", async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -1057,7 +1057,7 @@ router.post("/request-registration-otp/video-profile", async function (req: Requ
             data: null
         });
     }
-})
+});
 
 router.post("/verify-registration-otp/video-profile", async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -1153,7 +1153,7 @@ router.post("/verify-registration-otp/video-profile", async function (req: Reque
             data: null
         });
     }
-})
+});
 
 router.post('/is-registration-successfull/video-profile', async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -1237,7 +1237,6 @@ router.post('/is-registration-successfull/video-profile', async function (req: R
         });
     }
 });
-
 
 router.post('/login/video-profile', async function (req: Request, res: Response): Promise<Response | any> {
     try {

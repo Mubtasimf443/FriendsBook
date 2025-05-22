@@ -88,6 +88,7 @@ const connectionRequestSchema = new Schema<IConnectionRequest ,IConnectionReques
     }
 });
 
+
 // Compound index to ensure one active request between users
 connectionRequestSchema.index({ sender: 1, recipient: 1, status: 1 }, { unique: true, partialFilterExpression: { status: 'pending' } });
 
@@ -126,16 +127,4 @@ connectionRequestSchema.pre('save', function(next) {
     next();
 });
 
-// // Static methods for the model
-// connectionRequestSchema.statics.findActiveRequest = async function(senderId: mongoose.Types.ObjectId, recipientId: mongoose.Types.ObjectId) {
-//     return this.findOne({
-//         sender: senderId,
-//         recipient: recipientId,
-//         status: ConnectionRequestStatus.PENDING
-//     });
-// };
-
-
-
-// Create model
 export const ConnectionRequest = mongoose.model<IConnectionRequest>('ConnectionRequest', connectionRequestSchema);
