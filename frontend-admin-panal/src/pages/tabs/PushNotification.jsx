@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bell, Send, Users } from "lucide-react";
 import { toast } from "sonner";
-import { notification_socket } from '@/lib/env';
+import { Api, notification_socket } from '@/lib/env';
 import { io } from 'socket.io-client';
 
 const NOTIFICATION_STORAGE_KEY = "sent_notifications";
@@ -109,45 +109,25 @@ const PushNotification = () => {
 
     try {
       // Map UI target to backend type
-      let type = notification.target;
+      let room = notification.target;
       
 
       const payload = {
-        type,
+        room,
         title: notification.title,
-        message: notification.message,
+        body: notification.message,
       };
-
-      // Emit notification request via socket.io
-      if (socketRef.current && socketRef.current.connected) {
-        // Optionally, you can use a callback for ack
-        socketRef.current.emit('admin_notification', payload, (response) => {
-          // Optionally handle ack from server
-        });
-      } else {
-        throw new Error("Socket not connected");
-      }
-
-      let targetLabel = "all";
-      if (backendType === "video") targetLabel = "video";
-      else if (backendType === "matrimony") targetLabel = "matrimony";
-
-      toast.success(`Notification sent to ${targetLabel} users!`);
-
-      // Store in localStorage with timestamp
-      const sent = {
-        ...payload,
-        target: targetLabel,
-        timestamp: Date.now(),
-      };
-      addNotificationToStorage(sent);
-      setSentNotifications(getStoredNotifications());
-
-      setNotification({
-        title: '',
-        message: '',
-        target: 'all_users',
+o
+      let res = await fetch(Api + "/notification" , {
+        headers : {
+          'content-type' :'application/json'
+        },
+        body : JSON.stringify(payload),
+        method : 'post'
       });
+
+      if (res.status === 200) toast('Notification Sent SuccessFull');
+
     } catch (err) {
       toast.error("Failed to send notification");
     } finally {
@@ -158,15 +138,15 @@ const PushNotification = () => {
   let userTypes = [
     {
       name: "All Members",
-      value: 'all_users'
+      value: 'allProfileRoom'
     },
     {
       name: "Matrimony Members",
-      value: 'matrimony_users'
+      value: 'matrimonyProfileRoom'
     },
     {
       name: "Video Calling Members",
-      value: 'video_users'
+      value: 'videoProfileRoom'
     },
   ];
 

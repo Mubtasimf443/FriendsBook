@@ -165,11 +165,12 @@ router.put('/user-details/video-profile', validateVideoProfile, async function (
     }
 });
 
-
-router.get('/user-details/matrimony/:id', validateUser, async function (req: Request, res: Response): Promise<Response | any> {
+router.get('/user-details/matrimony', validateUser, async function (req: Request, res: Response): Promise<Response | any> {
     try {
-        let _id = _idValidator.parse(req.params.id);
-        let user  = await User.findById(_id, 'name email phoneInfo profileImage coverImage occupation maritalStatus languages phoneInfo.number address education height age weight dateOfBirth gender profileCreatedBy mid onlineStatus aboutMe familyInfo membership')
+
+        let _id = req.authSession?.value?.userId;
+        if (!_id) return res.sendStatus(401);
+        let user  = await User.findById(_id, 'name email phoneInfo profileImage coverImage occupation maritalStatus languages address education height age weight dateOfBirth gender profileCreatedBy mid onlineStatus aboutMe familyInfo membership')
             .populate('membership.currentMembership.requestId', 'tier duration endDate startDate')
             .lean();
 
@@ -207,74 +208,45 @@ router.get('/user-details/matrimony/:id', validateUser, async function (req: Req
     }
 });
 
-router.get('/user-details/matrimony', validateUser ,async function (req: Request, res: Response): Promise<Response | any> {
+router.get('/user-details/matrimony/:id', validateUser, async function (req: Request, res: Response): Promise<Response | any> {
     try {
 
-        if (typeof req.query.fields === 'string') req.query.fields = [req.query.fields];
-        const { fields } = await userDetailsQuerySchema.parseAsync(req.query);
-        console.log(fields)
-        // Parse and validate user ID
-       
+        let _id = _idValidator.parse(req.params.id)
+        ;
+        let user  = await User.findById(_id, 'name email phoneInfo profileImage coverImage occupation maritalStatus languages address education height age weight dateOfBirth gender profileCreatedBy mid onlineStatus aboutMe familyInfo membership')
+            .populate('membership.currentMembership.requestId', 'tier duration endDate startDate')
+            .lean();
 
-        if (!req.authSession || !req.authSession?.value) {
-            res.status(401).json({
-                success: false,
-                message: 'Failed to authorize the user',
-                
-                data: null
-            });
-            return;
-        }
-        const userId = req.authSession.value.userId;
+        if (!user) return res.sendStatus(204);
 
-        // Default fields if none specified
-        const selectedFields = fields
+        let membership = user.membership?.currentMembership?.requestId ;
+        delete user.membership;
 
-        // Fetch user details
-        const user = await User.findById(userId , selectedFields).lean();
-
-        if (!user) {
-            res.status(404).json({
-                success: false,
-                message: 'User details not found',
-                data: null
-            });
-            return;
-        }
-
-        // Format user details
-        const userDetails: any = user;
-
-        return res.status(200).json({
-            success: true,
-            data: {
-                userDetails
+        res.status(200).json({
+            success : true,
+            data : {
+                ...user,
+                membership
             },
-            error: null,
-            message: 'User details retrieved successfully'
-        });
-
+            error : null,
+            message : 'OK'
+        })
+        return;
     } catch (error) {
-        if (error instanceof z.ZodError) {
-            return res.status(400).json({
+        if (error instanceof ZodError) {
+            res.status(400).json({
                 success: false,
                 message: 'Invalid request parameters',
                 error: error.errors,
                 data: null
             });
+            return;
         }
-
-        console.error("[Profile Details API Error]", {
-            timestamp: new Date().toISOString(),
-            error: error instanceof Error ? error.message : 'Unknown error',
-            
-        });
-
+        console.error('[matrimony User Details Api Error]', error);
         return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            error: 'InternalServerError',
-            data: null
+           success: false,
+           message: 'Internal server error',
+           data: null
         });
     }
 });

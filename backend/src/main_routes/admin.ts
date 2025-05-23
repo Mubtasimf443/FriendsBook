@@ -11,6 +11,7 @@ import { MembershipRequest } from "../models/membershipRequest";
 import { MembershipRequestStatus } from "../lib/types/memberdship.types";
 import Gifts from "../models/Gifts";
 import { _idValidator } from "../lib/schema/schemaComponents";
+import { Rooms } from "../sockets/notification.socket";
 
 const router: Router = Router();
 
@@ -762,6 +763,34 @@ router.post('/log-out', async function (req: Request, res: Response,): Promise<a
 });
 
 
+router.post('/notification', async function (req: Request, res: Response,): Promise<any> {
+  try {
+    let { title, body, room } = (z.object({
+      title: z.string().max(80).min(1),
+      body: z.string().min(1).max(120),
+      room: z.nativeEnum(Rooms)
+    })).parse(req.body);
+
+    if (room === Rooms.ALL_USERS_ROOMS) {
+      req.notifications?.io.emit('admin-notification' , { title , body});
+    }
+    if (room === Rooms.MATRIMONY_ROOMS) {
+      req.notifications?.io.to(room).emit('admin-notification' , { title , body});
+    }
+    else {
+      req.notifications?.io.to(room).emit('admin-notification' , { title , body});
+    }
+
+    return res.sendStatus(200);
+  } catch (error) {
+    console.error('[Create Notification Api Error]', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: null
+    });
+  }
+})
 
 
 export default router;
