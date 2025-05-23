@@ -21,7 +21,6 @@ const membership_schema_1 = require("../lib/schema/membership.schema");
 const giveBearerTokenAndSession_1 = __importDefault(require("../lib/core/giveBearerTokenAndSession"));
 const memberdship_types_1 = require("../lib/types/memberdship.types");
 const zod_1 = require("zod");
-const console_1 = require("console");
 const router = (0, express_1.Router)();
 router.get('/dynamic-details', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -136,19 +135,15 @@ router.post('/membership-request', function (req, res) {
             }
             let userId = session.value.userId;
             // Define schema for request validation
-            let { tier, duration, paymentMethod, transactionId, amount, paymentDate, } = (zod_1.z.object({
+            let { tier, duration, paymentMethod, transactionId, amount, } = (zod_1.z.object({
                 tier: zod_1.z.nativeEnum(memberdship_types_1.MembershipTier),
                 duration: zod_1.z.nativeEnum(memberdship_types_1.MembershipDuration),
                 paymentMethod: zod_1.z.nativeEnum(memberdship_types_1.PaymentMethod),
                 transactionId: zod_1.z.string().min(1).trim(),
                 amount: zod_1.z.number().int().positive(),
-                paymentDate: zod_1.z.string().refine((val) => !isNaN(Date.parse(val)), {
-                    message: "Invalid date format"
-                }).optional(),
             }))
                 .parse(req.body);
             let validMemberships = JSON.parse((0, fs_1.readFileSync)(path_1.default.join(__dirname, '../../data/membership.config.json'), 'utf-8'));
-            (0, console_1.log)(validMemberships);
             if (validMemberships[tier.toLowerCase()].prices[duration].price !== amount) {
                 res.status(400).json({
                     success: false,
@@ -184,7 +179,6 @@ router.post('/membership-request', function (req, res) {
                     transactionId,
                     amount,
                     paymentMethod,
-                    paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
                 },
                 verifiedPhoneLimit: validMemberships[tier.toLowerCase()].prices[duration].sms
             });
@@ -251,46 +245,6 @@ router.put('/membership-request/cancel', function (req, res) {
         }
         catch (error) {
             console.error('[Cancel Membership Request API Error]', {
-                error: error instanceof Error ? error.message : 'Unknown error',
-                timestamp: new Date().toISOString()
-            });
-            return res.status(500).json({
-                success: false,
-                message: 'Internal server error',
-                data: null
-            });
-        }
-    });
-});
-router.delete('/membership-request', function (req, res) {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            let { token, session } = yield (0, giveBearerTokenAndSession_1.default)(req);
-            if (!session) {
-                res.sendStatus(401);
-                return;
-            }
-            let userId = session.value.userId;
-            const membershipRequest = yield membershipRequest_1.MembershipRequest.findOne({
-                requesterID: userId,
-                requestStatus: memberdship_types_1.MembershipRequestStatus.CANCELLED
-            });
-            if (!membershipRequest) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'No cancelled membership request found',
-                    data: null
-                });
-            }
-            yield membershipRequest.deleteOne();
-            return res.status(200).json({
-                success: true,
-                message: 'Membership request deleted successfully',
-                data: null
-            });
-        }
-        catch (error) {
-            console.error('[Delete Membership Request API Error]', {
                 error: error instanceof Error ? error.message : 'Unknown error',
                 timestamp: new Date().toISOString()
             });

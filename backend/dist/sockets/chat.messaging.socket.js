@@ -260,19 +260,51 @@ function configureChatMessagingSocket(io) {
                             message: msg,
                             msg_id: message._id,
                             sender: socket.user_id,
+                            roomId
                         });
                         socket.emit('message-send-successful', { msg_id: message._id });
                         return;
                     }
                     catch (error) {
                         console.error(error);
-                        socket.emit('sent-message-failed', { message: "Failed To send Message" });
+                        socket.emit('sent-message-failed', { msg, roomId });
                     }
                 });
             });
-            socket.on('send-image-event', function (img_id, roomId) {
+            socket.on('send-image-event', function (url, roomId) {
                 return __awaiter(this, void 0, void 0, function* () {
                     try {
+                        zod_1.z.object({ url: zod_1.z.string().url(), roomId: zod_1.z.string().uuid() }).parse({ url, roomId });
+                        roomId = schemaComponents_1._idValidator.parse(roomId);
+                        let room = yield MessagingRooms_1.MessagingRoom.findOne({ _id: roomId });
+                        if (!room)
+                            throw new Error("Message Room Is not valid");
+                        let message = yield Message_1.Message.create({
+                            room: roomId,
+                            sender: socket.user_id,
+                            type: 'image',
+                            content: url
+                        });
+                        socket.broadcast.to(roomId).emit('unseen-image', {
+                            message: url,
+                            msg_id: message._id,
+                            sender: socket.user_id,
+                            roomId
+                        });
+                        socket.emit('image-send-successful', { msg_id: message._id });
+                        return;
+                    }
+                    catch (error) {
+                        console.error(error);
+                        socket.emit('sent-image-failed', { message: "Failed To send Message" });
+                    }
+                });
+            });
+            socket.on('send-pdf-event', function (pdf_id, roomId) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    try {
+                        [pdf_id, roomId] = [schemaComponents_1.uuidValidator.parse(pdf_id), schemaComponents_1.uuidValidator.parse(roomId)];
+                        // let asset = 
                     }
                     catch (error) {
                         console.error(error);
@@ -280,17 +312,7 @@ function configureChatMessagingSocket(io) {
                     }
                 });
             });
-            socket.on('send-pdf-event', function (msg, roomId) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    try {
-                    }
-                    catch (error) {
-                        console.error(error);
-                        socket.emit('sent-message-failed', { message: "Failed To send Message" });
-                    }
-                });
-            });
-            socket.on('send-pdf-event', function (msg, roomId) {
+            socket.on('send-coin-event', function (msg, roomId) {
                 return __awaiter(this, void 0, void 0, function* () {
                     try {
                     }

@@ -1,7 +1,7 @@
 "use strict";
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.text500Validation = exports.text1000Validation = exports.text100Validation = exports.religionValidator = exports.incomeCurrencyValidator = exports.languagesValdator = exports.maritalStatusesValdator = exports.division_ids_valdator = exports.occupationsValidator = exports.educationLevelsValidator = exports.countriesValidator = exports.emailValidatior = exports.passwordValidator = exports._idValidator = exports.countValidation = exports.pageValidation = exports.limitValidation = void 0;
+exports.urlValidator = exports.uuidValidator = exports.text500Validation = exports.text1000Validation = exports.text100Validation = exports.religionValidator = exports.incomeCurrencyValidator = exports.languagesValdator = exports.maritalStatusesValdator = exports.division_ids_valdator = exports.occupationsValidator = exports.educationLevelsValidator = exports.countriesValidator = exports.emailValidatior = exports.passwordValidator = exports._idValidator = exports.countValidation = exports.pageValidation = exports.limitValidation = void 0;
 const zod_1 = require("zod");
 const mongoose_1 = require("mongoose");
 const country_names_enum_1 = require("../types/country_names.enum");
@@ -193,3 +193,5 @@ exports.text500Validation = zod_1.z.string().min(1).max(500).trim().refine((mess
     // Basic content moderation - prevent just whitespace or special characters
     return /^(?=.*[a-zA-Z0-9]).+$/.test(message);
 }, "Message must contain valid content");
+exports.uuidValidator = zod_1.z.string().uuid().trim();
+exports.urlValidator = zod_1.z.string().uuid().trim();

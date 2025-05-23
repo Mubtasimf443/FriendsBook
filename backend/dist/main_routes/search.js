@@ -1064,6 +1064,7 @@ router.get('/users/viewed-not-contact', function (req, res) {
         }
     });
 });
+// ... (other imports remain unchanged)
 router.get('/users/filter', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
@@ -1094,62 +1095,138 @@ router.get('/users/filter', function (req, res) {
             const userData = req.authSession.value;
             // Destructure all query parameters
             const { page, limit, count: shouldCount, languages, division_ids, isEducated, minWeight, maxWeight, minHeight, maxHeight, minAge, maxAge, maritalStatuses, occupations, minAnnualIncome, maxAnnualIncome, } = validatedQuery;
-            // Build the base query
+            // 1. Build hard filters (must-match)
             const baseQuery = (0, search_controller_1.getBaseSearchQuery)(req.authSession.value);
-            if ((languages === null || languages === void 0 ? void 0 : languages.length) > 0)
-                baseQuery.languages = { $in: languages };
-            if (division_ids.length > 0) {
-                baseQuery['address.division.id'] = { $in: division_ids };
+            // Always hard-filter suspended users and self
+            baseQuery["suspension.isSuspended"] = false;
+            baseQuery["_id"] = { $ne: userData.userId };
+            // 2. Build dynamic scoring formula for soft-matching
+            let scoreAdd = [];
+            if ((languages === null || languages === void 0 ? void 0 : languages.length) > 0) {
+                scoreAdd.push({
+                    $cond: [
+                        { $gt: [{ $size: { $setIntersection: ["$languages", languages] } }, 0] },
+                        1, 0
+                    ]
+                });
             }
-            if (isEducated)
-                baseQuery.isEducated = isEducated;
-            // Add range-based filters
-            if (minWeight || maxWeight) {
-                baseQuery.weight = {};
-                if (minWeight)
-                    baseQuery.weight.$gte = minWeight;
-                if (maxWeight)
-                    baseQuery.weight.$lte = maxWeight;
+            if ((division_ids === null || division_ids === void 0 ? void 0 : division_ids.length) > 0) {
+                scoreAdd.push({
+                    $cond: [
+                        { $in: ["$address.division.id", division_ids] },
+                        1, 0
+                    ]
+                });
             }
-            if (minAge || maxAge) {
-                baseQuery.age = {};
-                if (minAge)
-                    baseQuery.age.$gte = minAge;
-                if (maxAge)
-                    baseQuery.age.$lte = maxAge;
+            if (isEducated !== undefined) {
+                scoreAdd.push({
+                    $cond: [
+                        { $eq: ["$isEducated", isEducated] },
+                        1, 0
+                    ]
+                });
             }
-            if (minHeight && maxHeight) {
-                baseQuery.height = { $in: (0, search_controller_1.searchHeightGenerator)(minHeight, maxHeight) };
-            }
-            // Add array-based filters
             if ((maritalStatuses === null || maritalStatuses === void 0 ? void 0 : maritalStatuses.length) > 0) {
-                baseQuery.maritalStatus = { $in: maritalStatuses };
+                scoreAdd.push({
+                    $cond: [
+                        { $in: ["$maritalStatus", maritalStatuses] },
+                        1, 0
+                    ]
+                });
             }
             if ((occupations === null || occupations === void 0 ? void 0 : occupations.length) > 0) {
-                baseQuery.occupation = { $in: occupations };
+                scoreAdd.push({
+                    $cond: [
+                        { $in: ["$occupation", occupations] },
+                        1, 0
+                    ]
+                });
             }
-            // Add income-based filters
-            if (minAnnualIncome && maxAnnualIncome) {
-                baseQuery['annualIncome.amount'] = {};
-                if (minAnnualIncome)
-                    baseQuery['annualIncome.amount'].$gte = minAnnualIncome;
-                if (maxAnnualIncome)
-                    baseQuery['annualIncome.amount'].$lte = maxAnnualIncome;
+            if (minWeight || maxWeight) {
+                let min = minWeight || 30, max = maxWeight || 200;
+                scoreAdd.push({
+                    $cond: [
+                        { $and: [
+                                { $gte: ["$weight", min] },
+                                { $lte: ["$weight", max] }
+                            ] },
+                        1, 0
+                    ]
+                });
             }
-            // Calculate pagination
+            if (minAge || maxAge) {
+                let min = minAge || 18, max = maxAge || 70;
+                scoreAdd.push({
+                    $cond: [
+                        { $and: [
+                                { $gte: ["$age", min] },
+                                { $lte: ["$age", max] }
+                            ] },
+                        1, 0
+                    ]
+                });
+            }
+            if (minHeight && maxHeight) {
+                let heights = (0, search_controller_1.searchHeightGenerator)(minHeight, maxHeight);
+                scoreAdd.push({
+                    $cond: [
+                        { $in: ["$height", heights] },
+                        1, 0
+                    ]
+                });
+            }
+            if (minAnnualIncome || maxAnnualIncome) {
+                let min = minAnnualIncome || 0, max = maxAnnualIncome || 1000000000;
+                scoreAdd.push({
+                    $cond: [
+                        { $and: [
+                                { $gte: ["$annualIncome.amount", min] },
+                                { $lte: ["$annualIncome.amount", max] }
+                            ] },
+                        1, 0
+                    ]
+                });
+            }
+            // 3. Pagination
             const skip = (page - 1) * limit;
-            // Execute the query with pagination
-            const users = yield user_1.User.find(baseQuery, userField)
-                .skip(skip)
-                .limit(limit)
-                .lean()
-                .maxTimeMS(20000); // Set maximum execution time
-            // Get total count if requested
+            // 4. Aggregation pipeline
+            const aggregatePipeline = [
+                { $match: baseQuery },
+                {
+                    $addFields: {
+                        matchScore: { $add: scoreAdd }
+                    }
+                },
+                {
+                    $sort: {
+                        matchScore: -1, // Most matched criteria first
+                        "onlineStatus.isOnline": -1,
+                        "onlineStatus.lastActive": 1
+                    }
+                },
+                { $skip: skip },
+                { $limit: limit },
+                {
+                    $project: {
+                        name: 1,
+                        _id: 1,
+                        email: 1,
+                        'profileImage.url': 1,
+                        gender: 1,
+                        age: 1,
+                        onlineStatus: 1,
+                        matchScore: 1
+                    }
+                }
+            ];
+            // 5. Query execution
+            const users = yield user_1.User.aggregate(aggregatePipeline);
+            // 6. Total count if needed
             let totalCount = undefined;
             if (shouldCount === 'yes') {
                 totalCount = yield user_1.User.countDocuments(baseQuery).maxTimeMS(10000);
             }
-            // Prepare pagination info
+            // 7. Prepare pagination info
             let pagination = {
                 currentPage: page,
                 pageSize: limit,
@@ -1157,7 +1234,7 @@ router.get('/users/filter', function (req, res) {
             if (totalCount !== undefined) {
                 pagination = Object.assign(Object.assign({}, pagination), { totalPages: Math.ceil(totalCount / limit), totalUsers: totalCount });
             }
-            // Set cache headers for better performance
+            // 8. Set cache headers for better performance
             res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
             return res.status(200).json({
                 success: true,

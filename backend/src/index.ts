@@ -7,7 +7,6 @@ import authRouter from './main_routes/auth';
 import searchRouter from './main_routes/search';
 import assetsRouter from './main_routes/assets';
 import profileRouter from './main_routes/profile';
-// import cronJobsRouter from './main_routes/cron-jobs';
 import dataRouter from './main_routes/data';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
@@ -24,8 +23,7 @@ import configureChatMessagingSocket from './sockets/chat.messaging.socket';
 import { configOnlineStatusSocket } from './sockets/OnlineStatus.socket';
 import coinManagementRouter from './main_routes/coinManagement';
 import connectionRequestRouter from './main_routes/connectionRequest'
-import { User } from './models/user';
-import { randomUUID } from 'node:crypto';
+import userActionsRouter from './main_routes/user_actions';
 
 const app: express.Application = express();
 const port: number = Number(PORT ?? 4000) 
@@ -69,9 +67,8 @@ async function main() {
     app.use('/api/friend-request', connectionRequestRouter);
     app.use('/api/membership', membershipRouter);
     app.use('/api/coins' , coinManagementRouter);
-
-    // app.use('/api/cron-jobs', cronJobsRouter);
-
+    app.use('/api/user-actions', userActionsRouter);
+   
     app.get('*', async function (req , res ) {
         return res.sendFile(path.join(__dirname , '../public/index.html'));
     })

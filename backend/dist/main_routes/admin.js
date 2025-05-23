@@ -23,6 +23,8 @@ const zod_1 = require("zod");
 const membershipRequest_1 = require("../models/membershipRequest");
 const memberdship_types_1 = require("../lib/types/memberdship.types");
 const Gifts_1 = __importDefault(require("../models/Gifts"));
+const schemaComponents_1 = require("../lib/schema/schemaComponents");
+const notification_socket_1 = require("../sockets/notification.socket");
 const router = (0, express_1.Router)();
 router.post('/login', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -389,7 +391,7 @@ router.put('/membership/pricing', function (req, res) {
         try {
             let memberships = JSON.parse((0, fs_1.readFileSync)(path_1.default.join(__dirname, '../../data/membership.config.json'), 'utf-8'));
             let schema = zod_1.z.object({
-                plan: zod_1.z.enum(['premium', 'gold', 'diamond']),
+                plan: zod_1.z.enum(['gold', 'diamond', 'platinum']),
                 duration: zod_1.z.enum(['3', '6', '12']),
                 field: zod_1.z.enum(['sms', 'price']),
                 value: zod_1.z.number().min(1).max(10000)
@@ -424,7 +426,10 @@ router.get('/membership/request', function (req, res) {
             const membershipRequests = yield membershipRequest_1.MembershipRequest.find({ requestStatus: memberdship_types_1.MembershipRequestStatus.PENDING })
                 .skip(skip)
                 .limit(limit)
-                .sort({ createdAt: -1 });
+                .sort({ createdAt: -1 })
+                .select('_id requesterID requestDate paymentInfo tier duration')
+                .populate('requesterID', "name phoneInfo.number profileImage email")
+                .lean();
             return res.status(200).json({
                 success: true,
                 message: 'Membership requests fetched successfully',
@@ -451,27 +456,38 @@ router.get('/membership/request', function (req, res) {
 });
 router.put('/membership/request/:id/accept', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
+        var _a, _b;
         try {
-            let {} = (zod_1.z.object({})).parse(req.body);
-            let memberdshipRequest = yield membershipRequest_1.MembershipRequest.findById(req.params.id);
-            if (!memberdshipRequest) {
+            let membership = yield membershipRequest_1.MembershipRequest.findOne({ _id: schemaComponents_1._idValidator.parse(req.params.id), requestStatus: memberdship_types_1.MembershipRequestStatus.PENDING });
+            if (!membership) {
                 res.status(400).json({
                     success: false,
-                    message: 'Invalid request parameters',
+                    message: 'Request Not Found',
                     data: null
                 });
                 return;
             }
-            memberdshipRequest.requestStatus = memberdship_types_1.MembershipRequestStatus.APPROVED;
-            memberdshipRequest.startDate = new Date();
-            memberdshipRequest.endDate = new Date(Date.now() + (memberdshipRequest.duration * 30 * 24 * 60 * 60 * 1000));
-            ;
-            let user = yield user_1.User.findById(memberdshipRequest.requesterID, {
-                "membership.currentMembership.requestId": memberdshipRequest._id,
-                "membership.currentMembership.membership_exipation_date": memberdshipRequest.endDate
+            let endDate = new Date(Date.now() + (membership.duration * 30 * 24 * 3600 * 1000));
+            yield membershipRequest_1.MembershipRequest.findByIdAndUpdate(schemaComponents_1._idValidator.parse(req.params.id), {
+                requestStatus: memberdship_types_1.MembershipRequestStatus.APPROVED,
+                startDate: new Date(),
+                endDate: endDate
+            }, { runValidators: true });
+            let user = yield user_1.User.findByIdAndUpdate(membership.requesterID, {
+                "membership.currentMembership.requestId": membership._id,
+                "membership.currentMembership.membership_exipation_date": endDate
             });
-            yield memberdshipRequest.save();
-            res.status(200);
+            let socket = (_a = user === null || user === void 0 ? void 0 : user.socket_ids) === null || _a === void 0 ? void 0 : _a.notification_socket;
+            if (socket) {
+                (_b = req.notifications) === null || _b === void 0 ? void 0 : _b.io.to(socket).emit('membership-notification', {
+                    status: memberdship_types_1.MembershipRequestStatus.APPROVED,
+                    tier: membership.tier,
+                    duration: membership.duration,
+                    phone_view_limit: membership.verifiedPhoneLimit,
+                    membership_id: membership._id
+                });
+            }
+            return res.sendStatus(200);
         }
         catch (error) {
             console.error('[/membership/pricing api error]', error);
@@ -485,14 +501,28 @@ router.put('/membership/request/:id/accept', function (req, res) {
 });
 router.put('/membership/request/:id/reject', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
+        var _a, _b;
         try {
             let { reason } = (zod_1.z.object({
                 reason: zod_1.z.string().min(1).max(120)
-            })).parse(req.body);
+            })).parse(req.query);
             let m = yield membershipRequest_1.MembershipRequest.findByIdAndUpdate(req.params.id, {
                 requestStatus: memberdship_types_1.MembershipRequestStatus.REJECTED,
                 adminNote: reason
             });
+            if (!m)
+                return res.sendStatus(204);
+            let user = yield user_1.User.findById(m === null || m === void 0 ? void 0 : m.requesterID, 'socket_ids');
+            let socket = (_a = user === null || user === void 0 ? void 0 : user.socket_ids) === null || _a === void 0 ? void 0 : _a.notification_socket;
+            if (socket) {
+                (_b = req.notifications) === null || _b === void 0 ? void 0 : _b.io.to(socket).emit('membership-notification', {
+                    status: memberdship_types_1.MembershipRequestStatus.APPROVED,
+                    tier: m.tier,
+                    duration: m.duration,
+                    membership_id: m._id,
+                    adminNote: reason
+                });
+            }
             res.status(200).json({
                 success: true,
                 data: {},
@@ -656,6 +686,36 @@ router.post('/log-out', function (req, res) {
         }
         catch (error) {
             console.error('[Admin Log out error]', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
+            });
+        }
+    });
+});
+router.post('/notification', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a, _b, _c;
+        try {
+            let { title, body, room } = (zod_1.z.object({
+                title: zod_1.z.string().max(80).min(1),
+                body: zod_1.z.string().min(1).max(120),
+                room: zod_1.z.nativeEnum(notification_socket_1.Rooms)
+            })).parse(req.body);
+            if (room === notification_socket_1.Rooms.ALL_USERS_ROOMS) {
+                (_a = req.notifications) === null || _a === void 0 ? void 0 : _a.io.emit('admin-notification', { title, body });
+            }
+            if (room === notification_socket_1.Rooms.MATRIMONY_ROOMS) {
+                (_b = req.notifications) === null || _b === void 0 ? void 0 : _b.io.to(room).emit('admin-notification', { title, body });
+            }
+            else {
+                (_c = req.notifications) === null || _c === void 0 ? void 0 : _c.io.to(room).emit('admin-notification', { title, body });
+            }
+            return res.sendStatus(200);
+        }
+        catch (error) {
+            console.error('[Create Notification Api Error]', error);
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error',

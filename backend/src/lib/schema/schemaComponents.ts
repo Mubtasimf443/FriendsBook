@@ -248,3 +248,6 @@ export const text500Validation = z.string().min(1).max(500).trim().refine(
             },
             "Message must contain valid content"
         );
+
+export const uuidValidator = z.string().uuid().trim();
+export const urlValidator = z.string().uuid().trim();

@@ -1274,18 +1274,19 @@ router.get('/users/viewed-not-contact', async function (req: Request, res: Respo
 });
 
 
+// ... (other imports remain unchanged)
+
 router.get('/users/filter', async function (req: Request, res: Response): Promise<Response | any> {
     try {
-
         if (!req.authSession || !req.authSession?.value) {
             res.status(401).json({
                 success: false,
                 message: 'Failed to authorize the user',
-
                 data: null
             });
             return;
         }
+
         // Handle array parameters that might come as strings
         (typeof req.query.languages === "string") && (req.query.languages = [req.query.languages]);
         (typeof req.query.division_ids === "string") && (req.query.division_ids = [req.query.division_ids]);
@@ -1323,71 +1324,148 @@ router.get('/users/filter', async function (req: Request, res: Response): Promis
             occupations,
             minAnnualIncome,
             maxAnnualIncome,
-          
         } = validatedQuery;
 
-        // Build the base query
+        // 1. Build hard filters (must-match)
         const baseQuery: any = getBaseSearchQuery(req.authSession.value);
 
-      
-        if (languages?.length > 0) baseQuery.languages = { $in: languages };
-      
-        if (division_ids.length > 0) {
-            baseQuery['address.division.id'] = { $in: division_ids };
-        }
-        if (isEducated) baseQuery.isEducated = isEducated;
+        // Always hard-filter suspended users and self
+        baseQuery["suspension.isSuspended"] = false;
+        baseQuery["_id"] = { $ne: userData.userId };
 
-        // Add range-based filters
-        if (minWeight || maxWeight) {
-            baseQuery.weight = {};
-            if (minWeight) baseQuery.weight.$gte = minWeight;
-            if (maxWeight) baseQuery.weight.$lte = maxWeight;
-        }
+        // 2. Build dynamic scoring formula for soft-matching
+        let scoreAdd: any[] = [];
 
-        if (minAge || maxAge) {
-            baseQuery.age = {};
-            if (minAge) baseQuery.age.$gte = minAge;
-            if (maxAge) baseQuery.age.$lte = maxAge;
+        if (languages?.length > 0) {
+            scoreAdd.push({
+                $cond: [
+                    { $gt: [{ $size: { $setIntersection: ["$languages", languages] } }, 0] },
+                    1, 0
+                ]
+            });
         }
-
-        if (minHeight && maxHeight) {
-            baseQuery.height = { $in: searchHeightGenerator(minHeight, maxHeight) };
+        if (division_ids?.length > 0) {
+            scoreAdd.push({
+                $cond: [
+                    { $in: ["$address.division.id", division_ids] },
+                    1, 0
+                ]
+            });
         }
-
-        // Add array-based filters
+        if (isEducated !== undefined) {
+            scoreAdd.push({
+                $cond: [
+                    { $eq: ["$isEducated", isEducated] },
+                    1, 0
+                ]
+            });
+        }
         if (maritalStatuses?.length > 0) {
-            baseQuery.maritalStatus = { $in: maritalStatuses };
+            scoreAdd.push({
+                $cond: [
+                    { $in: ["$maritalStatus", maritalStatuses] },
+                    1, 0
+                ]
+            });
         }
-
         if (occupations?.length > 0) {
-            baseQuery.occupation = { $in: occupations };
+            scoreAdd.push({
+                $cond: [
+                    { $in: ["$occupation", occupations] },
+                    1, 0
+                ]
+            });
+        }
+        if (minWeight || maxWeight) {
+            let min = minWeight || 30, max = maxWeight || 200;
+            scoreAdd.push({
+                $cond: [
+                    { $and: [
+                        { $gte: ["$weight", min] },
+                        { $lte: ["$weight", max] }
+                    ] },
+                    1, 0
+                ]
+            });
+        }
+        if (minAge || maxAge) {
+            let min = minAge || 18, max = maxAge || 70;
+            scoreAdd.push({
+                $cond: [
+                    { $and: [
+                        { $gte: ["$age", min] },
+                        { $lte: ["$age", max] }
+                    ] },
+                    1, 0
+                ]
+            });
+        }
+        if (minHeight && maxHeight) {
+            let heights = searchHeightGenerator(minHeight, maxHeight);
+            scoreAdd.push({
+                $cond: [
+                    { $in: ["$height", heights] },
+                    1, 0
+                ]
+            });
+        }
+        if (minAnnualIncome || maxAnnualIncome) {
+            let min = minAnnualIncome || 0, max = maxAnnualIncome || 1000000000;
+            scoreAdd.push({
+                $cond: [
+                    { $and: [
+                        { $gte: ["$annualIncome.amount", min] },
+                        { $lte: ["$annualIncome.amount", max] }
+                    ] },
+                    1, 0
+                ]
+            });
         }
 
-        // Add income-based filters
-        if (minAnnualIncome && maxAnnualIncome) {
-          
-            baseQuery['annualIncome.amount'] = {};
-            if (minAnnualIncome) baseQuery['annualIncome.amount'].$gte = minAnnualIncome;
-            if (maxAnnualIncome) baseQuery['annualIncome.amount'].$lte = maxAnnualIncome;
-        }
-
-        // Calculate pagination
+        // 3. Pagination
         const skip = (page - 1) * limit;
 
-        // Execute the query with pagination
-        const users = await User.find(baseQuery, userField)
-            .skip(skip)
-            .limit(limit)
-            .lean()
-            .maxTimeMS(20000); // Set maximum execution time
+        // 4. Aggregation pipeline
+        const aggregatePipeline: any[] = [
+            { $match: baseQuery },
+            {
+                $addFields: {
+                    matchScore: { $add: scoreAdd }
+                }
+            },
+            {
+                $sort: {
+                    matchScore: -1, // Most matched criteria first
+                    "onlineStatus.isOnline": -1,
+                    "onlineStatus.lastActive": 1
+                }
+            },
+            { $skip: skip },
+            { $limit: limit },
+            {
+                $project: {
+                    name: 1,
+                    _id: 1,
+                    email: 1,
+                    'profileImage.url': 1,
+                    gender: 1,
+                    age: 1,
+                    onlineStatus: 1,
+                    matchScore: 1
+                }
+            }
+        ];
 
-        // Get total count if requested
+        // 5. Query execution
+        const users = await User.aggregate(aggregatePipeline);
+
+        // 6. Total count if needed
         let totalCount: number | undefined = undefined;
         if (shouldCount === 'yes') {
             totalCount = await User.countDocuments(baseQuery).maxTimeMS(10000);
         }
 
-        // Prepare pagination info
+        // 7. Prepare pagination info
         let pagination: object = {
             currentPage: page,
             pageSize: limit,
@@ -1401,7 +1479,7 @@ router.get('/users/filter', async function (req: Request, res: Response): Promis
             };
         }
 
-        // Set cache headers for better performance
+        // 8. Set cache headers for better performance
         res.set('Cache-Control', 'public, max-age=60'); // Cache for 1 minute
 
         return res.status(200).json({
@@ -1410,7 +1488,6 @@ router.get('/users/filter', async function (req: Request, res: Response): Promis
                 users,
                 pagination,
                 filterCriteria: {
-                
                     languages,
                     division_ids,
                     isEducated,
@@ -1422,7 +1499,6 @@ router.get('/users/filter', async function (req: Request, res: Response): Promis
                     incomeRange: minAnnualIncome || maxAnnualIncome ? {
                         min: minAnnualIncome,
                         max: maxAnnualIncome,
-                      
                     } : undefined
                 }
             }
@@ -1641,8 +1717,6 @@ router.delete('/search-history/:id', async function (req: Request, res: Response
         });
     }
 });
-
-
 
 router.get('/users/suggested-for-you', async function (req: Request, res: Response): Promise<Response | any> {
     try {

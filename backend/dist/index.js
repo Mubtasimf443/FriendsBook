@@ -53,7 +53,6 @@ const auth_1 = __importDefault(require("./main_routes/auth"));
 const search_1 = __importDefault(require("./main_routes/search"));
 const assets_1 = __importDefault(require("./main_routes/assets"));
 const profile_1 = __importDefault(require("./main_routes/profile"));
-// import cronJobsRouter from './main_routes/cron-jobs';
 const data_1 = __importDefault(require("./main_routes/data"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const morgan_1 = __importDefault(require("morgan"));
@@ -70,6 +69,7 @@ const chat_messaging_socket_1 = __importDefault(require("./sockets/chat.messagin
 const OnlineStatus_socket_1 = require("./sockets/OnlineStatus.socket");
 const coinManagement_1 = __importDefault(require("./main_routes/coinManagement"));
 const connectionRequest_1 = __importDefault(require("./main_routes/connectionRequest"));
+const user_actions_1 = __importDefault(require("./main_routes/user_actions"));
 const app = (0, express_1.default)();
 const port = Number(env_1.PORT !== null && env_1.PORT !== void 0 ? env_1.PORT : 4000);
 const server = (0, node_http_1.createServer)(app).listen(port);
@@ -81,7 +81,7 @@ const io = new socket_io_1.Server(server, {
 });
 randomVideoCall_socket_1.randomVideoCallSocketService.getInstance(io.of('/random-video-call'));
 (0, OnlineStatus_socket_1.configOnlineStatusSocket)(io.of('/socket/online-status-management'));
-const NotificationService = notification_socket_1.NotificationSocketService.getInstance(io.of('/notifications'));
+const NotificationService = notification_socket_1.NotificationSocketService.getInstance(io.of('/socket/notifications'));
 (0, chat_messaging_socket_1.default)(io.of('/socket/chat-messaging'));
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -110,7 +110,7 @@ function main() {
         app.use('/api/friend-request', connectionRequest_1.default);
         app.use('/api/membership', Membership_1.default);
         app.use('/api/coins', coinManagement_1.default);
-        // app.use('/api/cron-jobs', cronJobsRouter);
+        app.use('/api/user-actions', user_actions_1.default);
         app.get('*', function (req, res) {
             return __awaiter(this, void 0, void 0, function* () {
                 return res.sendFile(node_path_1.default.join(__dirname, '../public/index.html'));

@@ -57,6 +57,7 @@ const partnerPreference_1 = require("../lib/types/partnerPreference");
 const partnerPreference_schema_1 = require("../lib/db_schema/partnerPreference.schema");
 const country_names_enum_1 = require("../lib/types/country_names.enum");
 const search_controller_1 = require("../controllers/search.controller");
+const date_fns_1 = require("date-fns");
 const aboutMeSchema = new mongoose_1.Schema({
     description: {
         type: String,
@@ -845,6 +846,10 @@ userSchema.methods.unsuspend = function () {
 };
 userSchema.methods.getSuspensionHistory = function () {
     return this.suspension.suspensions;
+};
+userSchema.methods.hasActiveMembership = function () {
+    var _a, _b, _c, _d;
+    return !!((_b = (_a = this.membership) === null || _a === void 0 ? void 0 : _a.currentMembership) === null || _b === void 0 ? void 0 : _b.requestId) && !!((_d = (_c = this.membership) === null || _c === void 0 ? void 0 : _c.currentMembership) === null || _d === void 0 ? void 0 : _d.membership_exipation_date) && (0, date_fns_1.isBefore)(new Date(), this.membership.currentMembership.membership_exipation_date);
 };
 userSchema.index({ gender: 1 });
 userSchema.index({ age: 1 });

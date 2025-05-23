@@ -5,7 +5,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IProfileView extends Document {
     viewerId: mongoose.Types.ObjectId;
     viewedId: mongoose.Types.ObjectId;
-    viewedAt: Date[];
+    viewedAt: Date;
 }
 
 const profileViewSchema = new Schema<IProfileView>({
@@ -19,11 +19,11 @@ const profileViewSchema = new Schema<IProfileView>({
         ref: 'User',
         required: true
     },
-    viewedAt: [{
+    viewedAt: {
         type: Date,
         required: true,
         default: Date.now
-    }]
+    }
 }, {
     timestamps: false // We only need viewedAt
 });

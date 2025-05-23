@@ -17,9 +17,9 @@ const express_1 = require("express");
 const auth_middleware_1 = require("../lib/middlewares/auth.middleware");
 const rateRimiter_1 = __importDefault(require("../config/rateRimiter"));
 const user_1 = require("../models/user");
+const schemaComponents_1 = require("../lib/schema/schemaComponents");
 const zod_1 = require("zod");
 const query_middleware_1 = __importDefault(require("../lib/middlewares/query.middleware"));
-const profile_schema_1 = require("../lib/schema/profile.schema");
 const updateUser_schema_1 = require("../lib/schema/updateUser.schema");
 const asset_1 = require("../models/asset");
 const partnerPreference_schema_1 = require("../lib/schema/partnerPreference.schema");
@@ -166,62 +166,79 @@ router.put('/user-details/video-profile', auth_middleware_1.validateVideoProfile
 });
 router.get('/user-details/matrimony', auth_middleware_1.validateUser, function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
-        var _a;
+        var _a, _b, _c, _d;
         try {
-            if (typeof req.query.fields === 'string')
-                req.query.fields = [req.query.fields];
-            const { fields } = yield profile_schema_1.userDetailsQuerySchema.parseAsync(req.query);
-            console.log(fields);
-            // Parse and validate user ID
-            if (!req.authSession || !((_a = req.authSession) === null || _a === void 0 ? void 0 : _a.value)) {
-                res.status(401).json({
-                    success: false,
-                    message: 'Failed to authorize the user',
-                    data: null
-                });
-                return;
-            }
-            const userId = req.authSession.value.userId;
-            // Default fields if none specified
-            const selectedFields = fields;
-            // Fetch user details
-            const user = yield user_1.User.findById(userId, selectedFields).lean();
-            if (!user) {
-                res.status(404).json({
-                    success: false,
-                    message: 'User details not found',
-                    data: null
-                });
-                return;
-            }
-            // Format user details
-            const userDetails = user;
-            return res.status(200).json({
+            let _id = (_b = (_a = req.authSession) === null || _a === void 0 ? void 0 : _a.value) === null || _b === void 0 ? void 0 : _b.userId;
+            if (!_id)
+                return res.sendStatus(401);
+            let user = yield user_1.User.findById(_id, 'name email phoneInfo profileImage coverImage occupation maritalStatus languages address education height age weight dateOfBirth gender profileCreatedBy mid onlineStatus aboutMe familyInfo membership')
+                .populate('membership.currentMembership.requestId', 'tier duration endDate startDate')
+                .lean();
+            if (!user)
+                return res.sendStatus(204);
+            let membership = (_d = (_c = user.membership) === null || _c === void 0 ? void 0 : _c.currentMembership) === null || _d === void 0 ? void 0 : _d.requestId;
+            delete user.membership;
+            res.status(200).json({
                 success: true,
-                data: {
-                    userDetails
-                },
+                data: Object.assign(Object.assign({}, user), { membership }),
                 error: null,
-                message: 'User details retrieved successfully'
+                message: 'OK'
             });
+            return;
         }
         catch (error) {
-            if (error instanceof zod_1.z.ZodError) {
-                return res.status(400).json({
+            if (error instanceof zod_1.ZodError) {
+                res.status(400).json({
                     success: false,
                     message: 'Invalid request parameters',
                     error: error.errors,
                     data: null
                 });
+                return;
             }
-            console.error("[Profile Details API Error]", {
-                timestamp: new Date().toISOString(),
-                error: error instanceof Error ? error.message : 'Unknown error',
-            });
+            console.error('[matrimony User Details Api Error]', error);
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error',
-                error: 'InternalServerError',
+                data: null
+            });
+        }
+    });
+});
+router.get('/user-details/matrimony/:id', auth_middleware_1.validateUser, function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a, _b;
+        try {
+            let _id = schemaComponents_1._idValidator.parse(req.params.id);
+            let user = yield user_1.User.findById(_id, 'name email phoneInfo profileImage coverImage occupation maritalStatus languages address education height age weight dateOfBirth gender profileCreatedBy mid onlineStatus aboutMe familyInfo membership')
+                .populate('membership.currentMembership.requestId', 'tier duration endDate startDate')
+                .lean();
+            if (!user)
+                return res.sendStatus(204);
+            let membership = (_b = (_a = user.membership) === null || _a === void 0 ? void 0 : _a.currentMembership) === null || _b === void 0 ? void 0 : _b.requestId;
+            delete user.membership;
+            res.status(200).json({
+                success: true,
+                data: Object.assign(Object.assign({}, user), { membership }),
+                error: null,
+                message: 'OK'
+            });
+            return;
+        }
+        catch (error) {
+            if (error instanceof zod_1.ZodError) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Invalid request parameters',
+                    error: error.errors,
+                    data: null
+                });
+                return;
+            }
+            console.error('[matrimony User Details Api Error]', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
                 data: null
             });
         }

@@ -47,11 +47,11 @@ const profileViewSchema = new mongoose_1.Schema({
         ref: 'User',
         required: true
     },
-    viewedAt: [{
-            type: Date,
-            required: true,
-            default: Date.now
-        }]
+    viewedAt: {
+        type: Date,
+        required: true,
+        default: Date.now
+    }
 }, {
     timestamps: false // We only need viewedAt
 });

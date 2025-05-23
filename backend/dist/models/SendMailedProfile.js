@@ -47,28 +47,15 @@ const sendMailedProfileSchema = new mongoose_1.Schema({
         ref: 'User',
         required: true
     },
-    emailedAt: [{
-            type: Date,
-            required: true,
-            default: Date.now
-        }],
-    emailType: {
-        type: String,
+    emailedAt: {
+        type: Date,
         required: true,
-        enum: ['INTEREST', 'INTRODUCTION', 'CUSTOM'],
-        default: 'INTEREST'
+        default: Date.now
     },
-    emailStatus: {
-        type: String,
-        required: true,
-        enum: ['SENT', 'FAILED', 'PENDING'],
-        default: 'PENDING'
-    }
 }, {
     timestamps: false // We'll use emailedAt array
 });
 // Indexes for efficient querying
 sendMailedProfileSchema.index({ senderId: 1, receiverId: 1 });
 sendMailedProfileSchema.index({ emailedAt: -1 });
-sendMailedProfileSchema.index({ emailStatus: 1 });
 exports.SendMailedProfile = mongoose_1.default.model('SendMailedProfile', sendMailedProfileSchema);
