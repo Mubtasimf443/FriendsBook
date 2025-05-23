@@ -10,6 +10,7 @@ import { number, z } from "zod";
 import { MembershipRequest } from "../models/membershipRequest";
 import { MembershipRequestStatus } from "../lib/types/memberdship.types";
 import Gifts from "../models/Gifts";
+import { _idValidator } from "../lib/schema/schemaComponents";
 
 const router: Router = Router();
 
@@ -398,15 +399,15 @@ router.put('/membership/pricing', async function (req: Request, res: Response): 
     }
 
     interface SubscriptionPlans {
-      premium: Plan;
       gold: Plan;
       diamond: Plan;
+      platinum : Plan;
     }
 
     let memberships: SubscriptionPlans = JSON.parse(readFileSync(path.join(__dirname, '../../data/membership.config.json'), 'utf-8'));
 
     let schema = z.object({
-      plan: z.enum(['premium', 'gold', 'diamond']),
+      plan: z.enum([ 'gold', 'diamond' , 'platinum']),
       duration: z.enum(['3', '6', '12']),
       field: z.enum(['sms', 'price']),
       value: z.number().min(1).max(10000)
@@ -444,7 +445,11 @@ router.get('/membership/request', async function (req: Request, res: Response): 
     const membershipRequests = await MembershipRequest.find({ requestStatus: MembershipRequestStatus.PENDING })
       .skip(skip)
       .limit(limit)
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .select('_id requesterID requestDate paymentInfo tier duration')
+      .populate('requesterID' , "name phoneInfo.number profileImage email")
+      .lean();
+
 
     return res.status(200).json({
       success: true,
@@ -469,34 +474,57 @@ router.get('/membership/request', async function (req: Request, res: Response): 
   }
 });
 
+
 router.put('/membership/request/:id/accept', async function (req: Request, res: Response,): Promise<any> {
   try {
-    let { } = (z.object({})).parse(req.body);
+    
 
-    let memberdshipRequest = await MembershipRequest.findById(req.params.id);
-    if (!memberdshipRequest) {
+    let membership = await MembershipRequest.findOne({ _id : _idValidator.parse(req.params.id) ,  requestStatus: MembershipRequestStatus.PENDING });
+
+    if (!membership ) {
       res.status(400).json({
-        success: false,
-        message: 'Invalid request parameters',
-        data: null
+          success: false,
+          message: 'Request Not Found',
+          data: null
       });
       return;
     }
 
-    memberdshipRequest.requestStatus = MembershipRequestStatus.APPROVED;
-    memberdshipRequest.startDate = new Date()
-    memberdshipRequest.endDate = new Date(Date.now() + (memberdshipRequest.duration * 30 * 24 * 60 * 60 * 1000));;
-    let user = await User.findById(
-      memberdshipRequest.requesterID,
+
+    let endDate = new Date(Date.now() + (membership.duration * 30 * 24 * 3600 * 1000));
+
+    await MembershipRequest.findByIdAndUpdate(
+      _idValidator.parse(req.params.id),
       {
-        "membership.currentMembership.requestId": memberdshipRequest._id,
-        "membership.currentMembership.membership_exipation_date": memberdshipRequest.endDate
+        requestStatus: MembershipRequestStatus.APPROVED,
+        startDate: new Date(),
+        endDate: endDate
+      },
+      { runValidators: true }
+    );
+
+   
+    let user = await User.findByIdAndUpdate(
+      membership.requesterID,
+      {
+        "membership.currentMembership.requestId": membership._id,
+        "membership.currentMembership.membership_exipation_date":endDate
       }
     );
 
-    await memberdshipRequest.save();
-    res.status(200);
+    let socket = user?.socket_ids?.notification_socket;
 
+    if (socket) {
+      req.notifications?.io.to(socket).emit('membership-notification' , {
+        status : MembershipRequestStatus.APPROVED,
+        tier : membership.tier ,
+        duration : membership.duration ,
+        phone_view_limit : membership.verifiedPhoneLimit,
+        membership_id : membership._id
+      });
+    }
+
+    return res.sendStatus(200);
 
   } catch (error) {
     console.error('[/membership/pricing api error]', error);
@@ -508,24 +536,40 @@ router.put('/membership/request/:id/accept', async function (req: Request, res: 
   }
 });
 
+
 router.put('/membership/request/:id/reject', async function (req: Request, res: Response,): Promise<any> {
   try {
     let { reason } = (z.object({
       reason: z.string().min(1).max(120)
-    })).parse(req.body);
+    })).parse(req.query);
 
     let m = await MembershipRequest.findByIdAndUpdate(req.params.id, {
       requestStatus: MembershipRequestStatus.REJECTED,
       adminNote: reason
     });
+
+    if (!m) return res.sendStatus(204);
+
+    let user = await User.findById(m?.requesterID , 'socket_ids');
+
+    let socket = user?.socket_ids?.notification_socket;
+
+    if (socket) {
+      req.notifications?.io.to(socket).emit('membership-notification', {
+        status: MembershipRequestStatus.APPROVED,
+        tier: m.tier,
+        duration: m.duration,
+        membership_id : m._id,
+        adminNote : reason
+      });
+    }
+
     res.status(200).json({
       success: true,
-      data: {
-
-      },
+      data: {},
       error: null,
       message: 'OK'
-    })
+    });
     return;
   } catch (error) {
     console.error('[/membership/pricing api error]', error);
@@ -536,6 +580,7 @@ router.put('/membership/request/:id/reject', async function (req: Request, res: 
     });
   }
 });
+
 
 router.put('/coins-data', async function (req: Request, res: Response): Promise<any> {
   try {
@@ -588,7 +633,7 @@ router.put('/coins-data', async function (req: Request, res: Response): Promise<
       data: null
     });
   }
-})
+});
 
 
 router.post('/gifts', async function (req: Request, res: Response,): Promise<any> {
@@ -631,7 +676,8 @@ router.post('/gifts', async function (req: Request, res: Response,): Promise<any
       data: null
     });
   }
-})
+});
+
 
 router.put('/gifts/:id', async function (req: Request, res: Response,): Promise<any> {
   try {
@@ -669,7 +715,8 @@ router.put('/gifts/:id', async function (req: Request, res: Response,): Promise<
       data: null
     });
   }
-})
+});
+
 
 router.delete('/gifts/:id' , async function (req: Request, res: Response,): Promise<any> {
   try {
@@ -689,7 +736,7 @@ router.delete('/gifts/:id' , async function (req: Request, res: Response,): Prom
        data: null
     });
   }
-} )
+});
 
 
 router.post('/log-out', async function (req: Request, res: Response,): Promise<any> {

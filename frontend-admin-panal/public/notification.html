@@ -1,0 +1,35 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification Socket </title>
+    <script 
+    src="https://cdn.socket.io/4.8.1/socket.io.min.js"
+        integrity="sha384-mkQ3/7FUtcGyoppY6bz/PORYoGqOl7/aSUMn2ymDOJcapfS6PHqxhRTMh1RR0Q6+"
+        crossorigin="anonymous"
+        ></script>
+
+</head>
+
+<body>
+    <h1>Notification socket</h1>
+    <script>
+
+
+        const socket = io('/socket/notifications', {
+            auth: {
+                token: '74ccd606e60658a1f8e8b6da0f0841549756c321793134989b53d35611a5f086',
+                profileType: 'matrimony_users' // video_users
+            },
+        });
+
+        socket.on('connection-success', () => alert('connection is successfull'))
+        socket.on('membership-notification', (data) => console.log(data));
+        
+
+    </script>
+
+</body>
+
+</html>

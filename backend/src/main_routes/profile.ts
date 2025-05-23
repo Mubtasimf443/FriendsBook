@@ -7,7 +7,7 @@ import { IAuthSession } from "../models/AuthSession";
 import { User } from "../models/user";
 import { _idValidator } from "../lib/schema/schemaComponents";
 import { formatDistanceToNow } from 'date-fns';
-import { array, object, z, ZodError } from 'zod';
+import { array, object, z, ZodEffects, ZodError } from 'zod';
 import queryMiddleware from "../lib/middlewares/query.middleware";
 import { userDetailsQuerySchema } from "../lib/schema/profile.schema";
 import { updateUserSchema, UpdateUserInput, updateUserEducationSchema } from '../lib/schema/updateUser.schema';
@@ -161,6 +161,48 @@ router.put('/user-details/video-profile', validateVideoProfile, async function (
             message: 'Internal server error',
             error: 'InternalServerError',
             data: null
+        });
+    }
+});
+
+
+router.get('/user-details/matrimony/:id', validateUser, async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        let _id = _idValidator.parse(req.params.id);
+        let user  = await User.findById(_id, 'name email phoneInfo profileImage coverImage occupation maritalStatus languages phoneInfo.number address education height age weight dateOfBirth gender profileCreatedBy mid onlineStatus aboutMe familyInfo membership')
+            .populate('membership.currentMembership.requestId', 'tier duration endDate startDate')
+            .lean();
+
+        if (!user) return res.sendStatus(204);
+
+        let membership = user.membership?.currentMembership?.requestId ;
+        delete user.membership;
+
+        res.status(200).json({
+            success : true,
+            data : {
+                ...user,
+                membership
+            },
+            error : null,
+            message : 'OK'
+        })
+        return;
+    } catch (error) {
+        if (error instanceof ZodError) {
+            res.status(400).json({
+                success: false,
+                message: 'Invalid request parameters',
+                error: error.errors,
+                data: null
+            });
+            return;
+        }
+        console.error('[matrimony User Details Api Error]', error);
+        return res.status(500).json({
+           success: false,
+           message: 'Internal server error',
+           data: null
         });
     }
 });

@@ -1,35 +1,18 @@
 {
-    "premium": {
-        "name": "Premium",
-        "prices": {
-            "3": {
-                "price": 299,
-                "sms": 3
-            },
-            "6": {
-                "price": 499,
-                "sms": 3
-            },
-            "12": {
-                "price": 79,
-                "sms": 3
-            }
-        }
-    },
     "gold": {
         "name": "Gold",
         "prices": {
             "3": {
-                "price": 487,
-                "sms": 3
+                "price": 500,
+                "sms": 45
             },
             "6": {
                 "price": 799,
-                "sms": 3
+                "sms": 63
             },
             "12": {
                 "price": 1299,
-                "sms": 3
+                "sms": 93
             }
         }
     },
@@ -38,15 +21,32 @@
         "prices": {
             "3": {
                 "price": 799,
-                "sms": 3
+                "sms": 63
             },
             "6": {
-                "price": 129,
-                "sms": 3
+                "price": 1300,
+                "sms": 93
             },
             "12": {
                 "price": 1999,
-                "sms": 5
+                "sms": 105
+            }
+        }
+    },
+    "platinum": {
+        "name": "platinum",
+        "prices": {
+            "3": {
+                "price": 1301,
+                "sms": 100
+            },
+            "6": {
+                "price": 2000,
+                "sms": 156
+            },
+            "12": {
+                "price": 3002,
+                "sms": 204
             }
         }
     }

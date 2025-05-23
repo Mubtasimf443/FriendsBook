@@ -26,6 +26,7 @@ import {
 import { partnerPreferenceSchema } from '../lib/db_schema/partnerPreference.schema';
 import { CountryNamesEnum } from '../lib/types/country_names.enum';
 import { findNearestDistricts } from '../controllers/search.controller';
+import { isBefore } from 'date-fns';
 
 
 
@@ -899,6 +900,7 @@ userSchema.methods.createPreference = function () {
 userSchema.methods.createMID = function () {
     return generateMatrimonyId(this.address.country);
 };
+
 userSchema.methods.suspend = function (reason: string) {
     this.suspension.isSuspended = true;
     this.suspension.suspensions.push({
@@ -916,6 +918,10 @@ userSchema.methods.unsuspend = function () {
 userSchema.methods.getSuspensionHistory = function () {
     return this.suspension.suspensions;
 };
+
+userSchema.methods.hasActiveMembership = function() {
+    return !!this.membership?.currentMembership?.requestId && !!this.membership?.currentMembership?.membership_exipation_date && isBefore(new Date() , this.membership.currentMembership.membership_exipation_date);
+}
 
 userSchema.index({ gender: 1 });
 userSchema.index({ age: 1 });

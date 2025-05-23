@@ -24,6 +24,8 @@ import configureChatMessagingSocket from './sockets/chat.messaging.socket';
 import { configOnlineStatusSocket } from './sockets/OnlineStatus.socket';
 import coinManagementRouter from './main_routes/coinManagement';
 import connectionRequestRouter from './main_routes/connectionRequest'
+import { User } from './models/user';
+import { randomUUID } from 'node:crypto';
 
 const app: express.Application = express();
 const port: number = Number(PORT ?? 4000) 
@@ -36,7 +38,7 @@ const io = new Server(server, {
 });
 randomVideoCallSocketService.getInstance(io.of('/random-video-call'));
 configOnlineStatusSocket(io.of('/socket/online-status-management'))
-const NotificationService = NotificationSocketService.getInstance(io.of('/notifications'));
+const NotificationService = NotificationSocketService.getInstance(io.of('/socket/notifications'));
 configureChatMessagingSocket(io.of('/socket/chat-messaging'));
 
 
@@ -71,7 +73,7 @@ async function main() {
     // app.use('/api/cron-jobs', cronJobsRouter);
 
     app.get('*', async function (req , res ) {
-        return res.sendFile(path.join(__dirname , '../public/index.html'))
+        return res.sendFile(path.join(__dirname , '../public/index.html'));
     })
    
     console.log(`Server is Fire at http://localhost:${port}`)

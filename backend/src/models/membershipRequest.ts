@@ -3,21 +3,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { IMembershipRequest, MembershipTier, MembershipDuration, MembershipRequestStatus, PaymentMethod } from '../lib/types/memberdship.types';
 
-// const verificationImageSchema = new Schema(
-//     {
-//         url: {
-//             type: String,
-            
-//         },
-//         id: {
-//             type: String,
-           
-//         }
-//     },
-//     { 
-//         _id: false
-//     }
-// );
+
 
 const paymentInfoSchema = new Schema(
     {
@@ -101,7 +87,6 @@ const membershipRequestSchema = new Schema<IMembershipRequest>({
     },
     duration: {
         type: Number,
-        enum: Object.values(MembershipDuration),
         required: true
     },
     startDate: {
@@ -111,12 +96,7 @@ const membershipRequestSchema = new Schema<IMembershipRequest>({
     endDate: {
         type: Date,
         required: true,
-        validate: {
-            validator: function(this: IMembershipRequest, value: Date) {
-                return value > this.startDate;
-            },
-            message: 'End date must be after start date'
-        }
+      
     },
     adminNote: {
         type: String,
@@ -148,35 +128,14 @@ const membershipRequestSchema = new Schema<IMembershipRequest>({
         required: true,
         index: true
     }
-}, {
+}, 
+{
     timestamps: true
-});
+}
+);
 
 
 
-// Static method to calculate membership benefits based on tier and duration
-membershipRequestSchema.statics.calculateBenefits = function(tier: MembershipTier, duration: MembershipDuration) {
-    const benefits = {
-        verifiedPhoneLimit: 0,
-        hasProfileHighlighter: false
-    };
-
-    // Calculate verified phone limit based on tier and duration
-    switch (tier) {
-        case MembershipTier.GOLD:
-            benefits.verifiedPhoneLimit = duration * 15; // 15 phones per month
-            break;
-        case MembershipTier.DIAMOND:
-            benefits.verifiedPhoneLimit = duration * 20; // 20 phones per month
-            break;
-        case MembershipTier.PLATINUM:
-            benefits.verifiedPhoneLimit = duration * 25; // 25 phones per month
-            benefits.hasProfileHighlighter = true;
-            break;
-    }
-
-    return benefits;
-};
 
 // Instance methods
 membershipRequestSchema.methods.isActive = function(): boolean {
@@ -233,15 +192,5 @@ membershipRequestSchema.methods.useVerifiedPhone =async function(): Promise<bool
     return true;
 };
 
-// Pre-save middleware
-membershipRequestSchema.pre('save', function(next) {
-    if (this.isNew) {
-        // Calculate benefits based on tier and duration
-        const benefits = (this.constructor as any).calculateBenefits(this.tier, this.duration);
-        this.verifiedPhoneLimit = benefits.verifiedPhoneLimit;
-        this.hasProfileHighlighter = benefits.hasProfileHighlighter;
-    }
-    next();
-});
 
 export const MembershipRequest = mongoose.model<IMembershipRequest>('MembershipRequest', membershipRequestSchema);

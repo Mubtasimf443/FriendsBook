@@ -1,7 +1,7 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 import React, { useEffect, useState } from 'react';
-import { 
+import {
   User,
   Mail,
   CreditCard,
@@ -10,18 +10,19 @@ import {
   Award,
   Check,
   X,
-
-  TrendingUp
+  TrendingUp,
+  Gem,
+  Landmark
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
+import {
+  Card,
+  CardContent,
+  CardDescription,
 
-  CardHeader, 
-  CardTitle 
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card';
 
 import {
@@ -34,6 +35,9 @@ import {
 } from '@/components/ui/table';
 import Pagination from '@/components/custom/Pagination';
 import { Api } from '@/lib/env';
+import UserDetailsPopup from '@/components/custom/viewUserDetails';
+import { toast } from 'sonner';
+import { useSearchParams } from 'react-router';
 
 const MembershipRequest = () => {
 
@@ -49,9 +53,11 @@ const MembershipRequest = () => {
           page: pagination.page,
           limit: pagination.limit
         });
-        let res = await fetch(Api + "/membership/request?" + params.toString(), { credentials: "include"  });
+        let res = await fetch(Api + "/membership/request?" + params.toString(), { credentials: "include" });
         if (res.ok) {
           let data = await res.json();
+          console.log({ data });
+
           setPagination((state) => ({
             ...state,
             page: data.data.pagination.page,
@@ -67,21 +73,23 @@ const MembershipRequest = () => {
         setIsLoading(false);
       }
     })();
-   
+
   }, [pagination.page]);
 
   const handleApprove = async (id) => {
     try {
       setIsLoading(true);
-      let res = await fetch(`${Api}/membership/request/${id}/accapt`, {
+      let res = await fetch(`${Api}/membership/request/${id}/accept`, {
         method: "PUT",
         credentials: "include"
       });
       if (res.ok) {
         setMembershipRequests(requests => requests.filter(r => r._id !== id));
+        toast('Membership Request Approved')
       }
+
     } catch (error) {
-      // handle error
+      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -89,16 +97,25 @@ const MembershipRequest = () => {
 
   const handleReject = async (id) => {
     try {
-      setIsLoading(true);
-      let res = await fetch(`${Api}/membership/request/${id}/reject`, {
-        method: "PUT",
-        credentials: "include"
-      });
-      if (res.ok) {
-        setMembershipRequests(requests => requests.filter(r => r._id !== id));
-      }
+      let rejectionReason = prompt('The Reason Of Cancelling the Membership Request');
+
+      if (rejectionReason) {
+        setIsLoading(true);
+        let res = await fetch(`${Api}/membership/request/${id}/reject?` + new URLSearchParams({ reason: rejectionReason }).toString(), {
+          method: "PUT",
+          credentials: "include",
+          headers: {
+            'content-type': 'application/json'
+          }
+        });
+        if (res.ok) {
+          setMembershipRequests((requests) => requests.filter(r => r._id !== id));
+          toast('Membership Request Rejected')
+        }
+      } return toast('Failed To Reject Membership')
     } catch (error) {
-      // handle error
+      console.error(error);
+      return toast('Failed To Reject Membership')
     } finally {
       setIsLoading(false);
     }
@@ -130,75 +147,51 @@ const MembershipRequest = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Payment Details</TableHead>
                     <TableHead>Membership</TableHead>
+                    <TableHead>Transection Id</TableHead>
+                    <TableHead>Payment Method</TableHead>
+
                     <TableHead className="text-right">Actions</TableHead>
+                    {/* <TableHead className="text-right">Actions</TableHead> */}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {membershipRequests.map((request) => (
                     <TableRow key={request._id}>
                       <TableCell>
-                        <div className="flex flex-col">
-                          <div className="font-medium flex items-center gap-1">
-                            <User className="h-4 w-4" />
-                            {request.userName || request.user?.name || "N/A"}
-                          </div>
-                          <div className="text-sm text-gray-500 flex items-center gap-1">
-                            <Mail className="h-3 w-3" />
-                            {request.userEmail || request.user?.email || "N/A"}
-                          </div>
+                        <div className="flex flex-row gap-x-1 items-center">
+                          <Gem className="h-4 w-4" />
+                          {request.duration + ' Months ' + request.tier}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-1">
-                            <CreditCard className="h-4 w-4" />
-                            {request.paymentMethod || "N/A"}
-                          </div>
-                          <div className="text-sm text-gray-500 flex items-center gap-1">
-                            <Hash className="h-3 w-3" />
-                            {request.transactionId || "N/A"}
-                          </div>
+                        <div className="flex-row flex gap-x-1 items-center" >
+                          <CreditCard className="h-4 w-4" />
+                          {request.paymentInfo.transactionId}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-1">
-                            <Award className="h-4 w-4" />
-                            {request.membershipType || request.plan || "N/A"}
-                          </div>
-                          <div className="text-sm text-gray-500 flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {request.membershipDuration || request.duration || "N/A"} months
-                          </div>
+                        <div className="flex-row flex gap-x-1 items-center" >
+                          <Landmark className="h-4 w-4" />
+                          {request.paymentInfo.paymentMethod}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell>
                         <div className="flex justify-end gap-2">
+                          <UserDetailsPopup userData={{ name: request.requesterID.name, email: request.requesterID.email, phone: request.requesterID.phoneInfo.number, profileImage: request.requesterID.profileImage }} />
                           <Button
-                            size="sm"
-                            variant="outline"
+                            variant={'outline'}
+                            className={'mx-3 text-red-600 border-red-600 hover:bg-red-50'}
+                            onClick={() => handleReject(request._id)}
+                          >Reject</Button>
+                          <Button
+                            variant={'outline'}
                             className="text-green-600 border-green-600 hover:bg-green-50"
                             onClick={() => handleApprove(request._id)}
-                            disabled={isLoading}
-                          >
-                            <Check className="h-4 w-4 mr-1" />
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-red-600 border-red-600 hover:bg-red-50"
-                            onClick={() => handleReject(request._id)}
-                            disabled={isLoading}
-                          >
-                            <X className="h-4 w-4 mr-1" />
-                            Reject
-                          </Button>
+                          >Approve</Button>
                         </div>
                       </TableCell>
+
                     </TableRow>
                   ))}
                 </TableBody>

@@ -35,7 +35,7 @@ router.get('/dynamic-details',  async function (req: Request, res: Response): Pr
 router.get('/membership-history', async function (req: Request, res: Response): Promise<Response | any> {
     try {
         
-        let {token ,session } = await getBearerTokenAndAuthSession(req)
+        let {token ,session } = await getBearerTokenAndAuthSession(req);
         if (!session) {
             res.sendStatus(401)
             return;
@@ -146,38 +146,19 @@ router.post('/membership-request', async function (req: Request, res: Response):
             paymentMethod, 
             transactionId, 
             amount, 
-            paymentDate, 
-            
         } = (z.object({
             tier: z.nativeEnum(MembershipTier),
             duration: z.nativeEnum(MembershipDuration),
             paymentMethod: z.nativeEnum(PaymentMethod),
             transactionId: z.string().min(1).trim(),
             amount: z.number().int().positive(),
-            paymentDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
-                message: "Invalid date format"
-            }).optional(),
-         
         }))
         .parse(req.body);
-        
-        interface PlanPricing {
-            price: number;
-            sms: number;
-        }
-          
-        interface Plan {
-            name: string;
-            prices: {
-              [durationInMonths: string]: PlanPricing;
-            };
-          }
-          
-       
+
 
         let validMemberships :any =  JSON.parse(readFileSync(path.join(__dirname , '../../data/membership.config.json') , 'utf-8'));
 
-        log(validMemberships)
+     
         if (validMemberships[tier.toLowerCase()].prices[duration].price !== amount) {
             res.status(400).json({
                 success: false,
@@ -217,7 +198,6 @@ router.post('/membership-request', async function (req: Request, res: Response):
                 transactionId,
                 amount,
                 paymentMethod,
-                paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
             },
             verifiedPhoneLimit : validMemberships[tier.toLowerCase()].prices[duration].sms
         });
@@ -302,53 +282,6 @@ router.put('/membership-request/cancel', async function (req: Request, res: Resp
         });
     }
 });
-
-router.delete('/membership-request', async function (req: Request, res: Response): Promise<any> {
-    try {
-        let {token ,session } = await getBearerTokenAndAuthSession(req)
-        if (!session) {
-            res.sendStatus(401)
-            return;
-        }
-        let userId = session.value.userId;
-
-        const membershipRequest = await MembershipRequest.findOne({
-            requesterID: userId,
-            requestStatus: MembershipRequestStatus.CANCELLED
-        });
-
-        if (!membershipRequest) {
-            return res.status(404).json({
-                success: false,
-                message: 'No cancelled membership request found',
-                data: null
-            });
-        }
-
-        await membershipRequest.deleteOne();
-
-        return res.status(200).json({
-            success: true,
-            message: 'Membership request deleted successfully',
-            data: null
-        });
-        
-
-    } catch (error) {
-        console.error('[Delete Membership Request API Error]', {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            
-            timestamp: new Date().toISOString()
-        });
-
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
-
 
 
 

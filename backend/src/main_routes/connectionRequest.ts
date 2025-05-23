@@ -35,18 +35,42 @@ router.get('/' , async function (req: Request, res: Response): Promise<any> {
 
         const userId = req.authSession.value.userId;
         
-        let user = await User.findOne({} , 'connections pendingIncomingRequests pendingOutgoingRequests').populate('connections').lean();
-       
+        let user = await User.findById(userId, 'connections pendingIncomingRequests pendingOutgoingRequests')
+            .populate('connections', 'name profileImage.url _id onlineStatus')
+            .lean();
+
+
+        if (!user) {
+            res.status(404).json({
+                success: false,
+                message: 'Not Found User',
+                data: null
+            });
+            return;
+        };
+
+
+        let friends = user.connections;
+
+
+        let incomingRequest = await ConnectionRequest.find({ _id : { $in :user.pendingIncomingRequests } }  , 'sender')
+         .populate('sender', 'name profileImage.url _id onlineStatus')
+            .lean();
+        
+        let outgoingRequest = await ConnectionRequest.find({ _id : { $in :user.pendingOutgoingRequests }} , 'recipient')
+            .populate('recipient', 'name profileImage.url _id onlineStatus')
+            .lean();
+        
+        let requestedMe = incomingRequest.map(element => element.sender);
+        let requestedByMe = outgoingRequest.map(element => element.recipient);
+
+
         res.status(200).json({
             success: true,
-            data: {
-                user
-            },
+            data: { friends , requestedByMe , requestedMe},
             error: null,
             message: 'OK'
-        })
-      
-
+        });
         return;
 
     } catch (error) {
