@@ -102,7 +102,8 @@ const videoProfileSchema = new Schema<IVideoProfile>(
         },
         video_calling_coins : {
             type : Number ,
-            default : 100,
+            required : true,
+            default : 0,
         },
         auth : {
             authSession : {

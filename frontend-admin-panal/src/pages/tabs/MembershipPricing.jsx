@@ -198,7 +198,7 @@ export const MembershipPricing = () => {
                                   )}
                                 </div>
                                 <div>
-                                  <h4 className="font-medium mb-2">SMS Text</h4>
+                                  <h4 className="font-medium mb-2">Phone View</h4>
                                   {renderPriceEditor(
                                     membershipKey,
                                     duration,
