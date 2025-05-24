@@ -34,19 +34,22 @@ router.use(queryMiddleware)
 router.get('/user-details/video-profile', validateVideoProfile ,async function (req: Request, res: Response): Promise<Response | any> {
     try {
         return res.status(200).json({
-            name : req.videoProfile.name ,
-            gender : req.videoProfile.gender ,
-            email : req.videoProfile.email ,
-            age : req.videoProfile.age ,
-            status : req.videoProfile.status ,
-            country : req.videoProfile.location?.country ,
-            _id : req.videoProfile._id ,
-            languages : req.videoProfile.languages,
-            phone : req.videoProfile.phone,
-            lastActive : req.videoProfile.lastActive,
-            profileImage : req.videoProfile.profileImage,
-            coverImage : req.videoProfile.coverImage,
-            coins : req.videoProfile.video_calling_coins 
+            success: true ,
+            data: {
+                name: req.videoProfile.name,
+                gender: req.videoProfile.gender,
+                email: req.videoProfile.email,
+                age: req.videoProfile.age,
+                status: req.videoProfile.status,
+                country: req.videoProfile.location?.country,
+                _id: req.videoProfile._id,
+                languages: req.videoProfile.languages,
+                phone: req.videoProfile.phone,
+                lastActive: req.videoProfile.lastActive,
+                profileImage: req.videoProfile.profileImage,
+                coverImage: req.videoProfile.coverImage,
+                coins: req.videoProfile.video_calling_coins
+            }
         });
 
 

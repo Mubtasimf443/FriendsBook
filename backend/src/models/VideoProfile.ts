@@ -60,12 +60,12 @@ const videoProfileSchema = new Schema<IVideoProfile>(
             trim: true
         },
         profileImage: {
-            type: {},
-            required: false,
+            url: { type: String, default: 'https://res.cloudinary.com/dyptu4vd2/image/upload/v1748022824/ahxfhq76i0auizajvl6h.png', required: true },
+            id: { type: String }
         },
         coverImage: {
-            type: {},
-            required: false,
+            url: { type: String, default: 'https://res.cloudinary.com/dyptu4vd2/image/upload/v1748022824/ahxfhq76i0auizajvl6h.png', required: true },
+            id: { type: String }
         },
         gender: {
             type: String,

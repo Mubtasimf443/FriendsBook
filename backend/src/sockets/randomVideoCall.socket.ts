@@ -15,7 +15,7 @@ import { log } from 'console';
 
 // Constants
 const VIDEO_CALL_DURATION = 20 * 1000; // 20 seconds in milliseconds
-let roomIdSchema = z.string().uuid();
+export let roomIdSchema = z.string().uuid();
 
 export class randomVideoCallSocketService {
     private io: Namespace;

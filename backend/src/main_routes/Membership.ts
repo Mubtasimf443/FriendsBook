@@ -129,7 +129,6 @@ router.get('/membership-history', async function (req: Request, res: Response): 
     }
 });
 
-
 router.post('/membership-request', async function (req: Request, res: Response): Promise<any> {
     try {
         let { token, session } = await getBearerTokenAndAuthSession(req);

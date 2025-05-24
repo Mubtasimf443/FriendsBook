@@ -12,6 +12,7 @@ export interface ITransaction extends Document {
   status: 'pending' | 'success' | 'failed';
   createdAt: Date;
   updatedAt: Date;
+  coins : number;
 }
 
 const TransactionSchema: Schema<ITransaction> = new Schema(
@@ -26,9 +27,10 @@ const TransactionSchema: Schema<ITransaction> = new Schema(
       type: String,
       enum: ['pending', 'success', 'failed'],
       default: 'pending'
-    }
+    },
+    coins : Number
   },
   { timestamps: true }
 );
 
-export default mongoose.model<ITransaction>('Transaction', TransactionSchema);
+export default mongoose.model<ITransaction>('CoinsTransection', TransactionSchema);

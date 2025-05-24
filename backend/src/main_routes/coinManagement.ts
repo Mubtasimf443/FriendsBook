@@ -211,19 +211,25 @@ router.get('/payment-success/paypal', async function (req: Request, res: Respons
       });
     }
 
-    // Update transaction status
-    transaction.status = 'success';
-    transaction.updatedAt = new Date();
-    await transaction.save();
-
+   
     // Update user's coin balance based on the package
     const { coins } = giveCoinPackageDetails(transaction.package);
     
-  
-    await VideoProfile.findByIdAndUpdate(
+     // Update transaction status
+    transaction.status = 'success';
+    transaction.updatedAt = new Date();
+    transaction.coins = Number(coins);
+    await transaction.save();
+
+
+    let vUser =await VideoProfile.findByIdAndUpdate(
       transaction.userId,
       { $inc: { video_calling_coins: Number(coins) } }
     );
+
+
+    if (vUser?.socket_ids.notification_socket) req.notifications?.io.to(vUser?.socket_ids.notification_socket).emit('coin-purchase-notification', { coins, status: 'success' });
+
 
     // Redirect to success page or return success response
     return res.redirect(`${BASE_URL}/purchase_status?type=paypal&id=${transaction._id}&status=success`);
@@ -273,7 +279,7 @@ router.get('/payment-success/stripe', async function (req: Request, res: Respons
       transactionId: sessionId,
       paymentMethod: 'stripe',
       status: 'pending'
-    });
+    })
 
     if (!transaction) {
       return res.status(404).json({
@@ -283,16 +289,23 @@ router.get('/payment-success/stripe', async function (req: Request, res: Respons
       });
     }
 
-    transaction.status = 'success';
-    transaction.updatedAt = new Date();
-    await transaction.save();
+   
 
     const { coins } = giveCoinPackageDetails(transaction.package);
     
-    await VideoProfile.findByIdAndUpdate(
+
+    transaction.status = 'success';
+    transaction.updatedAt = new Date();
+    transaction.coins = Number(coins);
+    await transaction.save();
+
+
+    let vUser =await VideoProfile.findByIdAndUpdate(
       transaction.userId,
       { $inc: { video_calling_coins: Number(coins) } }
     );
+
+    if (vUser?.socket_ids.notification_socket) req.notifications?.io.to(vUser?.socket_ids.notification_socket).emit('coin-purchase-notification', { coins, status: 'success' });
 
     // Redirect to success page or return success response
     return res.redirect(`${BASE_URL}/purchase_status?type=stripe&id=${transaction._id}&status=success`);
@@ -322,11 +335,12 @@ router.get('/payment-cancel/paypal', async function (req: Request, res: Response
     const token =transectionIdValidation.parse( req.query.token as string);
   
     // Find the transaction in our database
-    const transaction = await CoinsTransection.findOne({
+    const transaction :any = await CoinsTransection.findOne({
       transactionId: token,
       paymentMethod: 'paypal',
-      status: 'pending'
-    });
+      status: 'pending',
+      
+    } ).populate('userId');
 
 
 
@@ -342,6 +356,11 @@ router.get('/payment-cancel/paypal', async function (req: Request, res: Response
     transaction.status = 'failed';
     transaction.updatedAt = new Date();
     await transaction.save();
+
+    const { coins } = giveCoinPackageDetails(transaction.package);
+
+    let vUser = await transaction.userId;
+    if (vUser?.socket_ids.notification_socket) req.notifications?.io.to(vUser?.socket_ids.notification_socket).emit('coin-purchase-notification', { coins, status: 'failed' });
 
     // Redirect to cancel page or return cancel response
     return res.redirect(`${BASE_URL}/purchase_status?type=paypal&id=${transaction._id}&status=failed`);
@@ -371,11 +390,11 @@ router.get('/payment-cancel/stripe', async function (req: Request, res: Response
       const sessionId =transectionIdValidation.parse(  req.query.session_id as string);
 
     // Find the transaction in our database
-    const transaction = await CoinsTransection.findOne({
+    const transaction :any= await CoinsTransection.findOne({
       transactionId: sessionId,
       paymentMethod: 'stripe',
       status: 'pending'
-    });
+    }).populate('userId');
 
     if (!transaction) {
       return res.status(404).json({
@@ -385,18 +404,17 @@ router.get('/payment-cancel/stripe', async function (req: Request, res: Response
       });
     }
 
-    // Create Stripe instance to verify session
-    const stripe = new StripePay({
-      key: STRIPE_SECRET_KEY as string,
-      success_url: BASE_URL + '/api/coins/payment-success/stripe' + '?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: BASE_URL + '/api/coins/payment-cancel/stripe' + '?session_id={CHECKOUT_SESSION_ID}',
-    });
-
 
     // Update transaction status
     transaction.status = 'failed';
     transaction.updatedAt = new Date();
     await transaction.save();
+
+
+    const { coins } = giveCoinPackageDetails(transaction.package);
+
+    let vUser = await transaction.userId;
+    if (vUser?.socket_ids.notification_socket) req.notifications?.io.to(vUser?.socket_ids.notification_socket).emit('coin-purchase-notification', { coins, status: 'failed' });
 
     // Redirect to cancel page or return cancel response
     return res.redirect(`${BASE_URL}/purchase_status?type=stripe&id=${transaction._id}&status=failed`);
@@ -419,5 +437,44 @@ router.get('/payment-cancel/stripe', async function (req: Request, res: Response
   }
 });
 
+
+// coin Purchase History
+router.get('/coin-purchase-history',validateVideoProfile , async function (req: Request, res: Response): Promise<any> {
+  try {
+    let transactions = await CoinsTransection.aggregate([
+      {
+        $match : {  userId: req.videoProfile._id, status: 'success'  }
+      },
+      {
+        $sort : {createdAt: -1 }
+      },
+      {
+        $project : {
+          amount : 1,
+          package : 1,
+          paymentMethod : 1,
+          coins : 1,
+          transactionDate : '$createdAt'
+        }
+      }
+    ]);
+
+
+    res.status(200).json({
+      success: true,
+      data: {   transactions },
+      error: null,
+      message: 'OK'
+    })
+    return;
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: null
+    });
+  }
+});
 
 export default router;
