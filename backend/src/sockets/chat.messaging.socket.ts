@@ -11,6 +11,8 @@ import { _idValidator, uuidValidator } from "../lib/schema/schemaComponents";
 import { z } from "zod";
 import { Message } from "../models/Message";
 import { roomIdSchema } from "./randomVideoCall.socket";
+import { isBefore } from "date-fns";
+import Gifts from "../models/Gifts";
 
 
 
@@ -254,7 +256,7 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                 if (!room) throw new Error("Message Room Is not valid");
 
                 let message = await Message.create({
-                    room: roomId,
+                    room: room._id,
                     sender: socket.user_id,
                     type: 'text',
                     content: msg
@@ -285,14 +287,14 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                 
 
                 let message = await Message.create({
-                    room: roomId,
+                    room: room._id,
                     sender: socket.user_id,
                     type:'image',
                     content : url
                 });
 
                 socket.broadcast.to(roomId).emit('unseen-image', {
-                    message: url,
+                    image: url,
                     msg_id: message._id,
                     sender: socket.user_id,
                     roomId
@@ -308,24 +310,135 @@ export default async function configureChatMessagingSocket(io: Namespace) {
         });
 
 
-        socket.on('send-pdf-event', async function (pdf_id, roomId) {
+        socket.on('send-pdf-event', async function (pdf_id , pdfName , roomId) {
             try {
-                [pdf_id, roomId] = [uuidValidator.parse(pdf_id), uuidValidator.parse(roomId)];
+                [pdf_id, pdfName, roomId] = [uuidValidator.parse(pdf_id), z.string().trim().min(1).max(120).parse(pdfName), uuidValidator.parse(roomId)];
 
-                // let asset = 
+                let room = await MessagingRoom.findOne({ _id: roomId });
+                if (!room) throw new Error("Message Room Is not valid");
+
+                let message = await Message.create({
+                    room: room._id,
+                    sender: socket.user_id,
+                    type:'pdf',
+                    content : pdf_id
+                });
+
+                socket.broadcast.to(roomId).emit('unseen-image', {
+                    pdf_id, 
+                    pdfName,
+                    msg_id: message._id,
+                    sender: socket.user_id,
+                    roomId
+                });
+
+                socket.emit('image-send-successful', { msg_id: message._id , roomId});
+
             } catch (error) {
                 console.error(error);
-                socket.emit('sent-message-failed', { message: "Failed To send Message" });
+                socket.emit('sent-pdf-failed', { message: "Failed To send Message" });
             }
         });
 
 
-        socket.on('send-coin-event', async function (msg, roomId) {
+        socket.on('send-gift-event', async function (gift_id, roomId) {
             try {
-                 
+                if (socket.userProfileType === 'matrimonyProfile') {
+                    socket.emit('sent-gift-failed', { message: "Sending Gift is for Video calling User" });
+                    return ;
+                }
+                gift_id =_idValidator.parse(gift_id);
+                roomId = roomIdSchema.parse(roomId);
+                let room = await MessagingRoom.findOne({ _id: roomId , memberType : "video_calling_member"}).populate('members');
+                if (!room) throw new Error("Message Room Is not valid");
+                
+                let userA = await VideoProfile.findById(socket.user_id);
+                
+                if (!userA) { 
+                    throw new Error("Video calling User Does not exist ");
+                } else if (userA.video_calling_coins >= coins ) {
+                    let userB = await room.members.find(element => element._id.toString() !== socket.user_id.toString() );
+                    if (!userB) throw new Error("Failed to load User B");
+                    
+                    await VideoProfile.findByIdAndUpdate( userB._id ,{
+                        $inc : {  video_calling_coins : coins   }
+                    });
+
+                    await Message.create({
+                        sender : socket.user_id ,
+                        type : 'coin',
+                        content : coins ,
+                        room : room._id ,
+                    });
+
+                    socket.broadcast.to(roomId).emit('recieved-coins' , { coins , roomId , senderName : userA.name });
+                    socket.emit('coins-send' , { coins , roomId });
+
+                } else {
+                    socket.emit('sent-gift-failed', { message: "User Does not have sufficient Coins To send" });
+                    return;
+                }
             } catch (error) {
                 console.error(error);
-                socket.emit('sent-message-failed', { message: "Failed To send Message" });
+                socket.emit('sent-gift-failed', { message: "Unknown Error" });
+            }
+        });
+
+        // socket.on('send-gift-event', async function (gift_id, roomId) {
+        //     try {
+        //         if (socket.userProfileType === 'matrimonyProfile') {
+        //             socket.emit('sent-gift-failed', { message: "Sending Gifts is for Video calling User" });
+        //             return;
+        //         }
+
+        //         roomId = roomIdSchema.parse(roomId);
+        //         let room = await MessagingRoom.findOne({ _id: roomId , memberType : "video_calling_member"}).populate('members');
+        //         if (!room) throw new Error("Message Room Is not valid");
+
+        //         let userA = await VideoProfile.findById(socket.user_id);
+        //         if (!userA) { 
+        //             throw new Error("Video calling User Does not exist");
+        //         }
+
+        //         let gift = await Gifts.findById(_idValidator.parse(gift_id ));
+
+        //         if (!gift) return socket.emit('sent-gift-failed', { message: "Sending Gifts is for Video calling User" });
+ 
+
+        //     } catch (error) {
+        //         console.error(error);
+        //         socket.emit('sent-gift-failed', { message: "Unknown Error" });
+        //     }
+        // });
+
+
+
+        socket.on('check-msg' , async (fromDate, roomId ) => {
+            try {
+                roomId = roomIdSchema.parse(roomId);
+                fromDate = z.string().transform(str => new Date(str)).pipe(z.date());
+                
+                if (!isBefore(fromDate , new Date())) {
+                    throw new Error("Invalid Message Date");
+                }
+                
+                let room = await MessagingRoom.findOne({ _id: roomId , memberType : "video_calling_member"}).populate('members');
+                if (!room) throw new Error("Message Room Is not valid");
+
+                let messages = await Message.find(
+                    {
+                        createdAt: { $gte: fromDate },
+                        room: room._id,
+                        sender: { $ne: socket.user_id }
+                    },
+                    "type content"
+                )
+
+                socket.emit('found-prev-message' , { roomId , messages });
+                return;
+            } catch (error) {
+                console.error(error);
+                socket.emit('check-msg-error' , { message : null});
             }
         });
 

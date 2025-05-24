@@ -13,7 +13,9 @@ import { validateUser } from "../lib/middlewares/auth.middleware";
 
 import cloudinary from "../config/cloudinary";
 import { UploadApiResponse } from "cloudinary";
-
+import { uuidValidator } from "../lib/schema/schemaComponents";
+import https from 'https'
+import { createWriteStream } from "fs";
 
 const router: Router = Router();
 router.use(rateLimiter(120 * 1000, 120));
@@ -257,4 +259,50 @@ router.post('/upload/pdf', upload.single('pdf'), async function (req: Request, r
         });
     }
 });
+
+
+router.get('/download/pdf',  async function (req: Request, res: Response): Promise<any> { 
+    try {
+        let id = uuidValidator.parse(req.query.id);
+        let asset = await Asset.findOne({ id, asset_type: 'document' }).lean();
+
+        if (!asset ) return res.sendStatus(204);
+
+        let host_assest_Id = asset.uploadInfo.host_id ;
+
+        let resource = await cloudinary.api.resource(host_assest_Id , { resource_type : 'raw'});
+
+
+        https.get(resource.secure_url, (response) => {
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `inline; filename="${id}.pdf"`); // "attachment" to force download
+            response.pipe(res);
+        })
+            .on('error', (err) => console.error(err));
+            
+    } catch (error) {
+        try {
+              if (error instanceof ZodError) {
+            res.status(400).json({
+                success: false,
+                message: 'Invalid request parameters',
+                error: error.errors,
+                data: null
+            });
+            return;
+        }
+        console.error('[download pdf api error]', error);
+        return res.status(500).json({
+           success: false,
+           message: 'Internal server error',
+           data: null
+        }); 
+        } catch (error) {
+           console.error(error);
+            
+        }
+     
+    }
+})
+
 export default router;
