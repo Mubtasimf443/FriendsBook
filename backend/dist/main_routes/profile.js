@@ -37,19 +37,22 @@ router.get('/user-details/video-profile', auth_middleware_1.validateVideoProfile
         var _a;
         try {
             return res.status(200).json({
-                name: req.videoProfile.name,
-                gender: req.videoProfile.gender,
-                email: req.videoProfile.email,
-                age: req.videoProfile.age,
-                status: req.videoProfile.status,
-                country: (_a = req.videoProfile.location) === null || _a === void 0 ? void 0 : _a.country,
-                _id: req.videoProfile._id,
-                languages: req.videoProfile.languages,
-                phone: req.videoProfile.phone,
-                lastActive: req.videoProfile.lastActive,
-                profileImage: req.videoProfile.profileImage,
-                coverImage: req.videoProfile.coverImage,
-                coins: req.videoProfile.video_calling_coins
+                success: true,
+                data: {
+                    name: req.videoProfile.name,
+                    gender: req.videoProfile.gender,
+                    email: req.videoProfile.email,
+                    age: req.videoProfile.age,
+                    status: req.videoProfile.status,
+                    country: (_a = req.videoProfile.location) === null || _a === void 0 ? void 0 : _a.country,
+                    _id: req.videoProfile._id,
+                    languages: req.videoProfile.languages,
+                    phone: req.videoProfile.phone,
+                    lastActive: req.videoProfile.lastActive,
+                    profileImage: req.videoProfile.profileImage,
+                    coverImage: req.videoProfile.coverImage,
+                    coins: req.videoProfile.video_calling_coins
+                }
             });
         }
         catch (error) {

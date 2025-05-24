@@ -426,15 +426,15 @@ const userSchema = new mongoose_1.Schema({
      * User's profile pictures and other images
      */
     profileImage: {
-        url: { type: String },
-        id: { type: String }
+        url: { type: String, default: 'https://res.cloudinary.com/dyptu4vd2/image/upload/v1748022824/ahxfhq76i0auizajvl6h.png', required: true },
+        id: { type: String, }
     },
     coverImage: {
-        url: String,
+        url: { type: String, default: 'https://res.cloudinary.com/dyptu4vd2/image/upload/v1748022824/ahxfhq76i0auizajvl6h.png', required: true },
         id: String
     },
     userImages: [{
-            url: { type: String, required: false },
+            url: { type: String, default: 'https://res.cloudinary.com/dyptu4vd2/image/upload/v1748022824/ahxfhq76i0auizajvl6h.png', required: true },
             id: { type: String, required: false }
         }],
     /**

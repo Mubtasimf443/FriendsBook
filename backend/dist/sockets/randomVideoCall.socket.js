@@ -13,7 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.randomVideoCallSocketService = void 0;
+exports.randomVideoCallSocketService = exports.roomIdSchema = void 0;
 require("../lib/types/socket.decralation");
 const RandomVideoCall_1 = require("../models/RandomVideoCall");
 const zod_1 = require("zod");
@@ -22,7 +22,7 @@ const VideoProfile_1 = __importDefault(require("../models/VideoProfile"));
 const auth_schema_1 = require("../lib/schema/auth.schema");
 // Constants
 const VIDEO_CALL_DURATION = 20 * 1000; // 20 seconds in milliseconds
-let roomIdSchema = zod_1.z.string().uuid();
+exports.roomIdSchema = zod_1.z.string().uuid();
 class randomVideoCallSocketService {
     constructor(io) {
         this.activeCallTimers = new Map();
@@ -81,7 +81,7 @@ class randomVideoCallSocketService {
                 }));
                 socket.on('connect-video-call', (roomId) => __awaiter(this, void 0, void 0, function* () {
                     try {
-                        let randomVideoCall = yield RandomVideoCall_1.RandomVideoCall.findOne({ roomId: roomIdSchema.parse(roomId) });
+                        let randomVideoCall = yield RandomVideoCall_1.RandomVideoCall.findOne({ roomId: exports.roomIdSchema.parse(roomId) });
                         if (!randomVideoCall)
                             throw new Error("Cannot find Random video call created in the database");
                         socket.emit('connecting', { data: null });
@@ -122,7 +122,7 @@ class randomVideoCallSocketService {
                 }));
                 socket.on('peer-details', (signal, userBRoomId) => {
                     try {
-                        this.io.to(roomIdSchema.parse(userBRoomId)).emit('call-user', signal);
+                        this.io.to(exports.roomIdSchema.parse(userBRoomId)).emit('call-user', signal);
                         let timeOut;
                         const endCall = (room1, room2) => __awaiter(this, void 0, void 0, function* () {
                             try {
@@ -183,7 +183,7 @@ class randomVideoCallSocketService {
                 }));
                 socket.on('leave-call-room', (roomId) => __awaiter(this, void 0, void 0, function* () {
                     try {
-                        roomId = roomIdSchema.parse(roomId);
+                        roomId = exports.roomIdSchema.parse(roomId);
                         socket.leave(roomId);
                     }
                     catch (error) {

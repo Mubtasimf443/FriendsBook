@@ -157,6 +157,7 @@ router.post('/buy-coins/stripe', auth_middleware_1.validateVideoProfile, functio
 // PayPal Success Handler
 router.get('/payment-success/paypal', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
+        var _a;
         try {
             // Extract the PayPal transaction token from the query parameters
             const token = transectionIdValidation.parse(req.query.token);
@@ -191,13 +192,16 @@ router.get('/payment-success/paypal', function (req, res) {
                     data: null
                 });
             }
+            // Update user's coin balance based on the package
+            const { coins } = (0, coins_controller_1.default)(transaction.package);
             // Update transaction status
             transaction.status = 'success';
             transaction.updatedAt = new Date();
+            transaction.coins = Number(coins);
             yield transaction.save();
-            // Update user's coin balance based on the package
-            const { coins } = (0, coins_controller_1.default)(transaction.package);
-            yield VideoProfile_1.default.findByIdAndUpdate(transaction.userId, { $inc: { video_calling_coins: Number(coins) } });
+            let vUser = yield VideoProfile_1.default.findByIdAndUpdate(transaction.userId, { $inc: { video_calling_coins: Number(coins) } });
+            if (vUser === null || vUser === void 0 ? void 0 : vUser.socket_ids.notification_socket)
+                (_a = req.notifications) === null || _a === void 0 ? void 0 : _a.io.to(vUser === null || vUser === void 0 ? void 0 : vUser.socket_ids.notification_socket).emit('coin-purchase-notification', { coins, status: 'success' });
             // Redirect to success page or return success response
             return res.redirect(`${env_1.BASE_URL}/purchase_status?type=paypal&id=${transaction._id}&status=success`);
         }
@@ -223,6 +227,7 @@ router.get('/payment-success/paypal', function (req, res) {
 // Stripe Success Handler
 router.get('/payment-success/stripe', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
+        var _a;
         try {
             const sessionId = transectionIdValidation.parse(req.query.session_id);
             const stripe = new stripe_1.default({
@@ -250,11 +255,14 @@ router.get('/payment-success/stripe', function (req, res) {
                     data: null
                 });
             }
+            const { coins } = (0, coins_controller_1.default)(transaction.package);
             transaction.status = 'success';
             transaction.updatedAt = new Date();
+            transaction.coins = Number(coins);
             yield transaction.save();
-            const { coins } = (0, coins_controller_1.default)(transaction.package);
-            yield VideoProfile_1.default.findByIdAndUpdate(transaction.userId, { $inc: { video_calling_coins: Number(coins) } });
+            let vUser = yield VideoProfile_1.default.findByIdAndUpdate(transaction.userId, { $inc: { video_calling_coins: Number(coins) } });
+            if (vUser === null || vUser === void 0 ? void 0 : vUser.socket_ids.notification_socket)
+                (_a = req.notifications) === null || _a === void 0 ? void 0 : _a.io.to(vUser === null || vUser === void 0 ? void 0 : vUser.socket_ids.notification_socket).emit('coin-purchase-notification', { coins, status: 'success' });
             // Redirect to success page or return success response
             return res.redirect(`${env_1.BASE_URL}/purchase_status?type=stripe&id=${transaction._id}&status=success`);
         }
@@ -280,14 +288,15 @@ router.get('/payment-success/stripe', function (req, res) {
 // PayPal Cancel Handler
 router.get('/payment-cancel/paypal', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
+        var _a;
         try {
             const token = transectionIdValidation.parse(req.query.token);
             // Find the transaction in our database
             const transaction = yield CoinsTransection_1.default.findOne({
                 transactionId: token,
                 paymentMethod: 'paypal',
-                status: 'pending'
-            });
+                status: 'pending',
+            }).populate('userId');
             if (!transaction) {
                 return res.status(404).json({
                     success: false,
@@ -299,6 +308,10 @@ router.get('/payment-cancel/paypal', function (req, res) {
             transaction.status = 'failed';
             transaction.updatedAt = new Date();
             yield transaction.save();
+            const { coins } = (0, coins_controller_1.default)(transaction.package);
+            let vUser = yield transaction.userId;
+            if (vUser === null || vUser === void 0 ? void 0 : vUser.socket_ids.notification_socket)
+                (_a = req.notifications) === null || _a === void 0 ? void 0 : _a.io.to(vUser === null || vUser === void 0 ? void 0 : vUser.socket_ids.notification_socket).emit('coin-purchase-notification', { coins, status: 'failed' });
             // Redirect to cancel page or return cancel response
             return res.redirect(`${env_1.BASE_URL}/purchase_status?type=paypal&id=${transaction._id}&status=failed`);
         }
@@ -324,6 +337,7 @@ router.get('/payment-cancel/paypal', function (req, res) {
 // Stripe Cancel Handler
 router.get('/payment-cancel/stripe', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
+        var _a;
         try {
             // Extract the Stripe session ID from the query parameters
             const sessionId = transectionIdValidation.parse(req.query.session_id);
@@ -332,7 +346,7 @@ router.get('/payment-cancel/stripe', function (req, res) {
                 transactionId: sessionId,
                 paymentMethod: 'stripe',
                 status: 'pending'
-            });
+            }).populate('userId');
             if (!transaction) {
                 return res.status(404).json({
                     success: false,
@@ -340,16 +354,14 @@ router.get('/payment-cancel/stripe', function (req, res) {
                     data: null
                 });
             }
-            // Create Stripe instance to verify session
-            const stripe = new stripe_1.default({
-                key: env_1.STRIPE_SECRET_KEY,
-                success_url: env_1.BASE_URL + '/api/coins/payment-success/stripe' + '?session_id={CHECKOUT_SESSION_ID}',
-                cancel_url: env_1.BASE_URL + '/api/coins/payment-cancel/stripe' + '?session_id={CHECKOUT_SESSION_ID}',
-            });
             // Update transaction status
             transaction.status = 'failed';
             transaction.updatedAt = new Date();
             yield transaction.save();
+            const { coins } = (0, coins_controller_1.default)(transaction.package);
+            let vUser = yield transaction.userId;
+            if (vUser === null || vUser === void 0 ? void 0 : vUser.socket_ids.notification_socket)
+                (_a = req.notifications) === null || _a === void 0 ? void 0 : _a.io.to(vUser === null || vUser === void 0 ? void 0 : vUser.socket_ids.notification_socket).emit('coin-purchase-notification', { coins, status: 'failed' });
             // Redirect to cancel page or return cancel response
             return res.redirect(`${env_1.BASE_URL}/purchase_status?type=stripe&id=${transaction._id}&status=failed`);
         }
@@ -364,6 +376,45 @@ router.get('/payment-cancel/stripe', function (req, res) {
                 return;
             }
             console.error('[Payment Cancel Stripe Api error]', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
+            });
+        }
+    });
+});
+// coin Purchase History
+router.get('/coin-purchase-history', auth_middleware_1.validateVideoProfile, function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            let transactions = yield CoinsTransection_1.default.aggregate([
+                {
+                    $match: { userId: req.videoProfile._id, status: 'success' }
+                },
+                {
+                    $sort: { createdAt: -1 }
+                },
+                {
+                    $project: {
+                        amount: 1,
+                        package: 1,
+                        paymentMethod: 1,
+                        coins: 1,
+                        transactionDate: '$createdAt'
+                    }
+                }
+            ]);
+            res.status(200).json({
+                success: true,
+                data: { transactions },
+                error: null,
+                message: 'OK'
+            });
+            return;
+        }
+        catch (error) {
+            console.error(error);
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error',

@@ -22,6 +22,7 @@ const user_1 = require("../models/user");
 const schemaComponents_1 = require("../lib/schema/schemaComponents");
 const zod_1 = require("zod");
 const Message_1 = require("../models/Message");
+const randomVideoCall_socket_1 = require("./randomVideoCall.socket");
 function configureChatMessagingSocket(io) {
     return __awaiter(this, void 0, void 0, function* () {
         io.use(function (socket, next) {
@@ -29,28 +30,29 @@ function configureChatMessagingSocket(io) {
                 try {
                     let { token, profileType } = yield socket.handshake.auth;
                     token = auth_schema_1.authSessionValidation.parse(token);
-                    if (profileType === 'video_calling_member') {
-                        let videoCallingMember = yield VideoProfile_1.default.findOne({ 'auth.authSession': token });
-                        if (videoCallingMember) {
-                            socket.user_id = videoCallingMember._id.toString();
-                            socket.userProfileType = 'videoProfile';
-                            videoCallingMember.socket_ids.messaging_socket = socket.id;
-                            yield videoCallingMember.save();
-                            return next();
-                        }
-                        else
-                            return next(new Error('Failed To Authenticate the User'));
-                    }
-                    else {
-                        let matrimonyProfile = yield AuthSession_1.default.findOne({ key: token }, 'value.userId');
-                        if (matrimonyProfile) {
-                            socket.user_id = matrimonyProfile.value.userId.toString();
-                            socket.userProfileType = 'matrimonyProfile';
-                            yield user_1.User.findByIdAndUpdate(socket.user_id, { 'socket_ids.messaging_socket': socket.id });
-                            return next();
-                        }
-                        else
-                            return next(new Error('Failed To Authenticate the User'));
+                    switch (profileType) {
+                        case 'video_calling_member':
+                            let videoCallingMember = yield VideoProfile_1.default.findOne({ 'auth.authSession': token });
+                            if (videoCallingMember) {
+                                socket.user_id = videoCallingMember._id.toString();
+                                socket.userProfileType = 'videoProfile';
+                                videoCallingMember.socket_ids.messaging_socket = socket.id;
+                                yield videoCallingMember.save();
+                                return next();
+                            }
+                            else
+                                return next(new Error('Failed To Authenticate the User'));
+                            break;
+                        default:
+                            let matrimonyProfile = yield AuthSession_1.default.findOne({ key: token }, 'value.userId');
+                            if (matrimonyProfile) {
+                                socket.user_id = matrimonyProfile.value.userId.toString();
+                                socket.userProfileType = 'matrimonyProfile';
+                                yield user_1.User.findByIdAndUpdate(socket.user_id, { 'socket_ids.messaging_socket': socket.id });
+                                return next();
+                            }
+                            else
+                                return next(new Error('Failed To Authenticate the User'));
                     }
                 }
                 catch (error) {
@@ -168,9 +170,8 @@ function configureChatMessagingSocket(io) {
                                     room_id = existingRoom._id;
                                 }
                                 let otherUser = yield user_1.User.findById(messengerId, 'name profileImage _id socket_ids.messaging_socket');
-                                if (!otherUser) {
+                                if (!otherUser)
                                     return socket.emit('message-room-opening-error', { message: "Failed Open The message room" });
-                                }
                                 if (otherUser && room_id) {
                                     socket.emit('messaging-room-opened', room_id, otherUser);
                                     return;
@@ -194,16 +195,13 @@ function configureChatMessagingSocket(io) {
                                     memberType: 'video_calling_member',
                                     members: { $all: [messengerId, socket.user_id] }
                                 });
-                                if (existingRoom) {
+                                if (existingRoom)
                                     room_id = existingRoom._id;
-                                }
                                 let otherUser = yield VideoProfile_1.default.findById(messengerId, 'name profileImage _id socket_ids.messaging_socket');
-                                if (!otherUser) {
+                                if (!otherUser)
                                     return socket.emit('message-room-opening-error', { message: "Failed Open The message room" });
-                                }
                                 if (otherUser && room_id) {
-                                    socket.emit('messaging-room-opened', room_id, otherUser);
-                                    return;
+                                    return socket.emit('messaging-room-opened', room_id, otherUser);
                                 }
                                 let room = yield MessagingRooms_1.MessagingRoom.create({
                                     members: [socket.user_id, otherUser._id],
@@ -224,14 +222,13 @@ function configureChatMessagingSocket(io) {
                     socket.emit('message-room-opening-error', { message: "Failed Open The message room" });
                 }
             }));
-            socket.on("join-msg-room", (roomId) => {
+            socket.on('join-room', (uuid) => {
                 try {
-                    roomId = schemaComponents_1._idValidator.parse(roomId);
-                    socket.join(roomId);
+                    socket.join(randomVideoCall_socket_1.roomIdSchema.parse(uuid));
+                    socket.emit('joined-room');
                 }
                 catch (error) {
-                    console.error(`[join msg room error]`, error);
-                    socket.emit('join-msg-room-error', { data: null });
+                    console.error(error);
                 }
             });
             socket.on('send-message-event', function (msg, roomId) {
@@ -247,9 +244,8 @@ function configureChatMessagingSocket(io) {
                         { message: "Unsupported characters" })).parse(msg);
                         roomId = schemaComponents_1._idValidator.parse(roomId);
                         let room = yield MessagingRooms_1.MessagingRoom.findOne({ _id: roomId });
-                        if (!room) {
+                        if (!room)
                             throw new Error("Message Room Is not valid");
-                        }
                         let message = yield Message_1.Message.create({
                             room: roomId,
                             sender: socket.user_id,
@@ -262,7 +258,7 @@ function configureChatMessagingSocket(io) {
                             sender: socket.user_id,
                             roomId
                         });
-                        socket.emit('message-send-successful', { msg_id: message._id });
+                        socket.emit('message-send-successful', { msg_id: message._id, roomId });
                         return;
                     }
                     catch (error) {
@@ -291,7 +287,7 @@ function configureChatMessagingSocket(io) {
                             sender: socket.user_id,
                             roomId
                         });
-                        socket.emit('image-send-successful', { msg_id: message._id });
+                        socket.emit('image-send-successful', { msg_id: message._id, roomId });
                         return;
                     }
                     catch (error) {
