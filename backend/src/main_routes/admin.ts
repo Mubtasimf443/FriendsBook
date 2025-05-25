@@ -10,7 +10,7 @@ import { number, z, ZodError } from "zod";
 import { MembershipRequest } from "../models/membershipRequest";
 import { MembershipRequestStatus } from "../lib/types/memberdship.types";
 import Gifts from "../models/Gifts";
-import { _idValidator } from "../lib/schema/schemaComponents";
+import { _idValidator, emailValidatior } from "../lib/schema/schemaComponents";
 import { Rooms } from "../sockets/notification.socket";
 import CoinsTransection from "../models/CoinsTransection";
 
@@ -194,11 +194,12 @@ router.get('/users', async function (req: Request, res: Response, next: NextFunc
         break;
 
       case 'video-calling':
-        totalUsers =await VideoProfile.countDocuments();
+        totalUsers =await VideoProfile.countDocuments({});
         users = await VideoProfile.find({})
           .sort({ createdAt: -1 })
           .skip(skip)
-          .limit(limit);
+          .limit(limit)
+          .select('location.country profileImage.url name email status phone gender')
         break;
     }
 
@@ -313,6 +314,27 @@ router.put('/users/:id', async function (req: Request, res: Response, next: Next
     });
   }
 });
+
+router.put('/video-user/:id' , async function (req: Request, res: Response, next: NextFunction): Promise<any> {
+  try {
+    let { name , email , phone} = (z.object({
+      name: z.string().min(2, "Name must be at least 2 characters").max(120).trim(),
+      email: emailValidatior,
+      phone: z.string().regex(/^\d{10,15}$/).trim(),
+    })).parse(req.body);
+
+    await VideoProfile.findByIdAndUpdate(_idValidator.parse(req.params.id), { name, email, phone })
+
+    return res.sendStatus(200);
+  } catch (error) {
+    console.error('[Uodate Video User From Admin Panal Api error]', error);
+    return res.status(500).json({
+       success: false,
+       message: 'Internal server error',
+       data: null
+    });
+  }
+})
 
 router.put('/users/:id/suspend', async function (req: Request, res: Response, next: NextFunction): Promise<any> {
   try {

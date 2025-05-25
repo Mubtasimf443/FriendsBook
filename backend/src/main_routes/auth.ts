@@ -888,8 +888,9 @@ router.post("/create-registration-session/video-profile", async function (req: R
     try {
         // Define schema for video profile registration
         const videoProfileRegistrationSchema = z.object({
-            name: z.string().min(2, "Name must be at least 2 characters"),
+            name: z.string().min(2, "Name must be at least 2 characters").max(120),
             email: emailValidatior,
+            phone : z.string().regex(/^\d{10,15}$/),
             password: passwordValidator,
             gender: z.enum(["male", "female", "other"]),
             languages: z.array(z.nativeEnum(Language)).min(1, "At least one language is required"),
@@ -898,7 +899,6 @@ router.post("/create-registration-session/video-profile", async function (req: R
                 longitude: z.number(),
                 latitude: z.number()
             }),
-            phone : z.string().regex(/^\d{10,15}$/),
             dateOfBirth :  z.string()
             .transform((str) => new Date(str))
             .refine((date) => date instanceof Date && !isNaN(date.getTime()), {

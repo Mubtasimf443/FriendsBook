@@ -3,6 +3,7 @@
 import DashboardLoader from '@/components/custom/loader';
 import Pagination from '@/components/custom/Pagination';
 import { EmtyUsers, UserCard, UserGrid } from '@/components/custom/Users';
+import { EmptyVideoCallUsers, VideoCallUserCard, VideoCallUserGrid } from '@/components/custom/VideoUser';
 import Awaiter from '@/lib/Awaiter';
 import { Api } from '@/lib/env';
 import { Plus, RefreshCcw, Users } from 'lucide-react';
@@ -13,8 +14,14 @@ const AllUser = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [filterStatus, setFilterStatus] = useState('all');
+    const [filterStatus, setFilterStatus] = useState('matrimony');
     
+
+
+    // Video Users
+    const [videoUsers, setVideoUsers] = useState([]);
+
+
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -39,7 +46,6 @@ const AllUser = () => {
                     'cache-control' : "no-cache"
                 }
             });
-            await Awaiter(100)
 
             if (!response.ok) {
                 throw new Error('Failed to fetch users');
@@ -48,7 +54,16 @@ const AllUser = () => {
             const data = await response.json();
             
             if (data.success) {
-                setUsers(data.data.users);
+                switch (filterStatus) {
+                    case 'matrimony':
+                        setUsers(data.data.users);
+                        break;
+                
+                    case "video-calling":
+                        setVideoUsers(data.data.users)
+                        break;
+                }
+              
                 setTotalPages(data.data.pagination.totalPages);
                 setTotalUsers(data.data.pagination.totalUsers);
                 setHasNextPage(data.data.pagination.hasNextPage);
@@ -133,11 +148,9 @@ const AllUser = () => {
                         onChange={handleFilterChange}
                         disabled={loading}
                     >
-                        <option value="all">All Users</option>
-                        <option value="premium">Premium Users</option>
-                        <option value="active">Active Users</option>
-                        <option value="suspended">Suspended Users</option>
-                        <option value="new">New Users</option>
+
+                        <option value="matrimony">Matrimony Users</option>
+                        <option value="video-calling">Video Calling Members</option>
                     </select>
                 </div>
             </div>
@@ -168,7 +181,7 @@ const AllUser = () => {
             )}
 
             {/* User Grid */}
-            {!loading && !error && (
+            {!loading && !error && filterStatus ==='matrimony' && (
                 <UserGrid>
                     {users.length > 0 ? (
                         users.map((user, index) => (
@@ -196,6 +209,28 @@ const AllUser = () => {
                     )}
                 </UserGrid>
             )}
+
+
+            {!loading && !error && filterStatus === "video-calling" && (
+                <VideoCallUserGrid>
+                    {
+                        users.length > 0 ?
+                            videoUsers.map(
+                                (user) =>
+                                (
+                                    <>
+                                     <VideoCallUserCard user={user} />
+                                    </>
+                                )
+                            )
+                            :
+                            (
+                                <EmptyVideoCallUsers />
+                            )
+                    }
+                </VideoCallUserGrid>
+            )}
+
 
             {/* Pagination controls */}
             {!loading && !error && totalPages > 0 && (
