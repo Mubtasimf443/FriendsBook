@@ -497,9 +497,9 @@ router.post('/login', function (req, res) {
                 message: "Login successful.",
                 data: {
                     email: existingUser.email,
+                    name: existingUser.name,
                     userId: existingUser._id,
                     authToken: authToken,
-                    name: existingUser.name
                 }
             });
         }
@@ -1188,7 +1188,8 @@ router.post('/login/video-profile', function (req, res) {
                 data: {
                     userId: existingUser._id,
                     authToken: authToken,
-                    name: existingUser.name
+                    name: existingUser.name,
+                    email: existingUser.email
                 }
             });
         }

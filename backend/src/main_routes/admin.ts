@@ -169,6 +169,7 @@ router.get('/overview-statistics', async function (req: Request, res: Response, 
   }
 });
 
+
 router.get('/users', async function (req: Request, res: Response, next: NextFunction): Promise<any> {
   try {
     const page = parseInt(req.query.page as string) || 1;
@@ -222,6 +223,7 @@ router.get('/users', async function (req: Request, res: Response, next: NextFunc
     next(error);
   }
 });
+
 
 router.get('/users/search', async function (req: Request, res: Response, next: NextFunction): Promise<any> {
   try {
@@ -289,6 +291,7 @@ router.get('/users/search', async function (req: Request, res: Response, next: N
   }
 });
 
+
 router.put('/users/:id', async function (req: Request, res: Response, next: NextFunction): Promise<any> {
   try {
     let schema = z.object({
@@ -315,6 +318,7 @@ router.put('/users/:id', async function (req: Request, res: Response, next: Next
   }
 });
 
+
 router.put('/video-user/:id' , async function (req: Request, res: Response, next: NextFunction): Promise<any> {
   try {
     let { name , email , phone} = (z.object({
@@ -335,6 +339,7 @@ router.put('/video-user/:id' , async function (req: Request, res: Response, next
     });
   }
 })
+
 
 router.put('/users/:id/suspend', async function (req: Request, res: Response, next: NextFunction): Promise<any> {
   try {
@@ -364,6 +369,7 @@ router.put('/users/:id/unsuspend', async function (req: Request, res: Response, 
   }
 });
 
+
 router.delete('/users/:id', async function (req: Request, res: Response, next: NextFunction): Promise<any> {
   try {
     await User.findByIdAndDelete(req.params.id);
@@ -377,6 +383,7 @@ router.delete('/users/:id', async function (req: Request, res: Response, next: N
     });
   }
 })
+
 
 router.get('/membership/pricing', async function (req: Request, res: Response): Promise<any> {
   try {
@@ -444,6 +451,7 @@ router.put('/membership/pricing', async function (req: Request, res: Response): 
     });
   }
 });
+
 
 router.get('/membership/request', async function (req: Request, res: Response): Promise<any> {
   try {
@@ -593,6 +601,7 @@ router.put('/membership/request/:id/reject', async function (req: Request, res: 
     });
   }
 });
+
 
 router.get('/coins/request', async function (req: Request, res: Response): Promise<any> {
   try {
@@ -858,8 +867,6 @@ router.delete('/gifts/:id' , async function (req: Request, res: Response,): Prom
     });
   }
 });
-
-
 
 
 router.post('/log-out', async function (req: Request, res: Response,): Promise<any> {
