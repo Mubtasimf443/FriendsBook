@@ -13,6 +13,7 @@ export interface ITransaction extends Document {
   createdAt: Date;
   updatedAt: Date;
   coins : number;
+  admin_note : string;
   paying_phone_number : string;
 }
 
@@ -30,7 +31,8 @@ const TransactionSchema: Schema<ITransaction> = new Schema(
       default: 'pending'
     },
     coins : Number , 
-    paying_phone_number : String
+    paying_phone_number : String,
+    admin_note : String
   },
   { timestamps: true }
 );

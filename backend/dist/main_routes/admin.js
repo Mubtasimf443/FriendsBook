@@ -562,10 +562,17 @@ router.get('/coins/request', function (req, res) {
             if (limit < 1)
                 limit = 10;
             const skip = (page - 1) * limit;
-            const total = yield CoinsTransection_1.default.countDocuments({ status: "pending", 'paymentInfo.paymentMethod': { $in: ['bkash', 'nagad', 'rocket'] } });
-            let request = yield CoinsTransection_1.default.find({ status: "pending", paymentMethod: { $in: ['bkash', 'nagad', 'rocket'] } });
+            let query = {
+                status: "pending",
+            };
+            const total = yield CoinsTransection_1.default.countDocuments(query);
+            let request = yield CoinsTransection_1.default.find(query).skip(skip).limit(limit).populate('userId', 'name email phone profileImage').lean();
+            let data = JSON.parse((0, fs_1.readFileSync)(path_1.default.join(__dirname, '../../data/coin.packages.json'), 'utf-8'));
+            for (let i = 0; i < request.length; i++)
+                request[i]['package'] = data[request[i]['package']];
             return res.status(200).json({
                 data: {
+                    request,
                     pagination: {
                         page,
                         total,
@@ -593,6 +600,7 @@ router.put('/coins/request/:id/reject', function (req, res) {
                 status: "pending",
             }, {
                 status: 'failed',
+                admin_note: (zod_1.z.string().min(1).max(120)).parse(req.body.admin_note)
             });
         }
         catch (error) {

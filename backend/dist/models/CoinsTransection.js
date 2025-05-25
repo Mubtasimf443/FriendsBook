@@ -48,6 +48,7 @@ const TransactionSchema = new mongoose_1.Schema({
         default: 'pending'
     },
     coins: Number,
-    paying_phone_number: String
+    paying_phone_number: String,
+    admin_note: String
 }, { timestamps: true });
 exports.default = mongoose_1.default.model('CoinsTransection', TransactionSchema);

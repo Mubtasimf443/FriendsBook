@@ -21,6 +21,7 @@ const schemaComponents_1 = require("../lib/schema/schemaComponents");
 const zod_1 = require("zod");
 const query_middleware_1 = __importDefault(require("../lib/middlewares/query.middleware"));
 const updateUser_schema_1 = require("../lib/schema/updateUser.schema");
+const membershipRequest_1 = require("../models/membershipRequest");
 const asset_1 = require("../models/asset");
 const partnerPreference_schema_1 = require("../lib/schema/partnerPreference.schema");
 require("../lib/types/express.decratation");
@@ -169,18 +170,29 @@ router.put('/user-details/video-profile', auth_middleware_1.validateVideoProfile
 });
 router.get('/user-details/matrimony', auth_middleware_1.validateUser, function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
-        var _a, _b, _c, _d;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
         try {
             let _id = (_b = (_a = req.authSession) === null || _a === void 0 ? void 0 : _a.value) === null || _b === void 0 ? void 0 : _b.userId;
             if (!_id)
                 return res.sendStatus(401);
-            let user = yield user_1.User.findById(_id, 'name email phoneInfo profileImage coverImage occupation maritalStatus languages address education height age weight dateOfBirth gender profileCreatedBy mid onlineStatus aboutMe familyInfo membership')
-                .populate('membership.currentMembership.requestId', 'tier duration endDate startDate')
-                .lean();
+            let user = yield user_1.User.findById(_id, 'name email phoneInfo profileImage coverImage occupation maritalStatus languages address education height age weight dateOfBirth gender profileCreatedBy mid onlineStatus aboutMe familyInfo membership').lean();
             if (!user)
                 return res.sendStatus(204);
-            let membership = (_d = (_c = user.membership) === null || _c === void 0 ? void 0 : _c.currentMembership) === null || _d === void 0 ? void 0 : _d.requestId;
-            delete user.membership;
+            let membership;
+            if (((_c = user.membership) === null || _c === void 0 ? void 0 : _c.currentMembership.requestId) && ((_e = (_d = user.membership) === null || _d === void 0 ? void 0 : _d.currentMembership) === null || _e === void 0 ? void 0 : _e.membership_exipation_date.getTime()) > Date.now()) {
+                membership = yield membershipRequest_1.MembershipRequest.findById((_g = (_f = user.membership) === null || _f === void 0 ? void 0 : _f.currentMembership) === null || _g === void 0 ? void 0 : _g.requestId, 'tier endDate verifiedPhoneLimit').lean();
+                membership && delete membership._id;
+                delete user.membership;
+            }
+            if (((_j = (_h = user.membership) === null || _h === void 0 ? void 0 : _h.currentMembership) === null || _j === void 0 ? void 0 : _j.requestId) && ((_l = (_k = user.membership) === null || _k === void 0 ? void 0 : _k.currentMembership) === null || _l === void 0 ? void 0 : _l.membership_exipation_date.getTime()) < Date.now()) {
+                yield user_1.User.findByIdAndUpdate(user._id, {
+                    'membership.currentMembership.requestId': undefined,
+                    'membership.currentMembership.membership_exipation_date': undefined,
+                });
+            }
+            if (!membership) {
+                membership = { tier: 'FREE' };
+            }
             res.status(200).json({
                 success: true,
                 data: Object.assign(Object.assign({}, user), { membership }),
@@ -210,19 +222,14 @@ router.get('/user-details/matrimony', auth_middleware_1.validateUser, function (
 });
 router.get('/user-details/matrimony/:id', auth_middleware_1.validateUser, function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
-        var _a, _b;
         try {
             let _id = schemaComponents_1._idValidator.parse(req.params.id);
-            let user = yield user_1.User.findById(_id, 'name email phoneInfo profileImage coverImage occupation maritalStatus languages address education height age weight dateOfBirth gender profileCreatedBy mid onlineStatus aboutMe familyInfo membership')
-                .populate('membership.currentMembership.requestId', 'tier duration endDate startDate')
-                .lean();
+            let user = yield user_1.User.findById(_id, 'name email phoneInfo profileImage coverImage occupation maritalStatus languages address education height age weight dateOfBirth gender profileCreatedBy mid onlineStatus aboutMe familyInfo').lean();
             if (!user)
                 return res.sendStatus(204);
-            let membership = (_b = (_a = user.membership) === null || _a === void 0 ? void 0 : _a.currentMembership) === null || _b === void 0 ? void 0 : _b.requestId;
-            delete user.membership;
             res.status(200).json({
                 success: true,
-                data: Object.assign(Object.assign({}, user), { membership }),
+                data: Object.assign({}, user),
                 error: null,
                 message: 'OK'
             });
@@ -793,256 +800,4 @@ router.delete('/user-details/user-photo/matrimony', auth_middleware_1.validateUs
         }
     });
 });
-// router.post('/user-details/membership-request',validateUser , async function (req: Request, res: Response): Promise<any> {
-//     try {
-//         if (!req.authSession || !req.authSession?.value) {
-//             res.status(401).json({
-//                 success: false,
-//                 message: 'Failed to authorize the user',
-//                 data: null
-//             });
-//             return;
-//         }
-//         const userId = req.authSession.value.userId;
-//         // Check if user exists
-//         const user = await User.findById(userId);
-//         if (!user) {
-//             return res.status(404).json({
-//                 success: false,
-//                 message: 'User not found',
-//                 data: null
-//             });
-//         }
-//         const pendingRequest = await MembershipRequest.findOne({
-//             requesterID: userId,
-//             requestStatus: MembershipRequestStatus.PENDING
-//         });
-//         if (pendingRequest) {
-//             return res.status(400).json({
-//                 success: false,
-//                 message: 'You already have a pending membership request',
-//                 data: null
-//             });
-//         }
-//         let db_user = await User.findById(userId, 'membership');
-//         if (!db_user) {
-//             res.status(401).json({
-//                 success: false,
-//                 message: 'Could not find The User Account',
-//                 data: null
-//             });
-//             return;
-//         }
-//         if (db_user.hasActiveMembership()) {
-//             res.status(400).json({
-//                 success: false,
-//                 message: 'User Already has an active membership, You can not request membership when User has a membership active',
-//                 data: null
-//             });
-//             return;
-//         }
-//         // // Validate request body
-//         const validatedData = await membershipRequestSchema.parseAsync(req.body);
-//         const startDate = new Date(validatedData.startDate);
-//         // Create membership request
-//         const membershipRequest = new MembershipRequest({
-//             ...validatedData,
-//             startDate,
-//             requesterID: userId,
-//             requestStatus: MembershipRequestStatus.PENDING,
-//             requestDate: new Date(),
-//             endDate: new Date(startDate.getTime() + validatedData.duration * 30 * 24 * 60 * 60 * 1000)
-//         });
-//         await membershipRequest.save();
-//         return res.status(201).json({
-//             success: true,
-//             message: 'Membership request created successfully',
-//             data: membershipRequest
-//         });
-//     } catch (error) {
-//         console.error('[Membership Request API Error]', {
-//             error: error instanceof Error ? error.message : 'Unknown error',
-//             timestamp: new Date().toISOString()
-//         });
-//         if (error instanceof z.ZodError) {
-//             return res.status(400).json({
-//                 success: false,
-//                 message: 'Validation error',
-//                 error: error.errors,
-//                 data: null
-//             });
-//         }
-//         return res.status(500).json({
-//             success: false,
-//             message: 'Internal server error',
-//             data: null
-//         });
-//     }
-// });
-// router.get('/membership-request', validateUser, async function (req: Request, res: Response): Promise<Response | any> {
-//     try {
-//         if (!req.authSession || !req.authSession?.value) {
-//             res.status(401).json({
-//                 success: false,
-//                 message: 'Failed to authorize the user',
-//                 data: null
-//             });
-//             return;
-//         }
-//         const userId = req.authSession.value.userId;
-//         // Validate query parameters
-//         const validationResult = membershipRequestQuerySchema.safeParse(req.query);
-//         if (!validationResult.success) {
-//             return res.status(400).json({
-//                 success: false,
-//                 message: "Invalid query parameters",
-//                 error: validationResult.error.errors,
-//                 data: null
-//             });
-//         }
-//         const { page, limit, status, count: shouldCount } = validationResult.data;
-//         // Build query
-//         const query: any = { requesterID: userId };
-//         if (status && status !== 'all') {
-//             query.requestStatus = status;
-//         }
-//         // Execute query with pagination
-//         const requests = await MembershipRequest.find(query)
-//             .sort({ requestDate: -1 })
-//             .skip((page - 1) * limit)
-//             .limit(limit)
-//             .lean()
-//             .maxTimeMS(10000); // Set maximum execution time
-//         // Get total count if requested
-//         let totalCount: number | undefined;
-//         if (shouldCount === 'yes') {
-//             totalCount = await MembershipRequest.countDocuments(query)
-//                 .maxTimeMS(5000);
-//         }
-//         // Prepare pagination info
-//         let pagination: object = {
-//             currentPage: page,
-//             pageSize: limit,
-//         };
-//         if (totalCount !== undefined) {
-//             pagination = {
-//                 ...pagination,
-//                 totalPages: Math.ceil(totalCount / limit),
-//                 totalRequests: totalCount
-//             };
-//         }
-//         // Set cache headers
-//         res.set('Cache-Control', 'private, max-age=30'); // Cache for 30 seconds, private because it's user-specific
-//         return res.status(200).json({
-//             success: true,
-//             data: {
-//                 requests,
-//                 pagination,
-//                 filterCriteria: {
-//                     status
-//                 }
-//             }
-//         });
-//     } catch (error) {
-//         console.error('[Get Membership History API Error]', {
-//             error: error instanceof Error ? error.message : 'Unknown error',
-//             timestamp: new Date().toISOString(),
-//             userId: req.authSession?.value?.userId
-//         });
-//         if (error instanceof z.ZodError) {
-//             return res.status(400).json({
-//                 success: false,
-//                 message: 'Validation error',
-//                 error: error.errors,
-//                 data: null
-//             });
-//         }
-//         return res.status(500).json({
-//             success: false,
-//             message: 'Internal server error',
-//             data: null
-//         });
-//     }
-// });
-// router.put('/membership-request/cancel', validateUser, async function (req: Request, res: Response): Promise<any> {
-//     try {
-//         if (!req.authSession || !req.authSession?.value) {
-//             res.status(401).json({
-//                 success: false,
-//                 message: 'Failed to authorize the user',
-//                 data: null
-//             });
-//             return;
-//         }
-//         const userId = req.authSession.value.userId;
-//         const membershipRequest = await MembershipRequest.findOne({
-//             requesterID: userId,
-//             requestStatus: MembershipRequestStatus.PENDING
-//         });
-//         if (!membershipRequest) {
-//             return res.status(404).json({
-//                 success: false,
-//                 message: 'No pending membership request found',
-//                 data: null
-//             });
-//         }
-//         membershipRequest.cancel();
-//         await membershipRequest.save();
-//         return res.status(200).json({
-//             success: true,
-//             message: 'Membership request cancelled successfully',
-//             data: membershipRequest
-//         });
-//     } catch (error) {
-//         console.error('[Cancel Membership Request API Error]', {
-//             error: error instanceof Error ? error.message : 'Unknown error',
-//             timestamp: new Date().toISOString()
-//         });
-//         return res.status(500).json({
-//             success: false,
-//             message: 'Internal server error',
-//             data: null
-//         });
-//     }
-// });
-// router.delete('/membership-request', validateUser, async function (req: Request, res: Response): Promise<any> {
-//     try {
-//         if (!req.authSession || !req.authSession?.value) {
-//             res.status(401).json({
-//                 success: false,
-//                 message: 'Failed to authorize the user',
-//                 data: null
-//             });
-//             return;
-//         }
-//         const userId = req.authSession.value.userId;
-//         const membershipRequest = await MembershipRequest.findOne({
-//             requesterID: userId,
-//             requestStatus: MembershipRequestStatus.CANCELLED
-//         });
-//         if (!membershipRequest) {
-//             return res.status(404).json({
-//                 success: false,
-//                 message: 'No cancelled membership request found',
-//                 data: null
-//             });
-//         }
-//         await membershipRequest.deleteOne();
-//         return res.status(200).json({
-//             success: true,
-//             message: 'Membership request deleted successfully',
-//             data: null
-//         });
-//     } catch (error) {
-//         console.error('[Delete Membership Request API Error]', {
-//             error: error instanceof Error ? error.message : 'Unknown error',
-//             timestamp: new Date().toISOString()
-//         });
-//         return res.status(500).json({
-//             success: false,
-//             message: 'Internal server error',
-//             data: null
-//         });
-//     }
-// });
 exports.default = router;

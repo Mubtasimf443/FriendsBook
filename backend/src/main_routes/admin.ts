@@ -611,13 +611,23 @@ router.get('/coins/request', async function (req: Request, res: Response): Promi
     if (limit < 1) limit = 10;
     const skip = (page - 1) * limit;
 
-    const total = await CoinsTransection.countDocuments({ status : "pending" , 'paymentInfo.paymentMethod' : { $in :['bkash', 'nagad', 'rocket']}});
+    let query = {
+      status: "pending",
+    };
+
+
+    const total = await CoinsTransection.countDocuments(query );
     
-    let request =await CoinsTransection.find({ status : "pending" , paymentMethod : { $in :['bkash', 'nagad', 'rocket']}});
+    let request =await CoinsTransection.find(query).skip(skip).limit(limit).populate('userId' , 'name email phone profileImage').lean();
     
+    let data: any = JSON.parse(readFileSync(path.join(__dirname, '../../data/coin.packages.json'), 'utf-8'));
+
+    for (let i = 0; i < request.length; i++) request[i]['package']=data[request[i]['package']];
+      
     
     return res.status(200).json({
       data : {
+        request,
         pagination : {
           page ,
           total ,
@@ -638,6 +648,7 @@ router.get('/coins/request', async function (req: Request, res: Response): Promi
 
 router.put('/coins/request/:id/reject', async function (req: Request, res: Response): Promise<any> {
   try {
+     
       let t = await CoinsTransection.findOneAndUpdate(
       {
         _id: _idValidator.parse(req.params.id) ,
@@ -645,7 +656,7 @@ router.put('/coins/request/:id/reject', async function (req: Request, res: Respo
       },
       {
         status : 'failed',
-        
+        admin_note : (z.string().min(1).max(120)).parse(req.body.admin_note)
       }
     );
   } catch (error) {
