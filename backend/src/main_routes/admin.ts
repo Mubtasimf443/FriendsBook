@@ -6,12 +6,13 @@ import { readFileSync, writeFileSync } from "fs";
 import path from "path";
 import { User } from "../models/user";
 import VideoProfile from "../models/VideoProfile";
-import { number, z } from "zod";
+import { number, z, ZodError } from "zod";
 import { MembershipRequest } from "../models/membershipRequest";
 import { MembershipRequestStatus } from "../lib/types/memberdship.types";
 import Gifts from "../models/Gifts";
 import { _idValidator } from "../lib/schema/schemaComponents";
 import { Rooms } from "../sockets/notification.socket";
+import CoinsTransection from "../models/CoinsTransection";
 
 const router: Router = Router();
 
@@ -172,47 +173,37 @@ router.get('/users', async function (req: Request, res: Response, next: NextFunc
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
-    const userType = req.query.usertype as string || 'all';
+    const userType = req.query.usertype as string || 'matrimony';
 
     const skip = (page - 1) * limit;
 
-    let query = {};
 
-    // Filter based on user type
+
+    let users : any[] = []; 
+    let totalUsers = 0;
+ 
+
     switch (userType) {
-      case 'premium':
-        query = {
-          'membership.currentMembership.requestId': { $exists: true },
-          'membership.currentMembership.membership_exipation_date': { $exists: true }
-        };
+      case 'matrimony':
+        totalUsers = await User.countDocuments({});
+        users = await User.find({})
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .select('_id name email profileImage.url suspension onlineStatus membership address phoneInfo');
         break;
-      case 'active':
-        query = {
-          'onlineStatus.isOnline': true,
-        };
-        break;
-      case 'suspended':
-        query = { 'suspension.isSuspended': true };
-        break;
-      case 'new':
-        // Users created in the last 7 days
-        query = { createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } };
-        break;
-      default:
-        // 'all' - no filter
+
+      case 'video-calling':
+        totalUsers =await VideoProfile.countDocuments();
+        users = await VideoProfile.find({})
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit);
         break;
     }
 
-    const users = await User.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .select('_id name email profileImage.url suspension onlineStatus membership address phoneInfo');
-
-    const totalUsers = await User.countDocuments(query);
-    const totalPages = Math.ceil(totalUsers / limit);
-
-
+    let totalPages = Math.ceil(totalUsers / limit);
+    
     return res.status(200).json({
       success: true,
       data: {
@@ -582,6 +573,95 @@ router.put('/membership/request/:id/reject', async function (req: Request, res: 
   }
 });
 
+router.get('/coins/request', async function (req: Request, res: Response): Promise<any> {
+  try {
+    let request =await CoinsTransection.find({ status : "pending" , paymentMethod : { $in :['bkash', 'nagad', 'rocket']}});
+    return res.status(200).json(request)
+  } catch (error) {
+    console.error('[Coin Purchase Request Get Api (Admin ) Error]', error);
+    return res.status(500).json({
+       success: false,
+       message: 'Internal server error',
+       data: null
+    });
+  }
+});
+
+router.put('/coins/request/:id/reject', async function (req: Request, res: Response): Promise<any> {
+  try {
+      let t = await CoinsTransection.findOneAndUpdate(
+      {
+        _id: _idValidator.parse(req.params.id) ,
+        status : "pending" , 
+      },
+      {
+        status : 'failed',
+        
+      }
+    );
+  } catch (error) {
+    console.error( error);
+    if (error instanceof ZodError) {
+      res.status(400).json({
+          success: false,
+          message: 'Invalid request parameters',
+          error: error.errors,
+          data: null
+      });
+      return;
+    }
+    return res.status(500).json({
+       success: false,
+       message: 'Internal server error',
+       data: null
+    });
+  }
+});
+
+
+router.put('/coins/request/:id/accept', async function (req: Request, res: Response): Promise<any> {
+  try {
+    let t = await CoinsTransection.findOne(
+      {
+        _id: _idValidator.parse(req.params.id) ,
+        status : "pending" , 
+      }
+    );
+
+    if (!t) return res.sendStatus(403);
+
+    let data: any = JSON.parse(readFileSync(path.join(__dirname, '../../data/coin.packages.json'), 'utf-8'));
+  
+    let coins = data[t.package].coins ;
+
+    t.status= 'success';
+    t.coins = coins;
+    await t.save();
+
+
+    await VideoProfile.findByIdAndUpdate( t.userId , { $inc : { video_calling_coins : t.coins}})
+
+    return res.sendStatus(200)
+
+  } catch (error) {
+    console.error( error);
+    if (error instanceof ZodError) {
+      res.status(400).json({
+          success: false,
+          message: 'Invalid request parameters',
+          error: error.errors,
+          data: null
+      });
+      return;
+    }
+    return res.status(500).json({
+       success: false,
+       message: 'Internal server error',
+       data: null
+    });
+  }
+});
+
 
 router.put('/coins-data', async function (req: Request, res: Response): Promise<any> {
   try {
@@ -738,6 +818,8 @@ router.delete('/gifts/:id' , async function (req: Request, res: Response,): Prom
     });
   }
 });
+
+
 
 
 router.post('/log-out', async function (req: Request, res: Response,): Promise<any> {

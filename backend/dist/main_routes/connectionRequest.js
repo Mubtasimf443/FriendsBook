@@ -34,7 +34,7 @@ router.get('/', function (req, res) {
             }
             const userId = req.authSession.value.userId;
             let user = yield user_1.User.findById(userId, 'connections pendingIncomingRequests pendingOutgoingRequests')
-                .populate('connections', 'name profileImage.url _id onlineStatus')
+                .populate('connections', 'name profileImage.url _id onlineStatus address.district.name')
                 .lean();
             if (!user) {
                 res.status(404).json({
@@ -47,10 +47,10 @@ router.get('/', function (req, res) {
             ;
             let friends = user.connections;
             let incomingRequest = yield ConnectionRequest_1.ConnectionRequest.find({ _id: { $in: user.pendingIncomingRequests } }, 'sender')
-                .populate('sender', 'name profileImage.url _id onlineStatus')
+                .populate('sender', 'name profileImage.url _id onlineStatus address.district.name')
                 .lean();
             let outgoingRequest = yield ConnectionRequest_1.ConnectionRequest.find({ _id: { $in: user.pendingOutgoingRequests } }, 'recipient')
-                .populate('recipient', 'name profileImage.url _id onlineStatus')
+                .populate('recipient', 'name profileImage.url _id onlineStatus address.district.name')
                 .lean();
             let requestedMe = incomingRequest.map(element => element.sender);
             let requestedByMe = outgoingRequest.map(element => element.recipient);

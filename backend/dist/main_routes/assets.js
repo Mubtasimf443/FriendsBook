@@ -22,6 +22,8 @@ const promises_1 = __importDefault(require("fs/promises"));
 const zod_1 = require("zod");
 const rateRimiter_1 = __importDefault(require("../config/rateRimiter"));
 const cloudinary_1 = __importDefault(require("../config/cloudinary"));
+const schemaComponents_1 = require("../lib/schema/schemaComponents");
+const https_1 = __importDefault(require("https"));
 const router = (0, express_1.Router)();
 router.use((0, rateRimiter_1.default)(120 * 1000, 120));
 router.post('/upload/image', multer_1.upload.single('image'), function (req, res) {
@@ -233,6 +235,46 @@ router.post('/upload/pdf', multer_1.upload.single('pdf'), function (req, res) {
                 message: "Failed to process PDF upload",
                 error: "Internal server error during upload process"
             });
+        }
+    });
+});
+router.get('/download/pdf', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            let id = schemaComponents_1.uuidValidator.parse(req.query.id);
+            let asset = yield asset_1.Asset.findOne({ id, asset_type: 'document' }).lean();
+            if (!asset)
+                return res.sendStatus(204);
+            let host_assest_Id = asset.uploadInfo.host_id;
+            let resource = yield cloudinary_1.default.api.resource(host_assest_Id, { resource_type: 'raw' });
+            https_1.default.get(resource.secure_url, (response) => {
+                res.setHeader('Content-Type', 'application/pdf');
+                res.setHeader('Content-Disposition', `inline; filename="${id}.pdf"`); // "attachment" to force download
+                response.pipe(res);
+            })
+                .on('error', (err) => console.error(err));
+        }
+        catch (error) {
+            try {
+                if (error instanceof zod_1.ZodError) {
+                    res.status(400).json({
+                        success: false,
+                        message: 'Invalid request parameters',
+                        error: error.errors,
+                        data: null
+                    });
+                    return;
+                }
+                console.error('[download pdf api error]', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Internal server error',
+                    data: null
+                });
+            }
+            catch (error) {
+                console.error(error);
+            }
         }
     });
 });

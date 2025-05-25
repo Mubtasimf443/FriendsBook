@@ -130,8 +130,7 @@ export const registrationUserSchema = z.object({
         invalid_type_error: "Invalid profile creator type"
     }),
 
-    age: z.number(),
-
+   
     gender: z.nativeEnum(Gender, {
         required_error: "Gender is required",
         invalid_type_error: "Invalid gender type"
@@ -227,7 +226,8 @@ export const registrationUserSchema = z.object({
 })
     .refine(
         function (data) {
-            const age = data.age;
+           const age = Math.floor((new Date().getTime() - data.dateOfBirth.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+
             if (data.gender === Gender.MALE) {
                 return age >= 21 && age <= 70;
             } else if (data.gender === Gender.FEMALE) {
@@ -239,15 +239,7 @@ export const registrationUserSchema = z.object({
             path: ["age"],
         }
     )
-    .refine(
-        function (data) {
-            return data.age == calculateAge(data.dateOfBirth);
-        },
-        {
-            message: "Invalid age for the selected gender. Male must be 21-70 years old, and female must be 18-70 years old.",
-            path: ["dateOfBirth"],
-        }
-    )
+   
     .refine(
         (data) => data.password === data.confirmPassword,
         {
@@ -309,7 +301,13 @@ export const registrationUserSchema = z.object({
             message: 'If User is not educated Than education details is not required',
             path: ['isEducated', 'education[0].level', 'education[0].certificate', 'education[0].yearOfCompletion']
         }
-    );
+    )
+    .transform(function (data)  {
+        return {
+            ...data ,
+            age :  Math.floor((new Date().getTime() - data.dateOfBirth.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+        }
+    })
 
 
     

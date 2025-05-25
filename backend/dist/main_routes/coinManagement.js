@@ -153,8 +153,6 @@ router.post('/buy-coins/stripe', auth_middleware_1.validateVideoProfile, functio
         }
     });
 });
-/* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
-// PayPal Success Handler
 router.get('/payment-success/paypal', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
@@ -224,7 +222,6 @@ router.get('/payment-success/paypal', function (req, res) {
         }
     });
 });
-// Stripe Success Handler
 router.get('/payment-success/stripe', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
@@ -285,7 +282,6 @@ router.get('/payment-success/stripe', function (req, res) {
         }
     });
 });
-// PayPal Cancel Handler
 router.get('/payment-cancel/paypal', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
@@ -334,7 +330,6 @@ router.get('/payment-cancel/paypal', function (req, res) {
         }
     });
 });
-// Stripe Cancel Handler
 router.get('/payment-cancel/stripe', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a;
@@ -384,7 +379,6 @@ router.get('/payment-cancel/stripe', function (req, res) {
         }
     });
 });
-// coin Purchase History
 router.get('/coin-purchase-history', auth_middleware_1.validateVideoProfile, function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -415,6 +409,47 @@ router.get('/coin-purchase-history', auth_middleware_1.validateVideoProfile, fun
         }
         catch (error) {
             console.error(error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
+            });
+        }
+    });
+});
+router.post('/coin-purchase-request', auth_middleware_1.validateVideoProfile, function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a;
+        try {
+            let { package_id, paymentMethod, transactionId, amount, paying_phone_number } = (zod_1.z.object({
+                paymentMethod: zod_1.z.enum(['bkash', 'nagad', 'rocket']),
+                transactionId: zod_1.z.string().trim().min(1).max(120),
+                amount: zod_1.z.number().max(100000),
+                package_id: zod_1.z.enum(['package_1', 'package_2', 'package_3', 'package_4']),
+                paying_phone_number: zod_1.z.string()
+            })).parse(req.body);
+            yield CoinsTransection_1.default.create({
+                paymentMethod: paymentMethod,
+                transactionId: transactionId,
+                amount,
+                currency: 'BDT',
+                package: package_id,
+                userId: (_a = req.videoProfile) === null || _a === void 0 ? void 0 : _a._id,
+                paying_phone_number
+            });
+            return res.sendStatus(200);
+        }
+        catch (error) {
+            console.error('[Coin Purchase Request Api]', error);
+            if (error instanceof zod_1.ZodError) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Invalid request parameters',
+                    error: error.errors,
+                    data: null
+                });
+                return;
+            }
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error',

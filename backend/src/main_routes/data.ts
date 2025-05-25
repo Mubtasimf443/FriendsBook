@@ -69,7 +69,6 @@ router.get('/gifts', async (req: Request, res: Response) => {
 
 
 
-
 router.get("/location/country-names", async function (req: Request, res: Response): Promise<any> {
     return res.status(200).json({ success: true, message: "ok", data: { names: countryNames } })
 });

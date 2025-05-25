@@ -26,6 +26,10 @@ const fileFilter = (req, file, cb) => {
         cb(new Error('Invalid file type. Only JPEG, PNG, JPG, PDF, and WEBP files are allowed.'));
         return;
     }
+    if (file.mimetype !== 'application/pdf' && file.size > 5 * 1024 * 1024)
+        return cb(new Error('Image can noy be bigger than 5 MB'));
+    if (file.mimetype === 'application/pdf' && file.size > 10 * 1024 * 1024)
+        return cb(new Error('pdf can noy be bigger than 10 MB'));
     cb(null, true);
 };
 // Create multer upload instance

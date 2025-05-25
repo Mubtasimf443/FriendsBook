@@ -70,6 +70,7 @@ const OnlineStatus_socket_1 = require("./sockets/OnlineStatus.socket");
 const coinManagement_1 = __importDefault(require("./main_routes/coinManagement"));
 const connectionRequest_1 = __importDefault(require("./main_routes/connectionRequest"));
 const user_actions_1 = __importDefault(require("./main_routes/user_actions"));
+const expenses_1 = __importDefault(require("./main_routes/expenses"));
 const app = (0, express_1.default)();
 const port = Number(env_1.PORT !== null && env_1.PORT !== void 0 ? env_1.PORT : 4000);
 const server = (0, node_http_1.createServer)(app).listen(port);
@@ -111,6 +112,7 @@ function main() {
         app.use('/api/membership', Membership_1.default);
         app.use('/api/coins', coinManagement_1.default);
         app.use('/api/user-actions', user_actions_1.default);
+        app.use('/api/expenses', expenses_1.default);
         app.get('*', function (req, res) {
             return __awaiter(this, void 0, void 0, function* () {
                 return res.sendFile(node_path_1.default.join(__dirname, '../public/index.html'));

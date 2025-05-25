@@ -103,7 +103,6 @@ exports.registrationUserSchema = zod_1.z.object({
         required_error: "Profile creator type is required",
         invalid_type_error: "Invalid profile creator type"
     }),
-    age: zod_1.z.number(),
     gender: zod_1.z.nativeEnum(user_types_1.Gender, {
         required_error: "Gender is required",
         invalid_type_error: "Invalid gender type"
@@ -172,7 +171,7 @@ exports.registrationUserSchema = zod_1.z.object({
     confirmPassword: zod_1.z.string().trim(),
 })
     .refine(function (data) {
-    const age = data.age;
+    const age = Math.floor((new Date().getTime() - data.dateOfBirth.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
     if (data.gender === user_types_1.Gender.MALE) {
         return age >= 21 && age <= 70;
     }
@@ -182,12 +181,6 @@ exports.registrationUserSchema = zod_1.z.object({
 }, {
     message: "Invalid age for the selected gender. Male must be 21-70 years old, and female must be 18-70 years old.",
     path: ["age"],
-})
-    .refine(function (data) {
-    return data.age == calculateAge(data.dateOfBirth);
-}, {
-    message: "Invalid age for the selected gender. Male must be 21-70 years old, and female must be 18-70 years old.",
-    path: ["dateOfBirth"],
 })
     .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
@@ -230,6 +223,9 @@ exports.registrationUserSchema = zod_1.z.object({
 }, {
     message: 'If User is not educated Than education details is not required',
     path: ['isEducated', 'education[0].level', 'education[0].certificate', 'education[0].yearOfCompletion']
+})
+    .transform(function (data) {
+    return Object.assign(Object.assign({}, data), { age: Math.floor((new Date().getTime() - data.dateOfBirth.getTime()) / (365.25 * 24 * 60 * 60 * 1000)) });
 });
 var LoginEnum;
 (function (LoginEnum) {

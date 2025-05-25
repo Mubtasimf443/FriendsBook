@@ -47,6 +47,7 @@ const TransactionSchema = new mongoose_1.Schema({
         enum: ['pending', 'success', 'failed'],
         default: 'pending'
     },
-    coins: Number
+    coins: Number,
+    paying_phone_number: String
 }, { timestamps: true });
 exports.default = mongoose_1.default.model('CoinsTransection', TransactionSchema);

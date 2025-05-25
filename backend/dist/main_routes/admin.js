@@ -25,6 +25,7 @@ const memberdship_types_1 = require("../lib/types/memberdship.types");
 const Gifts_1 = __importDefault(require("../models/Gifts"));
 const schemaComponents_1 = require("../lib/schema/schemaComponents");
 const notification_socket_1 = require("../sockets/notification.socket");
+const CoinsTransection_1 = __importDefault(require("../models/CoinsTransection"));
 const router = (0, express_1.Router)();
 router.post('/login', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -178,40 +179,28 @@ router.get('/users', function (req, res, next) {
         try {
             const page = parseInt(req.query.page) || 1;
             const limit = parseInt(req.query.limit) || 10;
-            const userType = req.query.usertype || 'all';
+            const userType = req.query.usertype || 'matrimony';
             const skip = (page - 1) * limit;
-            let query = {};
-            // Filter based on user type
+            let users = [];
+            let totalUsers = 0;
             switch (userType) {
-                case 'premium':
-                    query = {
-                        'membership.currentMembership.requestId': { $exists: true },
-                        'membership.currentMembership.membership_exipation_date': { $exists: true }
-                    };
+                case 'matrimony':
+                    totalUsers = yield user_1.User.countDocuments({});
+                    users = yield user_1.User.find({})
+                        .sort({ createdAt: -1 })
+                        .skip(skip)
+                        .limit(limit)
+                        .select('_id name email profileImage.url suspension onlineStatus membership address phoneInfo');
                     break;
-                case 'active':
-                    query = {
-                        'onlineStatus.isOnline': true,
-                    };
-                    break;
-                case 'suspended':
-                    query = { 'suspension.isSuspended': true };
-                    break;
-                case 'new':
-                    // Users created in the last 7 days
-                    query = { createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } };
-                    break;
-                default:
-                    // 'all' - no filter
+                case 'video-calling':
+                    totalUsers = yield VideoProfile_1.default.countDocuments();
+                    users = yield VideoProfile_1.default.find({})
+                        .sort({ createdAt: -1 })
+                        .skip(skip)
+                        .limit(limit);
                     break;
             }
-            const users = yield user_1.User.find(query)
-                .sort({ createdAt: -1 })
-                .skip(skip)
-                .limit(limit)
-                .select('_id name email profileImage.url suspension onlineStatus membership address phoneInfo');
-            const totalUsers = yield user_1.User.countDocuments(query);
-            const totalPages = Math.ceil(totalUsers / limit);
+            let totalPages = Math.ceil(totalUsers / limit);
             return res.status(200).json({
                 success: true,
                 data: {
@@ -533,6 +522,87 @@ router.put('/membership/request/:id/reject', function (req, res) {
         }
         catch (error) {
             console.error('[/membership/pricing api error]', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
+            });
+        }
+    });
+});
+router.get('/coins/request', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            let request = yield CoinsTransection_1.default.find({ status: "pending", paymentMethod: { $in: ['bkash', 'nagad', 'rocket'] } });
+            return res.status(200).json(request);
+        }
+        catch (error) {
+            console.error('[Coin Purchase Request Get Api (Admin ) Error]', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
+            });
+        }
+    });
+});
+router.put('/coins/request/:id/reject', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            let t = yield CoinsTransection_1.default.findOneAndUpdate({
+                _id: schemaComponents_1._idValidator.parse(req.params.id),
+                status: "pending",
+            }, {
+                status: 'failed',
+            });
+        }
+        catch (error) {
+            console.error(error);
+            if (error instanceof zod_1.ZodError) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Invalid request parameters',
+                    error: error.errors,
+                    data: null
+                });
+                return;
+            }
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
+            });
+        }
+    });
+});
+router.put('/coins/request/:id/accept', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            let t = yield CoinsTransection_1.default.findOne({
+                _id: schemaComponents_1._idValidator.parse(req.params.id),
+                status: "pending",
+            });
+            if (!t)
+                return res.sendStatus(403);
+            let data = JSON.parse((0, fs_1.readFileSync)(path_1.default.join(__dirname, '../../data/coin.packages.json'), 'utf-8'));
+            let coins = data[t.package].coins;
+            t.status = 'success';
+            t.coins = coins;
+            yield t.save();
+            yield VideoProfile_1.default.findByIdAndUpdate(t.userId, { $inc: { video_calling_coins: t.coins } });
+            return res.sendStatus(200);
+        }
+        catch (error) {
+            console.error(error);
+            if (error instanceof zod_1.ZodError) {
+                res.status(400).json({
+                    success: false,
+                    message: 'Invalid request parameters',
+                    error: error.errors,
+                    data: null
+                });
+                return;
+            }
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error',
