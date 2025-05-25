@@ -16,11 +16,9 @@ export enum MembershipDuration {
     TWELVE_MONTHS = 12
 }
 export enum PaymentMethod {
-    BKASH = 'BKASH',
-    NAGAD = 'NAGAD',
-    ROCKET = 'ROCKET',
-    BANK_TRANSFER = 'BANK_TRANSFER',
-    OTHERS = 'OTHERS'
+    BKASH = 'Bkash',
+    NAGAD = 'Nagad',
+    ROCKET = 'Rocket',
 }
 
 
@@ -44,6 +42,8 @@ export interface IMembershipRequest {
             url: string;
             id: string;
         };
+        paidFrom : string
+       
     };
     verifiedPhoneLimit: number;
     verifiedPhoneViewed: number;

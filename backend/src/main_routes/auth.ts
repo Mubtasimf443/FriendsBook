@@ -537,7 +537,7 @@ router.post('/login', async function (req: Request, res: Response): Promise<Resp
         return res.status(200).json({
             success: true,
             message: "Login successful.",
-            value: {
+            data: {
                 email: existingUser.email,
                 userId: existingUser._id,
                 authToken: authToken

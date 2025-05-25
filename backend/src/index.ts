@@ -30,16 +30,16 @@ import expensesRouter from './main_routes/expenses';
 const app: express.Application = express();
 const port: number = Number(PORT ?? 4000) 
 const server= createServer(app).listen(port) ;
-const io = new Server(server, {
-    cors: {
-        origin: '*',
-        methods: ['POST', 'GET', 'DELETE', 'PUT']
-    }
-});
-randomVideoCallSocketService.getInstance(io.of('/random-video-call'));
-configOnlineStatusSocket(io.of('/socket/online-status-management'))
-const NotificationService = NotificationSocketService.getInstance(io.of('/socket/notifications'));
-configureChatMessagingSocket(io.of('/socket/chat-messaging'));
+// const io = new Server(server, {
+//     cors: {
+//         origin: '*',
+//         methods: ['POST', 'GET', 'DELETE', 'PUT']
+//     }
+// });
+// randomVideoCallSocketService.getInstance(io.of('/random-video-call'));
+// configOnlineStatusSocket(io.of('/socket/online-status-management'))
+// const NotificationService = NotificationSocketService.getInstance(io.of('/socket/notifications'));
+// configureChatMessagingSocket(io.of('/socket/chat-messaging'));
 
 
 
@@ -48,10 +48,10 @@ async function main() {
 
     await connectDB();
     // environment
-    app.use(async function (req:Request , res : Response , next : NextFunction) {
-        req.notifications = NotificationService;
-        next()
-    });
+    // app.use(async function (req:Request , res : Response , next : NextFunction) {
+    //     req.notifications = NotificationService;
+    //     next()
+    // });
     app.use(cookieParser());
     app.use(ExpressJsonMidleware());
     app.use(express.static('public'));

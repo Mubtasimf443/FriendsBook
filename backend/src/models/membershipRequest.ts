@@ -40,7 +40,7 @@ const paymentInfoSchema = new Schema(
             required: true,
             default: Date.now
         },
-        // verificationImage: verificationImageSchema
+        paidFrom : String
     },
     { _id: false }
 );

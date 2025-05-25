@@ -79,7 +79,7 @@ const paymentInfoSchema = new mongoose_1.Schema({
         required: true,
         default: Date.now
     },
-    // verificationImage: verificationImageSchema
+    paidFrom: String
 }, { _id: false });
 const membershipRequestSchema = new mongoose_1.Schema({
     requestStatus: {

@@ -131,38 +131,44 @@ router.get('/membership-history', async function (req: Request, res: Response): 
 
 router.post('/membership-request', async function (req: Request, res: Response): Promise<any> {
     try {
-        let { token, session } = await getBearerTokenAndAuthSession(req);
-        if (!session) {
-            res.sendStatus(401);
-            return;
-        }
-        let userId = session.value.userId;
 
-        // Define schema for request validation
+         // Define schema for request validation
         let { 
             tier, 
             duration, 
             paymentMethod, 
             transactionId, 
             amount, 
+            paid_from 
         } = (z.object({
             tier: z.nativeEnum(MembershipTier),
             duration: z.nativeEnum(MembershipDuration),
             paymentMethod: z.nativeEnum(PaymentMethod),
             transactionId: z.string().min(1).trim(),
             amount: z.number().int().positive(),
+            paid_from: z.string().regex(/^\d{10,15}$/),
         }))
         .parse(req.body);
+
+
+        let {  session } = await getBearerTokenAndAuthSession(req);
+        if (!session) {
+            res.sendStatus(401);
+            return;
+        }
+        let userId = session.value.userId;
+
+       
 
 
         let validMemberships :any =  JSON.parse(readFileSync(path.join(__dirname , '../../data/membership.config.json') , 'utf-8'));
 
      
         if (validMemberships[tier.toLowerCase()].prices[duration].price !== amount) {
-            res.status(400).json({
+            res.status(403).json({
                 success: false,
                 message: 'Invalid request parameters',
-                data: null
+                data: {}
             });
             return;
         }
@@ -197,6 +203,7 @@ router.post('/membership-request', async function (req: Request, res: Response):
                 transactionId,
                 amount,
                 paymentMethod,
+                paidFrom : paid_from,
             },
             verifiedPhoneLimit : validMemberships[tier.toLowerCase()].prices[duration].sms
         });
@@ -204,7 +211,7 @@ router.post('/membership-request', async function (req: Request, res: Response):
         // Save the membership request
         await membershipRequest.save();
 
-        return res.status(201).json({
+        return res.status(200).json({
             success: true,
             message: 'Membership request submitted successfully',
             data: {

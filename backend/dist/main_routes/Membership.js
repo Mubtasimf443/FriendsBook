@@ -128,27 +128,28 @@ router.get('/membership-history', function (req, res) {
 router.post('/membership-request', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            let { token, session } = yield (0, giveBearerTokenAndSession_1.default)(req);
-            if (!session) {
-                res.sendStatus(401);
-                return;
-            }
-            let userId = session.value.userId;
             // Define schema for request validation
-            let { tier, duration, paymentMethod, transactionId, amount, } = (zod_1.z.object({
+            let { tier, duration, paymentMethod, transactionId, amount, paid_from } = (zod_1.z.object({
                 tier: zod_1.z.nativeEnum(memberdship_types_1.MembershipTier),
                 duration: zod_1.z.nativeEnum(memberdship_types_1.MembershipDuration),
                 paymentMethod: zod_1.z.nativeEnum(memberdship_types_1.PaymentMethod),
                 transactionId: zod_1.z.string().min(1).trim(),
                 amount: zod_1.z.number().int().positive(),
+                paid_from: zod_1.z.string().regex(/^\d{10,15}$/),
             }))
                 .parse(req.body);
+            let { session } = yield (0, giveBearerTokenAndSession_1.default)(req);
+            if (!session) {
+                res.sendStatus(401);
+                return;
+            }
+            let userId = session.value.userId;
             let validMemberships = JSON.parse((0, fs_1.readFileSync)(path_1.default.join(__dirname, '../../data/membership.config.json'), 'utf-8'));
             if (validMemberships[tier.toLowerCase()].prices[duration].price !== amount) {
-                res.status(400).json({
+                res.status(403).json({
                     success: false,
                     message: 'Invalid request parameters',
-                    data: null
+                    data: {}
                 });
                 return;
             }
@@ -179,12 +180,13 @@ router.post('/membership-request', function (req, res) {
                     transactionId,
                     amount,
                     paymentMethod,
+                    paidFrom: paid_from,
                 },
                 verifiedPhoneLimit: validMemberships[tier.toLowerCase()].prices[duration].sms
             });
             // Save the membership request
             yield membershipRequest.save();
-            return res.status(201).json({
+            return res.status(200).json({
                 success: true,
                 message: 'Membership request submitted successfully',
                 data: {

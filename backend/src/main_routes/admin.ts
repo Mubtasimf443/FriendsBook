@@ -452,7 +452,6 @@ router.get('/membership/request', async function (req: Request, res: Response): 
     let limit = parseInt(req.query.limit as string) || 10;
     if (page < 1) page = 1;
     if (limit < 1) limit = 10;
-
     const skip = (page - 1) * limit;
 
     const total = await MembershipRequest.countDocuments({ requestStatus: MembershipRequestStatus.PENDING });
@@ -597,8 +596,27 @@ router.put('/membership/request/:id/reject', async function (req: Request, res: 
 
 router.get('/coins/request', async function (req: Request, res: Response): Promise<any> {
   try {
+    let page = parseInt(req.query.page as string) || 1;
+    let limit = parseInt(req.query.limit as string) || 10;
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 10;
+    const skip = (page - 1) * limit;
+
+    const total = await CoinsTransection.countDocuments({ status : "pending" , paymentMethod : { $in :['bkash', 'nagad', 'rocket']}});
+    
     let request =await CoinsTransection.find({ status : "pending" , paymentMethod : { $in :['bkash', 'nagad', 'rocket']}});
-    return res.status(200).json(request)
+    
+    
+    return res.status(200).json({
+      data : {
+        pagination : {
+          page ,
+          total ,
+          limit,
+          totalPages: Math.ceil(total / limit)
+        }
+      }
+    });
   } catch (error) {
     console.error('[Coin Purchase Request Get Api (Admin ) Error]', error);
     return res.status(500).json({

@@ -193,11 +193,12 @@ router.get('/users', function (req, res, next) {
                         .select('_id name email profileImage.url suspension onlineStatus membership address phoneInfo');
                     break;
                 case 'video-calling':
-                    totalUsers = yield VideoProfile_1.default.countDocuments();
+                    totalUsers = yield VideoProfile_1.default.countDocuments({});
                     users = yield VideoProfile_1.default.find({})
                         .sort({ createdAt: -1 })
                         .skip(skip)
-                        .limit(limit);
+                        .limit(limit)
+                        .select('location.country profileImage.url name email status phone gender');
                     break;
             }
             let totalPages = Math.ceil(totalUsers / limit);
@@ -302,6 +303,27 @@ router.put('/users/:id', function (req, res, next) {
                 success: false,
                 message: 'Internal server error during authentication',
                 error: error instanceof Error ? error.message : 'Unknown error'
+            });
+        }
+    });
+});
+router.put('/video-user/:id', function (req, res, next) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            let { name, email, phone } = (zod_1.z.object({
+                name: zod_1.z.string().min(2, "Name must be at least 2 characters").max(120).trim(),
+                email: schemaComponents_1.emailValidatior,
+                phone: zod_1.z.string().regex(/^\d{10,15}$/).trim(),
+            })).parse(req.body);
+            yield VideoProfile_1.default.findByIdAndUpdate(schemaComponents_1._idValidator.parse(req.params.id), { name, email, phone });
+            return res.sendStatus(200);
+        }
+        catch (error) {
+            console.error('[Uodate Video User From Admin Panal Api error]', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
             });
         }
     });
@@ -533,8 +555,25 @@ router.put('/membership/request/:id/reject', function (req, res) {
 router.get('/coins/request', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
+            let page = parseInt(req.query.page) || 1;
+            let limit = parseInt(req.query.limit) || 10;
+            if (page < 1)
+                page = 1;
+            if (limit < 1)
+                limit = 10;
+            const skip = (page - 1) * limit;
+            const total = yield CoinsTransection_1.default.countDocuments({ status: "pending", paymentMethod: { $in: ['bkash', 'nagad', 'rocket'] } });
             let request = yield CoinsTransection_1.default.find({ status: "pending", paymentMethod: { $in: ['bkash', 'nagad', 'rocket'] } });
-            return res.status(200).json(request);
+            return res.status(200).json({
+                data: {
+                    pagination: {
+                        page,
+                        total,
+                        limit,
+                        totalPages: Math.ceil(total / limit)
+                    }
+                }
+            });
         }
         catch (error) {
             console.error('[Coin Purchase Request Get Api (Admin ) Error]', error);

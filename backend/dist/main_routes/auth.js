@@ -495,7 +495,7 @@ router.post('/login', function (req, res) {
             return res.status(200).json({
                 success: true,
                 message: "Login successful.",
-                value: {
+                data: {
                     email: existingUser.email,
                     userId: existingUser._id,
                     authToken: authToken
@@ -800,8 +800,9 @@ router.post("/create-registration-session/video-profile", function (req, res) {
         try {
             // Define schema for video profile registration
             const videoProfileRegistrationSchema = zod_1.z.object({
-                name: zod_1.z.string().min(2, "Name must be at least 2 characters"),
+                name: zod_1.z.string().min(2, "Name must be at least 2 characters").max(120),
                 email: schemaComponents_1.emailValidatior,
+                phone: zod_1.z.string().regex(/^\d{10,15}$/),
                 password: schemaComponents_1.passwordValidator,
                 gender: zod_1.z.enum(["male", "female", "other"]),
                 languages: zod_1.z.array(zod_1.z.nativeEnum(user_types_1.Language)).min(1, "At least one language is required"),
@@ -810,7 +811,6 @@ router.post("/create-registration-session/video-profile", function (req, res) {
                     longitude: zod_1.z.number(),
                     latitude: zod_1.z.number()
                 }),
-                phone: zod_1.z.string().regex(/^\d{10,15}$/),
                 dateOfBirth: zod_1.z.string()
                     .transform((str) => new Date(str))
                     .refine((date) => date instanceof Date && !isNaN(date.getTime()), {

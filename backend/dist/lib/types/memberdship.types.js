@@ -18,11 +18,9 @@ var MembershipDuration;
 })(MembershipDuration || (exports.MembershipDuration = MembershipDuration = {}));
 var PaymentMethod;
 (function (PaymentMethod) {
-    PaymentMethod["BKASH"] = "BKASH";
-    PaymentMethod["NAGAD"] = "NAGAD";
-    PaymentMethod["ROCKET"] = "ROCKET";
-    PaymentMethod["BANK_TRANSFER"] = "BANK_TRANSFER";
-    PaymentMethod["OTHERS"] = "OTHERS";
+    PaymentMethod["BKASH"] = "Bkash";
+    PaymentMethod["NAGAD"] = "Nagad";
+    PaymentMethod["ROCKET"] = "Rocket";
 })(PaymentMethod || (exports.PaymentMethod = PaymentMethod = {}));
 var MembershipRequestStatus;
 (function (MembershipRequestStatus) {
