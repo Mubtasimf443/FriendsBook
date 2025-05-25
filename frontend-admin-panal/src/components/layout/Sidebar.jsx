@@ -61,19 +61,24 @@ const Sidebar = () => {
                     label={"Membership Requests"}
                     href={"/admin/membership-request"}
                     description={"Pending requests"}
-                    badge={{
-                        text: "5",
-                        variant: "destructive"
-                    }}
+                   
                 />
-
+                
                 
                 <SideBarNavLink
+                    icon={UserCheck}
+                    label={"Coin Requests"}
+                    href={"/admin/coin-request"}
+                    description={"Pending requests"}
+                  
+                />
+                
+                {/* <SideBarNavLink
                     icon={Bell}
                     label={"Push Notifications"}
                     href={"/admin/notifications"}
                     description={"Create and manage notifications"}
-                />
+                /> */}
 
                 <SideBarNavLink
                     icon={Gift}
@@ -108,5 +113,7 @@ const Sidebar = () => {
         </div>
     );
 };
+
+
 
 export default Sidebar;

@@ -19,6 +19,7 @@ import  { GiftsManagement } from './pages/tabs/GiftsManagement';
 import CoinManagement from './pages/tabs/CoinManagement';
 import { GiftContextProvider } from './context/gifts.context';
 import PurchaseStatus from './pages/PurchaseStatus';
+import CoinPurchaseRequest from './pages/tabs/CoinPurchaseRequest';
 
 const LazyDashboard = Lazy(() => import('./pages/DashBoard'))
 
@@ -79,7 +80,10 @@ function App() {
             path : 'membership-request' ,
             Component : MembershipRequest
           },
-          
+          {
+            path: 'coin-request',
+            element : <CoinPurchaseRequest />
+          },
           {
             path : "gift-management",
             element :<GiftContextProvider children={<GiftsManagement />} />

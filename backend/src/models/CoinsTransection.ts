@@ -3,16 +3,17 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface ITransaction extends Document {
-  userId: mongoose.Types.ObjectId; // Reference to User
-  amount: string;                  // Number of coins
-  currency: string;                // e.g. 'USD', 'INR'
+  userId: mongoose.Types.ObjectId; 
+  amount: string;                  
+  currency: string;                
   package : string;
-  paymentMethod?: string;          // e.g. 'stripe', 'paypal', 'wallet'
-  transactionId?: string;          // External payment gateway ID
+  paymentMethod?: string;          
+  transactionId?: string;          
   status: 'pending' | 'success' | 'failed';
   createdAt: Date;
   updatedAt: Date;
   coins : number;
+  paying_phone_number : string;
 }
 
 const TransactionSchema: Schema<ITransaction> = new Schema(
@@ -28,7 +29,8 @@ const TransactionSchema: Schema<ITransaction> = new Schema(
       enum: ['pending', 'success', 'failed'],
       default: 'pending'
     },
-    coins : Number
+    coins : Number , 
+    paying_phone_number : String
   },
   { timestamps: true }
 );

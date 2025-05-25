@@ -24,6 +24,8 @@ import { configOnlineStatusSocket } from './sockets/OnlineStatus.socket';
 import coinManagementRouter from './main_routes/coinManagement';
 import connectionRequestRouter from './main_routes/connectionRequest'
 import userActionsRouter from './main_routes/user_actions';
+import expensesRouter from './main_routes/expenses';
+
 
 const app: express.Application = express();
 const port: number = Number(PORT ?? 4000) 
@@ -68,7 +70,9 @@ async function main() {
     app.use('/api/membership', membershipRouter);
     app.use('/api/coins' , coinManagementRouter);
     app.use('/api/user-actions', userActionsRouter);
-   
+    app.use('/api/expenses' ,expensesRouter );
+
+    
     app.get('*', async function (req , res ) {
         return res.sendFile(path.join(__dirname , '../public/index.html'));
     })

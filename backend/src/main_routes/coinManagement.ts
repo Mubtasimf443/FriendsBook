@@ -28,6 +28,7 @@ let transectionIdValidation = z.string().min(1).max(512).refine(
     { message: "Unsupported characters" }
   );
 
+
 router.post('/buy-coins/paypal',validateVideoProfile, async function (req: Request, res: Response): Promise<any> {
   try {
     let packageIdValidation = z.enum(['package_1', 'package_2', 'package_3', 'package_4']);
@@ -106,6 +107,7 @@ router.post('/buy-coins/paypal',validateVideoProfile, async function (req: Reque
   }
 });
 
+
 router.post('/buy-coins/stripe',validateVideoProfile, async function (req: Request, res: Response): Promise<any> {
   try {
 
@@ -167,9 +169,6 @@ router.post('/buy-coins/stripe',validateVideoProfile, async function (req: Reque
   }
 });
 
-/* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
-
-// PayPal Success Handler
 router.get('/payment-success/paypal', async function (req: Request, res: Response): Promise<any> {
   try {
     // Extract the PayPal transaction token from the query parameters
@@ -252,7 +251,6 @@ router.get('/payment-success/paypal', async function (req: Request, res: Respons
   }
 });
 
-// Stripe Success Handler
 router.get('/payment-success/stripe', async function (req: Request, res: Response): Promise<any> {
   try {
     
@@ -328,7 +326,6 @@ router.get('/payment-success/stripe', async function (req: Request, res: Respons
   }
 });
 
-// PayPal Cancel Handler
 router.get('/payment-cancel/paypal', async function (req: Request, res: Response): Promise<any> {
   try {
 
@@ -383,7 +380,6 @@ router.get('/payment-cancel/paypal', async function (req: Request, res: Response
   }
 });
 
-// Stripe Cancel Handler
 router.get('/payment-cancel/stripe', async function (req: Request, res: Response): Promise<any> {
   try {
     // Extract the Stripe session ID from the query parameters
@@ -437,8 +433,6 @@ router.get('/payment-cancel/stripe', async function (req: Request, res: Response
   }
 });
 
-
-// coin Purchase History
 router.get('/coin-purchase-history',validateVideoProfile , async function (req: Request, res: Response): Promise<any> {
   try {
     let transactions = await CoinsTransection.aggregate([
@@ -476,5 +470,47 @@ router.get('/coin-purchase-history',validateVideoProfile , async function (req: 
     });
   }
 });
+
+router.post('/coin-purchase-request', validateVideoProfile, async function (req: Request, res: Response): Promise<any> {
+  try {
+    let { package_id, paymentMethod, transactionId, amount, paying_phone_number } = (z.object({
+      paymentMethod: z.enum(['bkash', 'nagad', 'rocket']),
+      transactionId: z.string().trim().min(1).max(120),
+      amount: z.number().max(100000),
+      package_id: z.enum(['package_1', 'package_2', 'package_3', 'package_4']),
+      paying_phone_number: z.string()
+    })).parse(req.body);
+
+    await CoinsTransection.create({
+      paymentMethod: paymentMethod,
+      transactionId: transactionId,
+      amount,
+      currency : 'BDT',
+      package: package_id,
+      userId: req.videoProfile?._id,
+      paying_phone_number
+    });
+
+    return res.sendStatus(200);
+  } catch (error) {
+    console.error('[Coin Purchase Request Api]', error);
+    if (error instanceof ZodError) {
+      res.status(400).json({
+          success: false,
+          message: 'Invalid request parameters',
+          error: error.errors,
+          data: null
+      });
+      return;
+    }
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      data: null
+    });
+  }
+});
+
+
 
 export default router;
