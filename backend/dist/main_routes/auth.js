@@ -498,7 +498,8 @@ router.post('/login', function (req, res) {
                 data: {
                     email: existingUser.email,
                     userId: existingUser._id,
-                    authToken: authToken
+                    authToken: authToken,
+                    name: existingUser.name
                 }
             });
         }

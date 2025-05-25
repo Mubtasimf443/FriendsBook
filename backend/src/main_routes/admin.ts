@@ -139,7 +139,7 @@ router.use(async (req: Request, res: Response, next: NextFunction): Promise<any>
 router.get('/overview-statistics', async function (req: Request, res: Response, next: NextFunction): Promise<any> {
   try {
     // Get counts from database
-    const totalUsers = await User.countDocuments();
+    const totalUsers :any= await User.countDocuments();
     const onlineActiveUsers = await User.countDocuments({ status: 'online' });
     const usersJoinedThisMonth = await User.countDocuments({
       createdAt: { $gte: new Date(new Date().setDate(1)) } // First day of current month
@@ -602,7 +602,7 @@ router.get('/coins/request', async function (req: Request, res: Response): Promi
     if (limit < 1) limit = 10;
     const skip = (page - 1) * limit;
 
-    const total = await CoinsTransection.countDocuments({ status : "pending" , paymentMethod : { $in :['bkash', 'nagad', 'rocket']}});
+    const total = await CoinsTransection.countDocuments({ status : "pending" , 'paymentInfo.paymentMethod' : { $in :['bkash', 'nagad', 'rocket']}});
     
     let request =await CoinsTransection.find({ status : "pending" , paymentMethod : { $in :['bkash', 'nagad', 'rocket']}});
     

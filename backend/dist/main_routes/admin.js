@@ -562,7 +562,7 @@ router.get('/coins/request', function (req, res) {
             if (limit < 1)
                 limit = 10;
             const skip = (page - 1) * limit;
-            const total = yield CoinsTransection_1.default.countDocuments({ status: "pending", paymentMethod: { $in: ['bkash', 'nagad', 'rocket'] } });
+            const total = yield CoinsTransection_1.default.countDocuments({ status: "pending", 'paymentInfo.paymentMethod': { $in: ['bkash', 'nagad', 'rocket'] } });
             let request = yield CoinsTransection_1.default.find({ status: "pending", paymentMethod: { $in: ['bkash', 'nagad', 'rocket'] } });
             return res.status(200).json({
                 data: {

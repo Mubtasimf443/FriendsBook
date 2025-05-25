@@ -540,7 +540,8 @@ router.post('/login', async function (req: Request, res: Response): Promise<Resp
             data: {
                 email: existingUser.email,
                 userId: existingUser._id,
-                authToken: authToken
+                authToken: authToken,
+                name : existingUser.name
             }
         });
 
