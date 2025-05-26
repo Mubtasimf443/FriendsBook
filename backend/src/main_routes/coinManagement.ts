@@ -437,7 +437,7 @@ router.get('/coin-purchase-history',validateVideoProfile , async function (req: 
   try {
     let transactions = await CoinsTransection.aggregate([
       {
-        $match : {  userId: req.videoProfile._id, status: 'success'  }
+        $match : {  userId: req.videoProfile._id,  }
       },
       {
         $sort : {createdAt: -1 }
@@ -448,7 +448,9 @@ router.get('/coin-purchase-history',validateVideoProfile , async function (req: 
           package : 1,
           paymentMethod : 1,
           coins : 1,
-          transactionDate : '$createdAt'
+          transactionDate : '$createdAt',
+          status : 1,
+          admin_note : 1
         }
       }
     ]);
@@ -456,7 +458,7 @@ router.get('/coin-purchase-history',validateVideoProfile , async function (req: 
 
     res.status(200).json({
       success: true,
-      data: {   transactions },
+      data: {   transactions},
       error: null,
       message: 'OK'
     })

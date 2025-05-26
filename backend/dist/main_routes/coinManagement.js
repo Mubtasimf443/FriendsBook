@@ -384,7 +384,7 @@ router.get('/coin-purchase-history', auth_middleware_1.validateVideoProfile, fun
         try {
             let transactions = yield CoinsTransection_1.default.aggregate([
                 {
-                    $match: { userId: req.videoProfile._id, status: 'success' }
+                    $match: { userId: req.videoProfile._id, }
                 },
                 {
                     $sort: { createdAt: -1 }
@@ -395,7 +395,9 @@ router.get('/coin-purchase-history', auth_middleware_1.validateVideoProfile, fun
                         package: 1,
                         paymentMethod: 1,
                         coins: 1,
-                        transactionDate: '$createdAt'
+                        transactionDate: '$createdAt',
+                        status: 1,
+                        admin_note: 1
                     }
                 }
             ]);

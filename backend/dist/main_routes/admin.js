@@ -602,6 +602,7 @@ router.put('/coins/request/:id/reject', function (req, res) {
                 status: 'failed',
                 admin_note: (zod_1.z.string().min(1).max(120)).parse(req.body.admin_note)
             });
+            return res.sendStatus(200);
         }
         catch (error) {
             console.error(error);

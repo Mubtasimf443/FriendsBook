@@ -659,6 +659,7 @@ router.put('/coins/request/:id/reject', async function (req: Request, res: Respo
         admin_note : (z.string().min(1).max(120)).parse(req.body.admin_note)
       }
     );
+    return res.sendStatus(200)
   } catch (error) {
     console.error( error);
     if (error instanceof ZodError) {
@@ -702,6 +703,8 @@ router.put('/coins/request/:id/accept', async function (req: Request, res: Respo
     await VideoProfile.findByIdAndUpdate( t.userId , { $inc : { video_calling_coins : t.coins}})
 
     return res.sendStatus(200)
+
+
 
   } catch (error) {
     console.error( error);

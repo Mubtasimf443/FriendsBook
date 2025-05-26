@@ -15,9 +15,9 @@ const zod_1 = require("zod");
 const auth_middleware_1 = require("../lib/middlewares/auth.middleware");
 const schemaComponents_1 = require("../lib/schema/schemaComponents");
 const SendMailedProfile_1 = require("../models/SendMailedProfile");
-const ProfileView_1 = require("../models/ProfileView");
 const user_1 = require("../models/user");
 const membershipRequest_1 = require("../models/membershipRequest");
+const ShortListedProfiles_1 = require("../models/ShortListedProfiles");
 const router = (0, express_1.Router)();
 router.post('/mail-history/:mailed_user_id', auth_middleware_1.validateUser, function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -82,7 +82,7 @@ router.get('/mail-history', auth_middleware_1.validateUser, function (req, res) 
         }
     });
 });
-router.all('/profile-view', auth_middleware_1.validateUser, function (req, res) {
+router.all('/short-list', auth_middleware_1.validateUser, function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         var _a, _b;
         try {
@@ -90,17 +90,15 @@ router.all('/profile-view', auth_middleware_1.validateUser, function (req, res) 
             console.log(req.method);
             switch (req.method) {
                 case 'POST':
-                    yield ProfileView_1.ProfileView.create({ viewerId: (_a = req.authSession) === null || _a === void 0 ? void 0 : _a.value.userId, viewedId: schemaComponents_1._idValidator.parse(req.body.viewed_profile_id) });
+                    yield ShortListedProfiles_1.ShortList.create({ shortListerId: (_a = req.authSession) === null || _a === void 0 ? void 0 : _a.value.userId, shortListedId: schemaComponents_1._idValidator.parse(req.body.shortlisted_profile_id), shortListedAt: Date.now() });
                     return res.sendStatus(200);
                 case 'GET':
-                    users = yield ProfileView_1.ProfileView.find({ viewerId: (_b = req.authSession) === null || _b === void 0 ? void 0 : _b.value.userId, })
+                    let shortlist = yield ShortListedProfiles_1.ShortList.find({ shortListerId: (_b = req.authSession) === null || _b === void 0 ? void 0 : _b.value.userId })
                         .sort({ viewedAt: -1 })
-                        .populate('viewedId', 'name email profileImage _id')
+                        .select('shortListedId')
+                        .populate('shortListedId', 'name email profileImage _id')
                         .lean();
-                    return res.status(200).json({
-                        success: true,
-                        data: { users }
-                    });
+                    return res.status(200).json({ success: true, data: { shortlist } });
             }
         }
         catch (error) {

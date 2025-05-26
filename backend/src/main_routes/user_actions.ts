@@ -8,6 +8,7 @@ import { SendMailedProfile } from "../models/SendMailedProfile";
 import { ProfileView } from "../models/ProfileView";
 import { User } from "../models/user";
 import { MembershipRequest } from "../models/membershipRequest";
+import { ShortList } from "../models/ShortListedProfiles";
 
 const router = Router();
 
@@ -72,23 +73,23 @@ router.get('/mail-history', validateUser, async function (req: Request, res: Res
     }
 });
 
-router.all('/profile-view',validateUser, async function (req: Request, res: Response): Promise<any> {
+router.all('/short-list',validateUser, async function (req: Request, res: Response): Promise<any> {
     try {
         let users: any[] = [];
         console.log(req.method);
         switch (req.method) {
             case 'POST':
-                await ProfileView.create({ viewerId: req.authSession?.value.userId, viewedId: _idValidator.parse(req.body.viewed_profile_id) });
+                await ShortList.create({ shortListerId: req.authSession?.value.userId, shortListedId: _idValidator.parse(req.body.shortlisted_profile_id), shortListedAt : Date.now() });
                 return res.sendStatus(200);
+           
             case 'GET':
-                users = await ProfileView.find({ viewerId: req.authSession?.value.userId, })
+                let shortlist = await ShortList.find({ shortListerId: req.authSession?.value.userId })
                     .sort({ viewedAt: -1 })
-                    .populate('viewedId', 'name email profileImage _id')
+                    .select('shortListedId')
+                    .populate('shortListedId', 'name email profileImage _id')
                     .lean();
-                return res.status(200).json({
-                    success: true,
-                    data: { users }
-                })
+
+                return res.status(200).json({ success: true, data: { shortlist } });
         }
     } catch (error) {
         console.error('[Profile View Api error]', error);
