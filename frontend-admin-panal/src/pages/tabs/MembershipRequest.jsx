@@ -12,7 +12,8 @@ import {
   X,
   TrendingUp,
   Gem,
-  Landmark
+  Landmark,
+  Phone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,8 +57,7 @@ const MembershipRequest = () => {
         let res = await fetch(Api + "/membership/request?" + params.toString(), { credentials: "include" });
         if (res.ok) {
           let data = await res.json();
-          console.log({ data });
-
+       
           setPagination((state) => ({
             ...state,
             page: data.data.pagination.page,
@@ -148,6 +148,7 @@ const MembershipRequest = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Membership</TableHead>
+                    
                     <TableHead>Transection Id</TableHead>
                     <TableHead>Payment Method</TableHead>
 
@@ -165,10 +166,18 @@ const MembershipRequest = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex-row flex gap-x-1 items-center" >
-                          <CreditCard className="h-4 w-4" />
-                          {request.paymentInfo.transactionId}
+                        <div className="flex flex-col gap-y-2">
+                          <div className="flex flex-row  gap-x-1 items-center" >
+                            <CreditCard className="h-4 w-4" />
+                            {request.paymentInfo.transactionId}
+                          </div>
+                          <div className="flex flex-row  gap-x-1 items-center" >
+                            <Phone className="h-4 w-4" />
+                            {request.paymentInfo.paidFrom}
+                          </div>
                         </div>
+
+
                       </TableCell>
                       <TableCell>
                         <div className="flex-row flex gap-x-1 items-center" >

@@ -9,7 +9,8 @@ import {
   Landmark,
   Award,
   Check,
-  X
+  X,
+  Phone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -49,14 +50,13 @@ const CoinPurchaseRequest = () => {
         let res = await fetch(Api + "/coins/request?" + params.toString(), { credentials: "include" });
         if (res.ok) {
           let data = await res.json();
-          console.log({ data });
 
           setPagination((state) => ({
             ...state,
             page: data.data.pagination.page,
             totalPages: data.data.pagination.totalPages
           }));
-          setCoinRequests(data.data.requests || []);
+          setCoinRequests(data.data.request || []);
         } else {
           setCoinRequests([]);
         }
@@ -98,12 +98,16 @@ const CoinPurchaseRequest = () => {
           credentials: "include",
           headers: {
             'content-type': 'application/json'
-          }
+          },
+          body : JSON.stringify({ admin_note : rejectionReason })
         });
         if (res.ok) {
           setCoinRequests((requests) => requests.filter(r => r._id !== id));
           toast('Coin Purchase Request Rejected')
+        } else {
+           throw new Error("Unknown Server Error");
         }
+
       } else {
         toast('Failed To Reject Coin Purchase - No reason provided')
       }
@@ -140,7 +144,7 @@ const CoinPurchaseRequest = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Coins Amount</TableHead>
+                    <TableHead>Coins</TableHead>
                     <TableHead>Transaction ID</TableHead>
                     <TableHead>Payment Method</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -152,29 +156,36 @@ const CoinPurchaseRequest = () => {
                       <TableCell>
                         <div className="flex flex-row gap-x-1 items-center">
                           <Coins className="h-4 w-4" />
-                          {request.coinsAmount} Coins
+                          {request.package.name} /  {request.package.coins} Coins
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex-row flex gap-x-1 items-center">
-                          <CreditCard className="h-4 w-4" />
-                          {request.paymentInfo.transactionId}
+                        <div className="flex flex-col gap-y-1">
+                          <div className="flex-row flex gap-x-1 items-center">
+                            <CreditCard className="h-4 w-4" />
+                            {request.transactionId}
+                          </div>
+                          <div className="flex flex-row gap-x-2">
+                            <Phone className='h-4 w-4' />
+                            {request.paying_phone_number}
+                          </div>
                         </div>
+
                       </TableCell>
                       <TableCell>
                         <div className="flex-row flex gap-x-1 items-center">
                           <Landmark className="h-4 w-4" />
-                          {request.paymentInfo.paymentMethod}
+                          {request.paymentMethod}
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-2">
-                          <UserDetailsPopup 
+                          <UserDetailsPopup
                             userData={{
-                              name: request.requesterID.name,
-                              email: request.requesterID.email,
-                              phone: request.requesterID.phoneInfo.number,
-                              profileImage: request.requesterID.profileImage
+                              name: request.userId.name,
+                              email: request.userId.email,
+                              phone: request.userId.phone,
+                              profileImage: request.userId.profileImage
                             }}
                           />
                           <Button
