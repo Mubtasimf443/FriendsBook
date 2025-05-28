@@ -165,6 +165,12 @@ router.post('/membership-request', function (req, res) {
                     data: { requestId: existingPendingRequest._id }
                 });
             }
+            if ((yield membershipRequest_1.MembershipRequest.findOne({
+                'paymentInfo.transactionId': transactionId,
+                requestStatus: { $in: [memberdship_types_1.MembershipRequestStatus.PENDING, memberdship_types_1.MembershipRequestStatus.APPROVED] }
+            }))) {
+                return res.sendStatus(403);
+            }
             // Calculate start and end dates
             const startDate = new Date();
             const endDate = new Date();

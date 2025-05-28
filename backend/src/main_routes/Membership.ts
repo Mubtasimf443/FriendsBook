@@ -151,18 +151,16 @@ router.post('/membership-request', async function (req: Request, res: Response):
         .parse(req.body);
 
 
-        let {  session } = await getBearerTokenAndAuthSession(req);
+        let { session } = await getBearerTokenAndAuthSession(req);
+
         if (!session) {
             res.sendStatus(401);
             return;
         }
         let userId = session.value.userId;
 
-       
-
 
         let validMemberships :any =  JSON.parse(readFileSync(path.join(__dirname , '../../data/membership.config.json') , 'utf-8'));
-
      
         if (validMemberships[tier.toLowerCase()].prices[duration].price !== amount) {
             res.status(403).json({
@@ -185,6 +183,15 @@ router.post('/membership-request', async function (req: Request, res: Response):
                 message: 'You already have a pending membership request',
                 data: { requestId: existingPendingRequest._id }
             });
+        }
+
+        if ((
+            await MembershipRequest.findOne({ 
+                'paymentInfo.transactionId' : transactionId , 
+                requestStatus : { $in : [MembershipRequestStatus.PENDING , MembershipRequestStatus.APPROVED ]} 
+            }))
+        ) {
+            return res.sendStatus(403)
         }
 
         // Calculate start and end dates
