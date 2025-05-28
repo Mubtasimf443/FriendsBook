@@ -13,33 +13,34 @@ import morgan from 'morgan';
 import { cors } from './config/cors';
 import { createServer } from 'node:http';
 import {Server} from 'socket.io'
-import { randomVideoCallSocketService } from './sockets/randomVideoCall.socket';
-import { NotificationSocketService } from './sockets/notification.socket';
 import './lib/types/express.decratation';
 import adminRouter from './main_routes/admin';
 import path from 'node:path';
 import membershipRouter from './main_routes/Membership';
-import configureChatMessagingSocket from './sockets/chat.messaging.socket';
-import { configOnlineStatusSocket } from './sockets/OnlineStatus.socket';
 import coinManagementRouter from './main_routes/coinManagement';
 import connectionRequestRouter from './main_routes/connectionRequest'
 import userActionsRouter from './main_routes/user_actions';
 import expensesRouter from './main_routes/expenses';
+import { User } from './models/user';
+import  './lib/types/express.decratation'
+import { randomVideoCallSocketService } from './sockets/randomVideoCall.socket';
+import { NotificationSocketService } from './sockets/notification.socket';
+import configureChatMessagingSocket from './sockets/chat.messaging.socket';
 
 
 const app: express.Application = express();
 const port: number = Number(PORT ?? 4000) 
 const server= createServer(app).listen(port) ;
-// const io = new Server(server, {
-//     cors: {
-//         origin: '*',
-//         methods: ['POST', 'GET', 'DELETE', 'PUT']
-//     }
-// });
-// randomVideoCallSocketService.getInstance(io.of('/random-video-call'));
+const io = new Server(server, {
+    cors: {
+        origin: '*',
+        methods: ['POST', 'GET', 'DELETE', 'PUT']
+    }
+});
+randomVideoCallSocketService.getInstance(io.of('/random-video-call'));
 // configOnlineStatusSocket(io.of('/socket/online-status-management'))
-// const NotificationService = NotificationSocketService.getInstance(io.of('/socket/notifications'));
-// configureChatMessagingSocket(io.of('/socket/chat-messaging'));
+const NotificationService = NotificationSocketService.getInstance(io.of('/socket/notifications'));
+configureChatMessagingSocket(io.of('/socket/chat-messaging'));
 
 
 
@@ -48,10 +49,10 @@ async function main() {
 
     await connectDB();
     // environment
-    // app.use(async function (req:Request , res : Response , next : NextFunction) {
-    //     req.notifications = NotificationService;
-    //     next()
-    // });
+    app.use(async function (req:Request , res : Response , next : NextFunction) {
+        req.notifications = NotificationService;
+        next()
+    });
     app.use(cookieParser());
     app.use(ExpressJsonMidleware());
     app.use(express.static('public'));

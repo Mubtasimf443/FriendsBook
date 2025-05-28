@@ -86,97 +86,87 @@ const educationPreferenceSchema = z.object({
     level: z.nativeEnum(EducationLevel)
 });
 
-// const preferencesSchema = z.object({
-//     isEducated: z.boolean().optional(),
-//     education: z.array(educationPreferenceSchema).optional(),
-//     location: z.array(z.string()).optional(),
-//     weight: weightPreferenceSchema,
-//     height: heightPreferenceSchema,
-//     age: agePreferenceSchema,
-//     lastUpdated: z.date().optional()
-// }).optional();
-
-
 
         
-CountryNamesEnumForAdressField
-const AddressSchema = z.object({
-    division: z.optional(
-        z.object({
-            id: z.number({
-                required_error: "Division ID is required",
-                invalid_type_error: "Division ID must be a number"
-            })
-            .gte(1, "Division ID must be between 1 and 8")
-            .lte(8, "Division ID must be between 1 and 8")
-            .transform(data => data.toString()),
-            name: z.string().optional(),
-            bd_name: z.string().optional(),
-        })),
 
-    district: z.optional(
-        z.object({
-            id: z.number({
-                required_error: "District ID is required",
-                invalid_type_error: "District ID must be a number"
-            })
-            .gte(1, "District ID must be between 1 and 64")
-            .lte(64, "District ID must be between 1 and 64")
-            .transform(data => data.toString()),
-            division_id: z.string().optional(),
-            name: z.string().optional(),
-            bn_name: z.string().optional(),
-        })),
+// const AddressSchema = z.object({
+//     division: z.optional(
+//         z.object({
+//             id: z.number({
+//                 required_error: "Division ID is required",
+//                 invalid_type_error: "Division ID must be a number"
+//             })
+//             .gte(1, "Division ID must be between 1 and 8")
+//             .lte(8, "Division ID must be between 1 and 8")
+//             .transform(data => data.toString()),
+//             name: z.string().optional(),
+//             bd_name: z.string().optional(),
+//         })),
 
-    upazila: z.optional(
-        z.object({
-            id: z.number({
-                required_error: "Upazila ID is required",
-                invalid_type_error: "Upazila ID must be a number"
-            })
-            .gte(1, "Upazila ID must be between 1 and 494")
-            .lte(494, "Upazila ID must be between 1 and 494")
-            .transform(data => data.toString()),
-            district_id: z.string().optional(),
-            name: z.string().optional(),
-            bn_name: z.string().optional(),
-        })
-    ),
+//     district: z.optional(
+//         z.object({
+//             id: z.number({
+//                 required_error: "District ID is required",
+//                 invalid_type_error: "District ID must be a number"
+//             })
+//             .gte(1, "District ID must be between 1 and 64")
+//             .lte(64, "District ID must be between 1 and 64")
+//             .transform(data => data.toString()),
+//             division_id: z.string().optional(),
+//             name: z.string().optional(),
+//             bn_name: z.string().optional(),
+//         })),
 
-    union: z.optional(
-        z.object({
-            id: z.number({
-                required_error: "Union ID is required",
-                invalid_type_error: "Union ID must be a number"
-            })
-            .gte(1, "Union ID must be between 1 and 4540")
-            .lte(4540, "Union ID must be between 1 and 4540")
-            .transform(data => data.toString()),
-            upazilla_id: z.string().optional(),
-            name: z.string().optional(),
-            bn_name: z.string().optional(),
-        })
-    )
-})
+//     upazila: z.optional(
+//         z.object({
+//             id: z.number({
+//                 required_error: "Upazila ID is required",
+//                 invalid_type_error: "Upazila ID must be a number"
+//             })
+//             .gte(1, "Upazila ID must be between 1 and 494")
+//             .lte(494, "Upazila ID must be between 1 and 494")
+//             .transform(data => data.toString()),
+//             district_id: z.string().optional(),
+//             name: z.string().optional(),
+//             bn_name: z.string().optional(),
+//         })
+//     ),
+
+//     union: z.optional(
+//         z.object({
+//             id: z.number({
+//                 required_error: "Union ID is required",
+//                 invalid_type_error: "Union ID must be a number"
+//             })
+//             .gte(1, "Union ID must be between 1 and 4540")
+//             .lte(4540, "Union ID must be between 1 and 4540")
+//             .transform(data => data.toString()),
+//             upazilla_id: z.string().optional(),
+//             name: z.string().optional(),
+//             bn_name: z.string().optional(),
+//         })
+//     )
+// })
 
    
-    .refine(
-        (data) => !!data.division?.id && !!data.district?.id && !!data.upazila?.id && !!data.union?.id,
-        {
-            message: "address.division.id, address.district.id, address.upazila.id, address.union.id are required "
-        }
-    )
+//     .refine(
+//         (data) => !!data.division?.id && !!data.district?.id && !!data.upazila?.id && !!data.union?.id,
+//         {
+//             message: "address.division.id, address.district.id, address.upazila.id, address.union.id are required "
+//         }
+//     )
 
-    .transform(
-        function (data) {
-            data.division = Divisions.find(element => element.id == data.division?.id);
-            data.district = Districts.find(element => element.id == data.district?.id);
-            data.upazila = Upazilas.find(element => element.id == data.upazila?.id);
-            data.union = Unions.find(element => element.id == data.union?.id);
-            return data;
-        },
+//     .transform(
+//         function (data) {
+//             data.division = Divisions.find(element => element.id == data.division?.id);
+//             data.district = Districts.find(element => element.id == data.district?.id);
+//             data.upazila = Upazilas.find(element => element.id == data.upazila?.id);
+//             data.union = Unions.find(element => element.id == data.union?.id);
+//             return data;
+//         },
        
-    );
+//     );
+
 
 const phoneCountryNames =countryCodes.map(c => c.country) ;
 const phoneCountryPhoneCode =countryCodes.map(c => c.code);
@@ -232,7 +222,6 @@ export const updateUserSchema = z.object({
     name: z.string().min(1).optional(),
     gender: z.nativeEnum(Gender).optional(),
     dateOfBirth: z.string().datetime().optional(),
-    age: z.number().int().min(18).max(70).optional(),
     profileCreatedBy: z.nativeEnum(ProfileCreatedBy).optional(),
 
     // Physical Attributes
@@ -245,7 +234,7 @@ export const updateUserSchema = z.object({
     annualIncome: annualIncomeSchema,
 
     // Location & Contact
-    address: AddressSchema,
+    // address: AddressSchema,
     phoneInfo: phoneInfoSchema,
 
     // Personal Background
@@ -265,43 +254,6 @@ export const updateUserSchema = z.object({
    
 })
 
-.refine(
-        (data) => {
-            if (data.age && !data.dateOfBirth) {
-                return false;
-            }
-            return true;
-        },
-        {
-            message: " DateBirth is Required for updating the user"
-        }
-    )
-    .refine(
-        (data) => {
-           
-            if (data.dateOfBirth && !data.age) {
-                return false;
-            }
-            return true;
-        },
-        {
-            message: "Age is required for Updating the User"
-        }
-    )
-    .refine(
-        (data) => {
-            // Additional validation to ensure age matches dateOfBirth if both are provided
-            if (data.age && data.dateOfBirth) {
-                const birthDate = new Date(data.dateOfBirth);
-                const age = new Date().getFullYear() - birthDate.getFullYear();
-                return age === data.age;
-            }
-            return true;
-        },
-        {
-            message: "Age must match the provided date of birth"
-        }
-    );
 
     
 export const updateUserEducationSchema = z.object({

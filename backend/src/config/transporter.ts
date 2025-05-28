@@ -26,4 +26,4 @@ const transporter = nodemailer.createTransport({
 
 
 
-export default transporter // (new transporter(5000));
+export default transporter; 

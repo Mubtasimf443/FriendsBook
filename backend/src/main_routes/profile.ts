@@ -268,10 +268,11 @@ router.get('/user-details/matrimony/:id', validateUser, async function (req: Req
     }
 });
 
+
 router.put('/user-details/matrimony', validateUser , async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // 1. Parse and validate request body
-        const updateData = await updateUserSchema.parseAsync(req.body);
+        const updateData = await updateUserSchema.parse(req.body);
         if (!req.authSession || !req.authSession?.value) {
             res.status(401).json({
                 success: false,
@@ -290,12 +291,12 @@ router.put('/user-details/matrimony', validateUser , async function (req: Reques
         if (updateData.name) updatesData['name'] = updateData.name;
         if (updateData.gender) updatesData['gender'] = updateData.gender;
         if (updateData.dateOfBirth) updatesData['dateOfBirth'] = updateData.dateOfBirth;
-        if (updateData.age) updatesData['age'] = updateData.age;
+
         if (updateData.weight) updatesData['weight'] = updateData.weight;
         if (updateData.height) updatesData['height'] = updateData.height;
         if (updateData.maritalStatus) updatesData['maritalStatus'] = updateData.maritalStatus;
         if (updateData.phoneInfo?.number) updatesData['phoneInfo.number'] = updateData.phoneInfo.number;
-        if (updateData.address) updatesData['address'] = updateData.address;
+        // if (updateData.address) updatesData['address'] = updateData.address;
 
         // Background Information
         if (updateData.religion) updatesData['religion'] = updateData.religion;
@@ -382,6 +383,103 @@ router.put('/user-details/matrimony', validateUser , async function (req: Reques
         });
     }
 });
+
+
+router.put('/user-details/partner-preference/matrimony', validateUser , async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+        // 1. Parse and validate request body against the partnerPreferenceSchema
+        const updateData = await partnerPreferenceSchema.parseAsync(req.body);
+        if (!req.authSession || !req.authSession?.value) {
+            res.status(401).json({
+                success: false,
+                message: 'Failed to authorize the user',
+                
+                data: null
+            });
+            return;
+        }
+        // 2. Get user ID from auth session
+        const userId = req.authSession.value.userId;
+
+        // Check if any update parameters were provided
+       
+        let updatesData: any = {};
+
+        // Conditionally add fields to updatesData
+        if (updateData.ageRange) updatesData['partnerPreference.ageRange'] = updateData.ageRange;
+        if (updateData.heightRange) updatesData['partnerPreference.heightRange'] = updateData.heightRange;
+        if (updateData.weightRange) updatesData['partnerPreference.weightRange'] = updateData.weightRange;
+        if (updateData.maritalStatus) updatesData['partnerPreference.maritalStatus'] = updateData.maritalStatus;
+        if (updateData.complexion) updatesData['partnerPreference.complexion'] = updateData.complexion;
+        if (updateData.physicalStatus) updatesData['partnerPreference.physicalStatus'] = updateData.physicalStatus;
+        if (updateData.religiousBranch) updatesData['partnerPreference.religiousBranch'] = updateData.religiousBranch;
+        if (updateData.dealBreakers) updatesData['partnerPreference.dealBreakers'] = updateData.dealBreakers;
+        if (updateData.locationPreference) updatesData['partnerPreference.locationPreference'] = updateData.locationPreference;
+        if (updateData.education) updatesData['partnerPreference.education'] = updateData.education;
+        if (updateData.profession) updatesData['partnerPreference.profession'] = updateData.profession;
+        if (updateData.religion) updatesData['partnerPreference.religion'] = updateData.religion;
+        if (updateData.motherTongue) updatesData['partnerPreference.motherTongue'] = updateData.motherTongue;
+        if (updateData.familyValues) updatesData['partnerPreference.familyValues'] = updateData.familyValues;
+        if (updateData.familyBackground) updatesData['partnerPreference.familyBackground'] = updateData.familyBackground;
+
+        // Filter out undefined values (though Zod should handle this implicitly)
+        updatesData = Object.fromEntries(
+            Object.entries(updatesData).filter(([_, value]) => value !== undefined)
+        );
+
+        if (Object.keys(updatesData).length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No partner preference parameters found to update',
+                data: null
+            });
+        }
+
+        // Add last update timestamp to the partnerPreference sub-document
+        updatesData['partnerPreference.lastUpdated'] = new Date();
+
+        // Update the user's partner preferences
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { $set: updatesData },
+            { new: true, runValidators: true } // 'new: true' returns the modified document, 'runValidators' ensures schema validation
+        );
+
+        if (!updatedUser) {
+            res.status(400).json({
+                success: false,
+                message: 'Failed to Update the User',
+                data: null
+            });
+            return;
+        }
+        return res.status(200).json({
+            success: true,
+            message: 'Partner preference updated successfully',
+            data: { updatedPreference: updatedUser.partnerPreference }
+        });
+
+    } catch (error: any) {
+        console.error('[Partner Preference Update api error]', { timestamp: new Date() });
+        console.error(error);
+
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({
+                success: false,
+                message: 'Validation error',
+                data: null,
+                errors: error.errors
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
+
 
 router.put('/user-details/education/matrimony', validateUser , async function (req: Request, res: Response): Promise<Response | any> {
     try {
@@ -491,100 +589,7 @@ router.put('/user-details/education/matrimony', validateUser , async function (r
     }
 });
 
-router.put('/user-details/partner-preference/matrimony', validateUser , async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        // 1. Parse and validate request body against the partnerPreferenceSchema
-        const updateData = await partnerPreferenceSchema.parseAsync(req.body);
-        if (!req.authSession || !req.authSession?.value) {
-            res.status(401).json({
-                success: false,
-                message: 'Failed to authorize the user',
-                
-                data: null
-            });
-            return;
-        }
-        // 2. Get user ID from auth session
-        const userId = req.authSession.value.userId;
 
-        // Check if any update parameters were provided
-       
-        let updatesData: any = {};
-
-        // Conditionally add fields to updatesData
-        if (updateData.ageRange) updatesData['partnerPreference.ageRange'] = updateData.ageRange;
-        if (updateData.heightRange) updatesData['partnerPreference.heightRange'] = updateData.heightRange;
-        if (updateData.weightRange) updatesData['partnerPreference.weightRange'] = updateData.weightRange;
-        if (updateData.maritalStatus) updatesData['partnerPreference.maritalStatus'] = updateData.maritalStatus;
-        if (updateData.complexion) updatesData['partnerPreference.complexion'] = updateData.complexion;
-        if (updateData.physicalStatus) updatesData['partnerPreference.physicalStatus'] = updateData.physicalStatus;
-        if (updateData.religiousBranch) updatesData['partnerPreference.religiousBranch'] = updateData.religiousBranch;
-        if (updateData.dealBreakers) updatesData['partnerPreference.dealBreakers'] = updateData.dealBreakers;
-        if (updateData.locationPreference) updatesData['partnerPreference.locationPreference'] = updateData.locationPreference;
-        if (updateData.education) updatesData['partnerPreference.education'] = updateData.education;
-        if (updateData.profession) updatesData['partnerPreference.profession'] = updateData.profession;
-        if (updateData.religion) updatesData['partnerPreference.religion'] = updateData.religion;
-        if (updateData.motherTongue) updatesData['partnerPreference.motherTongue'] = updateData.motherTongue;
-        if (updateData.familyValues) updatesData['partnerPreference.familyValues'] = updateData.familyValues;
-        if (updateData.familyBackground) updatesData['partnerPreference.familyBackground'] = updateData.familyBackground;
-
-        // Filter out undefined values (though Zod should handle this implicitly)
-        updatesData = Object.fromEntries(
-            Object.entries(updatesData).filter(([_, value]) => value !== undefined)
-        );
-
-        if (Object.keys(updatesData).length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'No partner preference parameters found to update',
-                data: null
-            });
-        }
-
-        // Add last update timestamp to the partnerPreference sub-document
-        updatesData['partnerPreference.lastUpdated'] = new Date();
-
-        // Update the user's partner preferences
-        const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            { $set: updatesData },
-            { new: true, runValidators: true } // 'new: true' returns the modified document, 'runValidators' ensures schema validation
-        );
-
-        if (!updatedUser) {
-            res.status(400).json({
-                success: false,
-                message: 'Failed to Update the User',
-                data: null
-            });
-            return;
-        }
-        return res.status(200).json({
-            success: true,
-            message: 'Partner preference updated successfully',
-            data: { updatedPreference: updatedUser.partnerPreference }
-        });
-
-    } catch (error: any) {
-        console.error('[Partner Preference Update api error]', { timestamp: new Date() });
-        console.error(error);
-
-        if (error instanceof z.ZodError) {
-            return res.status(400).json({
-                success: false,
-                message: 'Validation error',
-                data: null,
-                errors: error.errors
-            });
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
 
 router.post('/user-details/update-photo/matrimony',validateUser , async function (req: Request, res: Response): Promise<any> {
     try {
