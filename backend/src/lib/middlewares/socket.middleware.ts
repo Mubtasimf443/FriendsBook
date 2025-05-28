@@ -2,7 +2,6 @@
 
 import { Socket } from "socket.io";
 import { ExtendedError } from "socket.io";
-import socketController from "../../controllers/socket.controller";
 import VideoProfile from "../../models/VideoProfile";
 import AuthSession from "../../models/AuthSession";
 import { z } from "zod";
