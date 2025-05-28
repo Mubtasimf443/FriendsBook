@@ -8,6 +8,7 @@ export interface ITransaction extends Document {
   currency: string;                
   package : string;
   paymentMethod?: string;          
+  
   transactionId?: string;          
   status: 'pending' | 'success' | 'failed';
   createdAt: Date;

@@ -1,49 +1,7 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 
 import mongoose, { Schema } from 'mongoose';
-import { IMembershipRequest, MembershipTier, MembershipDuration, MembershipRequestStatus, PaymentMethod } from '../lib/types/memberdship.types';
-
-
-
-const paymentInfoSchema = new Schema(
-    {
-        transactionId: {
-            type: String,
-            required: true,
-
-            trim: true
-        },
-        amount: {
-            type: Number,
-            required: true,
-            min: 0,
-            validate: {
-                validator: Number.isInteger,
-                message: 'Amount must be a whole number'
-            }
-        },
-        currency: {
-            type: String,
-            required: true,
-            uppercase: true,
-            minlength: 3,
-            maxlength: 3,
-            default: 'BDT'
-        },
-        paymentMethod: {
-            type: String,
-            enum: Object.values(PaymentMethod),  // Using the PaymentMethod enum
-            required: true
-        },
-        paymentDate: {
-            type: Date,
-            required: true,
-            default: Date.now
-        },
-        paidFrom : String
-    },
-    { _id: false }
-);
+import { IMembershipRequest, MembershipTier, MembershipRequestStatus, PaymentMethod } from '../lib/types/memberdship.types';
 
 const membershipRequestSchema = new Schema<IMembershipRequest>({
     requestStatus: {
@@ -53,7 +11,44 @@ const membershipRequestSchema = new Schema<IMembershipRequest>({
         required: true
     },
     paymentInfo: {
-        type: paymentInfoSchema,
+        type: {
+            transactionId: {
+                type: String,
+                required: true,
+                trim: true,
+                unique : false,
+                index : false
+
+            },
+            amount: {
+                type: Number,
+                required: true,
+                min: 0,
+                validate: {
+                    validator: Number.isInteger,
+                    message: 'Amount must be a whole number'
+                }
+            },
+            currency: {
+                type: String,
+                required: true,
+                uppercase: true,
+                minlength: 3,
+                maxlength: 3,
+                default: 'BDT'
+            },
+            paymentMethod: {
+                type: String,
+                enum: Object.values(PaymentMethod),  // Using the PaymentMethod enum
+                required: true
+            },
+            paymentDate: {
+                type: Date,
+                required: true,
+                default: Date.now
+            },
+            paidFrom: String
+        },
         required: true
     },
     verifiedPhoneLimit: {
@@ -70,7 +65,7 @@ const membershipRequestSchema = new Schema<IMembershipRequest>({
         default: 0,
         min: 0,
         validate: {
-            validator: function(this: IMembershipRequest, value: number) {
+            validator: function (this: IMembershipRequest, value: number) {
                 return value <= this.verifiedPhoneLimit;
             },
             message: 'Viewed phones cannot exceed limit'
@@ -96,7 +91,7 @@ const membershipRequestSchema = new Schema<IMembershipRequest>({
     endDate: {
         type: Date,
         required: true,
-      
+
     },
     adminNote: {
         type: String,
@@ -112,7 +107,7 @@ const membershipRequestSchema = new Schema<IMembershipRequest>({
     processedDate: {
         type: Date,
         validate: {
-            validator: function(this: IMembershipRequest, value: Date) {
+            validator: function (this: IMembershipRequest, value: Date) {
                 return !value || value >= this.requestDate;
             },
             message: 'Processed date must be after request date'
@@ -128,17 +123,17 @@ const membershipRequestSchema = new Schema<IMembershipRequest>({
         required: true,
         index: true
     }
-}, 
-{
-    timestamps: true
-}
+},
+    {
+        timestamps: true
+    }
 );
 
 
 
 
 // Instance methods
-membershipRequestSchema.methods.isActive = function(): boolean {
+membershipRequestSchema.methods.isActive = function (): boolean {
     const now = new Date();
     return (
         this.requestStatus === MembershipRequestStatus.APPROVED &&
@@ -147,15 +142,15 @@ membershipRequestSchema.methods.isActive = function(): boolean {
     );
 };
 
-membershipRequestSchema.methods.hasVerifiedPhonesRemaining = function(): boolean {
+membershipRequestSchema.methods.hasVerifiedPhonesRemaining = function (): boolean {
     return this.verifiedPhoneViewed < this.verifiedPhoneLimit;
 };
 
-membershipRequestSchema.methods.canBeProcessed = function(): boolean {
+membershipRequestSchema.methods.canBeProcessed = function (): boolean {
     return this.requestStatus === MembershipRequestStatus.PENDING;
 };
 
-membershipRequestSchema.methods.approve = function(adminId: mongoose.Types.ObjectId): void {
+membershipRequestSchema.methods.approve = function (adminId: mongoose.Types.ObjectId): void {
     if (!this.canBeProcessed()) {
         throw new Error('Request cannot be processed');
     }
@@ -164,7 +159,7 @@ membershipRequestSchema.methods.approve = function(adminId: mongoose.Types.Objec
     this.processedBy = adminId;
 };
 
-membershipRequestSchema.methods.reject = function(adminId: mongoose.Types.ObjectId, note?: string): void {
+membershipRequestSchema.methods.reject = function (adminId: mongoose.Types.ObjectId, note?: string): void {
     if (!this.canBeProcessed()) {
         throw new Error('Request cannot be processed');
     }
@@ -176,14 +171,14 @@ membershipRequestSchema.methods.reject = function(adminId: mongoose.Types.Object
     }
 };
 
-membershipRequestSchema.methods.cancel = function(): void {
+membershipRequestSchema.methods.cancel = function (): void {
     if (this.requestStatus !== MembershipRequestStatus.PENDING) {
         throw new Error('Only pending requests can be cancelled');
     }
     this.requestStatus = MembershipRequestStatus.CANCELLED;
 };
 
-membershipRequestSchema.methods.useVerifiedPhone =async function(): Promise<boolean> {
+membershipRequestSchema.methods.useVerifiedPhone = async function (): Promise<boolean> {
     if (!this.isActive() || !this.hasVerifiedPhonesRemaining()) {
         return false;
     }

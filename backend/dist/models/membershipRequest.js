@@ -46,41 +46,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MembershipRequest = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const memberdship_types_1 = require("../lib/types/memberdship.types");
-const paymentInfoSchema = new mongoose_1.Schema({
-    transactionId: {
-        type: String,
-        required: true,
-        trim: true
-    },
-    amount: {
-        type: Number,
-        required: true,
-        min: 0,
-        validate: {
-            validator: Number.isInteger,
-            message: 'Amount must be a whole number'
-        }
-    },
-    currency: {
-        type: String,
-        required: true,
-        uppercase: true,
-        minlength: 3,
-        maxlength: 3,
-        default: 'BDT'
-    },
-    paymentMethod: {
-        type: String,
-        enum: Object.values(memberdship_types_1.PaymentMethod), // Using the PaymentMethod enum
-        required: true
-    },
-    paymentDate: {
-        type: Date,
-        required: true,
-        default: Date.now
-    },
-    paidFrom: String
-}, { _id: false });
 const membershipRequestSchema = new mongoose_1.Schema({
     requestStatus: {
         type: String,
@@ -89,7 +54,43 @@ const membershipRequestSchema = new mongoose_1.Schema({
         required: true
     },
     paymentInfo: {
-        type: paymentInfoSchema,
+        type: {
+            transactionId: {
+                type: String,
+                required: true,
+                trim: true,
+                unique: false,
+                index: false
+            },
+            amount: {
+                type: Number,
+                required: true,
+                min: 0,
+                validate: {
+                    validator: Number.isInteger,
+                    message: 'Amount must be a whole number'
+                }
+            },
+            currency: {
+                type: String,
+                required: true,
+                uppercase: true,
+                minlength: 3,
+                maxlength: 3,
+                default: 'BDT'
+            },
+            paymentMethod: {
+                type: String,
+                enum: Object.values(memberdship_types_1.PaymentMethod), // Using the PaymentMethod enum
+                required: true
+            },
+            paymentDate: {
+                type: Date,
+                required: true,
+                default: Date.now
+            },
+            paidFrom: String
+        },
         required: true
     },
     verifiedPhoneLimit: {
