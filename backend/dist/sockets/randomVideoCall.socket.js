@@ -20,7 +20,6 @@ const zod_1 = require("zod");
 const crypto_1 = require("crypto");
 const VideoProfile_1 = __importDefault(require("../models/VideoProfile"));
 const auth_schema_1 = require("../lib/schema/auth.schema");
-// Constants
 const VIDEO_CALL_DURATION = 20 * 1000; // 20 seconds in milliseconds
 exports.roomIdSchema = zod_1.z.string().uuid();
 class randomVideoCallSocketService {

@@ -16,10 +16,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.socketMiddlewares = socketMiddlewares;
 exports.socketMiddlewaresVideoProfile = socketMiddlewaresVideoProfile;
 exports.verifiyToken = verifiyToken;
+exports.newSocketMiddleware = newSocketMiddleware;
 const VideoProfile_1 = __importDefault(require("../../models/VideoProfile"));
 const AuthSession_1 = __importDefault(require("../../models/AuthSession"));
 const zod_1 = require("zod");
 const auth_schema_1 = require("../schema/auth.schema");
+const socket_types_1 = require("../types/socket.types");
 function socketMiddlewares(socket, next) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -92,3 +94,53 @@ function verifiyToken(auth) {
     });
 }
 ;
+function newSocketMiddleware(forUser) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return function (socket, next) {
+            return __awaiter(this, void 0, void 0, function* () {
+                try {
+                    let authHeader = socket.handshake.headers['authorization'];
+                    if (!authHeader || !authHeader.includes(':')
+                        || (!authHeader.startsWith(socket_types_1.SOCKET_USER_TYPE.MATRIMONY_MEMBERS) && !authHeader.startsWith(socket_types_1.SOCKET_USER_TYPE.VIDEO_CALLING_MEMBER))
+                        || authHeader.split(':').length !== 2) {
+                        next(new Error('Socket Io authentication error : AuthToken is invalid'));
+                        return;
+                    }
+                    let profileType = authHeader.split(':')[0];
+                    let token = (zod_1.z.string().regex(/^[0-9A-Fa-f]{64}$/)).parse(authHeader.split(':')[1]);
+                    if (profileType === socket_types_1.SOCKET_USER_TYPE.VIDEO_CALLING_MEMBER && forUser === socket_types_1.SOCKET_USER_TYPE.MATRIMONY_MEMBERS) {
+                        next(new Error('User Is not allowed in this socket'));
+                        return;
+                    }
+                    if (profileType === socket_types_1.SOCKET_USER_TYPE.MATRIMONY_MEMBERS && forUser === socket_types_1.SOCKET_USER_TYPE.VIDEO_CALLING_MEMBER) {
+                        next(new Error('User Is not allowed in this socket'));
+                        return;
+                    }
+                    if (profileType === socket_types_1.SOCKET_USER_TYPE.MATRIMONY_MEMBERS) {
+                        let session = yield AuthSession_1.default.findOne({ key: token, expiration_date: { $gt: new Date() } });
+                        if (!session)
+                            return next(new Error('User is logged Out'));
+                        socket.userProfileType = 'matrimonyProfile';
+                        socket.user_id = session === null || session === void 0 ? void 0 : session.value.userId;
+                        return next();
+                    }
+                    if (profileType === socket_types_1.SOCKET_USER_TYPE.MATRIMONY_MEMBERS) {
+                        let user = yield VideoProfile_1.default.findOne({
+                            'auth.authSession': token,
+                            'auth.session_exp_date': { $gt: new Date() }
+                        });
+                        if (!user)
+                            return next(new Error('User is logged Out'));
+                        socket.user_id = user._id.toString();
+                        socket.userProfileType = 'videoProfile';
+                        return next();
+                    }
+                }
+                catch (error) {
+                    console.error('Socket authentication error:', error);
+                    next(new Error('Socket Io authentication error'));
+                }
+            });
+        };
+    });
+}

@@ -31,12 +31,14 @@ import configureChatMessagingSocket from './sockets/chat.messaging.socket';
 const app: express.Application = express();
 const port: number = Number(PORT ?? 4000) 
 const server= createServer(app).listen(port) ;
+
 const io = new Server(server, {
     cors: {
         origin: '*',
         methods: ['POST', 'GET', 'DELETE', 'PUT']
     }
 });
+
 randomVideoCallSocketService.getInstance(io.of('/random-video-call'));
 // configOnlineStatusSocket(io.of('/socket/online-status-management'))
 const NotificationService = NotificationSocketService.getInstance(io.of('/socket/notifications'));

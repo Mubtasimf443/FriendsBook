@@ -1,19 +1,23 @@
 "use strict";
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateUserEducationSchema = exports.updateUserSchema = void 0;
+exports.updateUserSchema = void 0;
 const zod_1 = require("zod");
 const user_types_1 = require("../types/user.types");
 const userProfile_types_1 = require("../types/userProfile.types");
 const userEducation_types_1 = require("../types/userEducation.types");
 const countryCodes_1 = require("../data/countryCodes");
 const auth_schema_1 = require("./auth.schema");
+const divisions_1 = require("../data/divisions");
+const districts_1 = require("../data/districts");
+const upazilas_1 = require("../data/upazilas");
+const unions_1 = require("../data/unions");
 const weightPreferenceSchema = zod_1.z.object({
     minWeight: zod_1.z.number().min(30).max(200).optional(),
     maxWeight: zod_1.z.number().min(30).max(200).optional()
 })
     .optional()
-    .refine(data => {
+    .refine((data) => {
     if ((data === null || data === void 0 ? void 0 : data.minWeight) && (data === null || data === void 0 ? void 0 : data.maxWeight)) {
         return data.minWeight <= data.maxWeight;
     }
@@ -50,76 +54,65 @@ const agePreferenceSchema = zod_1.z.object({
 const educationPreferenceSchema = zod_1.z.object({
     level: zod_1.z.nativeEnum(userEducation_types_1.EducationLevel)
 });
-// const AddressSchema = z.object({
-//     division: z.optional(
-//         z.object({
-//             id: z.number({
-//                 required_error: "Division ID is required",
-//                 invalid_type_error: "Division ID must be a number"
-//             })
-//             .gte(1, "Division ID must be between 1 and 8")
-//             .lte(8, "Division ID must be between 1 and 8")
-//             .transform(data => data.toString()),
-//             name: z.string().optional(),
-//             bd_name: z.string().optional(),
-//         })),
-//     district: z.optional(
-//         z.object({
-//             id: z.number({
-//                 required_error: "District ID is required",
-//                 invalid_type_error: "District ID must be a number"
-//             })
-//             .gte(1, "District ID must be between 1 and 64")
-//             .lte(64, "District ID must be between 1 and 64")
-//             .transform(data => data.toString()),
-//             division_id: z.string().optional(),
-//             name: z.string().optional(),
-//             bn_name: z.string().optional(),
-//         })),
-//     upazila: z.optional(
-//         z.object({
-//             id: z.number({
-//                 required_error: "Upazila ID is required",
-//                 invalid_type_error: "Upazila ID must be a number"
-//             })
-//             .gte(1, "Upazila ID must be between 1 and 494")
-//             .lte(494, "Upazila ID must be between 1 and 494")
-//             .transform(data => data.toString()),
-//             district_id: z.string().optional(),
-//             name: z.string().optional(),
-//             bn_name: z.string().optional(),
-//         })
-//     ),
-//     union: z.optional(
-//         z.object({
-//             id: z.number({
-//                 required_error: "Union ID is required",
-//                 invalid_type_error: "Union ID must be a number"
-//             })
-//             .gte(1, "Union ID must be between 1 and 4540")
-//             .lte(4540, "Union ID must be between 1 and 4540")
-//             .transform(data => data.toString()),
-//             upazilla_id: z.string().optional(),
-//             name: z.string().optional(),
-//             bn_name: z.string().optional(),
-//         })
-//     )
-// })
-//     .refine(
-//         (data) => !!data.division?.id && !!data.district?.id && !!data.upazila?.id && !!data.union?.id,
-//         {
-//             message: "address.division.id, address.district.id, address.upazila.id, address.union.id are required "
-//         }
-//     )
-//     .transform(
-//         function (data) {
-//             data.division = Divisions.find(element => element.id == data.division?.id);
-//             data.district = Districts.find(element => element.id == data.district?.id);
-//             data.upazila = Upazilas.find(element => element.id == data.upazila?.id);
-//             data.union = Unions.find(element => element.id == data.union?.id);
-//             return data;
-//         },
-//     );
+const AddressSchema = zod_1.z.object({
+    division: zod_1.z.optional(zod_1.z.object({
+        id: zod_1.z.number({
+            required_error: "Division ID is required",
+            invalid_type_error: "Division ID must be a number"
+        })
+            .gte(1, "Division ID must be between 1 and 8")
+            .lte(8, "Division ID must be between 1 and 8")
+            .transform(data => data.toString()),
+        name: zod_1.z.string().optional(),
+        bd_name: zod_1.z.string().optional(),
+    })),
+    district: zod_1.z.optional(zod_1.z.object({
+        id: zod_1.z.number({
+            required_error: "District ID is required",
+            invalid_type_error: "District ID must be a number"
+        })
+            .gte(1, "District ID must be between 1 and 64")
+            .lte(64, "District ID must be between 1 and 64")
+            .transform(data => data.toString()),
+        division_id: zod_1.z.string().optional(),
+        name: zod_1.z.string().optional(),
+        bn_name: zod_1.z.string().optional(),
+    })),
+    upazila: zod_1.z.optional(zod_1.z.object({
+        id: zod_1.z.number({
+            required_error: "Upazila ID is required",
+            invalid_type_error: "Upazila ID must be a number"
+        })
+            .gte(1, "Upazila ID must be between 1 and 494")
+            .lte(494, "Upazila ID must be between 1 and 494")
+            .transform(data => data.toString()),
+        district_id: zod_1.z.string().optional(),
+        name: zod_1.z.string().optional(),
+        bn_name: zod_1.z.string().optional(),
+    })),
+    union: zod_1.z.optional(zod_1.z.object({
+        id: zod_1.z.number({
+            required_error: "Union ID is required",
+            invalid_type_error: "Union ID must be a number"
+        })
+            .gte(1, "Union ID must be between 1 and 4540")
+            .lte(4540, "Union ID must be between 1 and 4540")
+            .transform((data) => data.toString()),
+        upazilla_id: zod_1.z.string().optional(),
+        name: zod_1.z.string().optional(),
+        bn_name: zod_1.z.string().optional(),
+    }))
+})
+    .refine((data) => { var _a, _b, _c, _d; return !!((_a = data.division) === null || _a === void 0 ? void 0 : _a.id) && !!((_b = data.district) === null || _b === void 0 ? void 0 : _b.id) && !!((_c = data.upazila) === null || _c === void 0 ? void 0 : _c.id) && !!((_d = data.union) === null || _d === void 0 ? void 0 : _d.id); }, {
+    message: "address.division.id, address.district.id, address.upazila.id, address.union.id are required "
+})
+    .transform(function (data) {
+    data.division = divisions_1.Divisions.find(element => { var _a; return element.id == ((_a = data.division) === null || _a === void 0 ? void 0 : _a.id); });
+    data.district = districts_1.Districts.find(element => { var _a; return element.id == ((_a = data.district) === null || _a === void 0 ? void 0 : _a.id); });
+    data.upazila = upazilas_1.Upazilas.find(element => { var _a; return element.id == ((_a = data.upazila) === null || _a === void 0 ? void 0 : _a.id); });
+    data.union = unions_1.Unions.find(element => { var _a; return element.id == ((_a = data.union) === null || _a === void 0 ? void 0 : _a.id); });
+    return data;
+});
 const phoneCountryNames = countryCodes_1.countryCodes.map(c => c.country);
 const phoneCountryPhoneCode = countryCodes_1.countryCodes.map(c => c.code);
 const phoneInfoSchema = zod_1.z.object({
@@ -175,26 +168,20 @@ exports.updateUserSchema = zod_1.z.object({
     // Education & Career
     occupation: zod_1.z.nativeEnum(user_types_1.Occupation).optional(),
     annualIncome: annualIncomeSchema,
+    isEducated: zod_1.z.boolean().optional(),
+    education: zod_1.z.array(auth_schema_1.educationSchema).optional(),
     // Location & Contact
-    // address: AddressSchema,
+    address: zod_1.z.optional(AddressSchema),
     phoneInfo: phoneInfoSchema,
     // Personal Background
     languages: zod_1.z.array(zod_1.z.nativeEnum(user_types_1.Language)).optional(),
     religion: zod_1.z.nativeEnum(user_types_1.Religion).optional(),
     maritalStatus: zod_1.z.nativeEnum(user_types_1.MaritalStatus).optional(),
-    // Additional Information
-    aboutMe: aboutMeSchema,
-    familyInfo: familyInfoSchema,
-    // Preferences & Settings
-    // preferences: preferencesSchema,
-    enhancedSettings: enhancedSettingsSchema,
-});
-exports.updateUserEducationSchema = zod_1.z.object({
-    isEducated: zod_1.z.boolean(),
-    education: zod_1.z.array(auth_schema_1.educationSchema).optional().default([]),
+    coverImage: zod_1.z.object({ url: zod_1.z.string().url(), id: zod_1.z.string().uuid() }).optional(),
+    profileImage: zod_1.z.object({ url: zod_1.z.string().url(), id: zod_1.z.string().uuid() }).optional(),
 })
     .refine(function ({ isEducated, education }) {
-    if (isEducated) {
+    if (isEducated && education) {
         if (education.length === 0) {
             return false;
         }
@@ -204,12 +191,8 @@ exports.updateUserEducationSchema = zod_1.z.object({
     message: 'If User is educated Than education details is required',
     path: ['isEducated', 'education[0].level', 'education[0].certificate', 'education[0].yearOfCompletion']
 })
-    .refine(function ({ isEducated, education }) {
-    if (!isEducated && education.length !== 0) {
-        return false;
-    }
-    return true;
-}, {
-    message: 'If User is not educated Than education details is not required',
-    path: ['isEducated', 'education[0].level', 'education[0].certificate', 'education[0].yearOfCompletion']
+    .transform(function (data) {
+    if (data.isEducated === false)
+        data.education = [];
+    return data;
 });

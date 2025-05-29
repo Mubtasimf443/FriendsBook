@@ -11,11 +11,13 @@ import { randomUUID, sign } from 'crypto';
 import VideoProfile from '../models/VideoProfile';
 import { ExtendedError } from 'socket.io';
 import { authSessionValidation } from '../lib/schema/auth.schema';
-import { log } from 'console';
 
-// Constants
+
+
 const VIDEO_CALL_DURATION = 20 * 1000; // 20 seconds in milliseconds
 export let roomIdSchema = z.string().uuid();
+
+
 
 export class randomVideoCallSocketService {
     private io: Namespace;

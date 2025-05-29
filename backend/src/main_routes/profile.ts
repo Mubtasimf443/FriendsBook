@@ -10,7 +10,7 @@ import { formatDistanceToNow, isBefore } from 'date-fns';
 import { array, object, z, ZodEffects, ZodError } from 'zod';
 import queryMiddleware from "../lib/middlewares/query.middleware";
 import { userDetailsQuerySchema } from "../lib/schema/profile.schema";
-import { updateUserSchema, UpdateUserInput, updateUserEducationSchema } from '../lib/schema/updateUser.schema';
+import { updateUserSchema, UpdateUserInput } from '../lib/schema/updateUser.schema';
 import { MembershipRequest } from "../models/membershipRequest";
 import { MembershipRequestStatus } from "../lib/types/memberdship.types";
 import { membershipRequestQuerySchema, membershipRequestSchema } from "../lib/schema/membership.schema";
@@ -291,12 +291,16 @@ router.put('/user-details/matrimony', validateUser , async function (req: Reques
         if (updateData.name) updatesData['name'] = updateData.name;
         if (updateData.gender) updatesData['gender'] = updateData.gender;
         if (updateData.dateOfBirth) updatesData['dateOfBirth'] = updateData.dateOfBirth;
-
         if (updateData.weight) updatesData['weight'] = updateData.weight;
         if (updateData.height) updatesData['height'] = updateData.height;
         if (updateData.maritalStatus) updatesData['maritalStatus'] = updateData.maritalStatus;
         if (updateData.phoneInfo?.number) updatesData['phoneInfo.number'] = updateData.phoneInfo.number;
-        // if (updateData.address) updatesData['address'] = updateData.address;
+        if (updateData.address) updatesData['address'] = updateData.address;
+
+        // education
+        if (updateData.isEducated) updatesData['isEducated'] = updateData.isEducated;
+        if (updateData.education) updatesData['education'] = updateData.education;
+
 
         // Background Information
         if (updateData.religion) updatesData['religion'] = updateData.religion;
@@ -306,13 +310,19 @@ router.put('/user-details/matrimony', validateUser , async function (req: Reques
         if (updateData.occupation) updatesData['occupation'] = updateData.occupation;
         if (updateData.annualIncome) updatesData['annualIncome'] = updateData.annualIncome;
 
-        // Additional Information
-        if (updateData.aboutMe) updatesData['aboutMe'] = updateData.aboutMe;
-        if (updateData.familyInfo) updatesData['familyInfo'] = updateData.familyInfo;
+
+        // profile image
+        if (updateData.profileImage) updatesData['profileImage'] =updateData.profileImage ;
+        if (updateData.coverImage) updatesData['coverImage'] =updateData.coverImage ;
+       
+
+        // // Additional Information
+        // if (updateData.aboutMe) updatesData['aboutMe'] = updateData.aboutMe;
+        // if (updateData.familyInfo) updatesData['familyInfo'] = updateData.familyInfo;
         
-        // Settings
-        if (updateData.enhancedSettings?.privacy) updatesData['enhancedSettings.privacy'] = updateData.enhancedSettings.privacy;
-        if (updateData.enhancedSettings?.notifications) updatesData['enhancedSettings.notifications'] = updateData.enhancedSettings.notifications;
+        // // Settings
+        // if (updateData.enhancedSettings?.privacy) updatesData['enhancedSettings.privacy'] = updateData.enhancedSettings.privacy;
+        // if (updateData.enhancedSettings?.notifications) updatesData['enhancedSettings.notifications'] = updateData.enhancedSettings.notifications;
 
 
         // Filter out undefined values
@@ -481,407 +491,8 @@ router.put('/user-details/partner-preference/matrimony', validateUser , async fu
 });
 
 
-router.put('/user-details/education/matrimony', validateUser , async function (req: Request, res: Response): Promise<Response | any> {
-    try {
-        // Get user ID from auth session
-
-        if (!req.authSession || !req.authSession?.value) {
-            res.status(401).json({
-                success: false,
-                message: 'Failed to authorize the user',
-                
-                data: null
-            });
-            return;
-        }
-        const userId = req.authSession.value.userId;
-
-      
-        // Validate the request body using the schema
-        const updateData = await updateUserEducationSchema.parseAsync(req.body);
-
-        // Get current user data
-        const user = await User.findById(userId);
-
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found',
-                data: null
-            });
-        }
-
-        // Update education related fields
-        const updatesData: any = {
-            isEducated: updateData.isEducated
-        };
-
-        // Only include education array if it's provided and user is educated
-        if (updateData.isEducated && updateData.education) {
-            updatesData.education = updateData.education.map(edu => ({
-                level: edu.level,
-                certificate: edu.certificate,
-                institution: edu.institution,
-                yearOfCompletion: edu.yearOfCompletion,
-                grade: edu.grade,
-                additionalInfo: edu.additionalInfo
-            }));
-        }
-
-        // If user is marked as not educated, clear the education array
-        if (!updateData.isEducated) {
-            updatesData.education = [];
-        }
-
-        // Update user's education details
-        const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            { $set: updatesData },
-            {
-                new: true, // Return the updated document
-                runValidators: true // Run model validators
-            }
-        ).select('isEducated education'); // Only select relevant fields
-
-        if (!updatedUser) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found',
-                data: null
-            });
-        }
-
-        // Set cache control header to prevent caching of sensitive data
-        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-
-        return res.status(200).json({
-            success: true,
-            message: 'Education details updated successfully',
-            data: {
-                isEducated: updatedUser.isEducated,
-                education: updatedUser.education
-            }
-        });
-
-    } catch (error) {
-        console.error('[Education Update API Error]', {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            
-            timestamp: new Date().toISOString(),
-            userId: req.authSession?.value?.userId
-        });
-
-        if (error instanceof z.ZodError) {
-            return res.status(400).json({
-                success: false,
-                message: 'Validation error',
-                error: error.errors,
-                data: null
-            });
-        }
 
 
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
-
-
-
-router.post('/user-details/update-photo/matrimony',validateUser , async function (req: Request, res: Response): Promise<any> {
-    try {
-        if (!req.authSession || !req.authSession?.value) {
-            res.status(401).json({
-                success: false,
-                message: 'Failed to authorize the user',
-                
-                data: null
-            });
-            return;
-        }
-
-        enum PhotoType {
-            Profile = 'profileImage',
-            Cover = 'coverImage',
-            userImages = 'userImages',
-        }
-
-        let updatePhotoSchema = z.object({
-            photoType: z.nativeEnum(PhotoType),
-            asset_id: z.string().uuid({
-                message: "Invalid asset ID format. Must be a valid UUID."
-            })
-        });
-
-        let validationResult = await updatePhotoSchema.safeParseAsync(req.body);
-
-        if (!validationResult.success) {
-            res.status(400).json({
-                success: false,
-                message: 'Invalid request parameters',
-                error: validationResult.error.errors,
-                data: null
-            });
-            return;
-        }
-
-        let { photoType, asset_id } = validationResult.data;
-
-        let asset = await Asset.findOne({ id: asset_id });
-
-        if (!asset) {
-            res.status(404).json({
-                success: false,
-                message: 'Asset not found. Please ensure you are using a valid asset ID.',
-                error: 'ASSET_NOT_FOUND',
-                data: null
-            });
-            return;
-        }
-
-        let url = asset.url;
-
-        if (photoType === PhotoType.userImages) {
-            let db_user = await User.findById(req.authSession.value.userId);
-            if (!db_user) {
-                res.status(404).json({
-                    success: false,
-                    message: 'User not found. Please ensure you are logged in.',
-                    error: 'USER_NOT_FOUND',
-                    data: null
-                });
-                return;
-            }
-
-            // Initialize userImages array if it doesn't exist
-            if (!db_user.userImages) {
-                db_user.userImages = [];
-            }
-
-            if (db_user.userImages.length >= 10) {
-                res.status(400).json({
-                    success: false,
-                    message: 'Maximum photo limit reached. You can upload up to 10 photos.',
-                    error: 'MAX_PHOTOS_LIMIT_REACHED',
-                    data: null
-                });
-                return;
-            }
-
-            // Check if image is already added
-            const isDuplicate = db_user.userImages.some(img => img.id === asset_id);
-            if (isDuplicate) {
-                res.status(400).json({
-                    success: false,
-                    message: 'This photo has already been added to your gallery.',
-                    error: 'DUPLICATE_PHOTO',
-                    data: null
-                });
-                return;
-            }
-
-            db_user.userImages.push({ url, id: asset.id });
-            await db_user.save();
-
-            res.status(200).json({
-                success: true,
-                data: {
-                    photoData: {
-                        photoType,
-                        totalPhotos: db_user.userImages.length,
-                        remainingSlots: 10 - db_user.userImages.length
-                    },
-                    userData :{
-                        userImages :db_user.userImages 
-                    }
-
-                },
-                error: null,
-                message: 'Photo successfully added to your gallery'
-            });
-            return;
-        }
-
-        // For profile and cover photos
-        let updateQuery: any = {
-            $set: {}
-        };
-        updateQuery.$set[photoType] = { url, id: asset_id };
-
-        const updatedUser = await User.findByIdAndUpdate(
-            req.authSession.value.userId,
-            updateQuery,
-        );
-
-        if (!updatedUser) {
-            res.status(404).json({
-                success: false,
-                message: 'User not found. Please ensure you are logged in.',
-                error: 'USER_NOT_FOUND',
-                data: null
-            });
-            return;
-        }
-
-        const photoTypeMessages = {
-            [PhotoType.Profile]: 'Profile photo',
-            [PhotoType.Cover]: 'Cover photo',
-            [PhotoType.userImages]: 'Photo'
-        };
-
-        res.status(200).json({
-            success: true,
-            data: {
-                photoData: {
-                    photoType,
-                    url: url
-                },
-                user :{
-                    ...(photoType === 'coverImage' ? ({'coverImage' :updatedUser.coverImage   }) : ({ 'profileImage' : updatedUser.profileImage}))
-                }
-            },
-            error: null,
-            message: `${photoTypeMessages[photoType]} updated successfully`
-        });
-        return;
-
-    } catch (error) {
-        console.error('[Update photo api error]', {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            
-            timestamp: new Date().toISOString(),
-            userId: req.authSession?.value?.userId
-        });
-
-        return res.status(500).json({
-            success: false,
-            message: 'An error occurred while updating your photo. Please try again later.',
-            error: 'INTERNAL_SERVER_ERROR',
-            data: null
-        });
-    }
-});
-
-router.delete('/user-details/user-photo/matrimony',validateUser , async function (req: Request, res: Response): Promise<any> {
-    try {
-        if (!req.authSession || !req.authSession?.value) {
-            res.status(401).json({
-                success: false,
-                message: 'Failed to authorize the user',
-                
-                data: null
-            });
-            return;
-        }
-        // Define photo types enum
-        enum PhotoType {
-            Profile = 'profileImage',
-            Cover = 'coverImage',
-            UserImages = 'userImages'
-        }
-
-        // Validation schema
-        const deletePhotoSchema = z.object({
-            photoType: z.nativeEnum(PhotoType),
-            imageId: z.string().uuid({
-                message: "Invalid image ID format"
-            })
-        });
-
-        // Validate request body
-        const validationResult = await deletePhotoSchema.safeParseAsync(req.body);
-
-        if (!validationResult.success) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid request parameters',
-                error: validationResult.error.errors,
-                data: null
-            });
-        }
-
-        const { photoType, imageId } = validationResult.data;
-        const userId = req.authSession.value.userId;
-
-        // Get user
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found',
-                data: null
-            });
-        }
-
-        // Handle different photo types
-        if (photoType === PhotoType.UserImages) {
-            // Remove image from userImages array
-            const imageIndex = user.userImages.findIndex(img => img.id === imageId);
-            
-            if (imageIndex === -1) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Image not found in user images',
-                    data: null
-                });
-            }
-
-            // Remove the image
-            user.userImages.splice(imageIndex, 1);
-            await user.save();
-
-        } else {
-            // Handle profile or cover image
-            const currentImage = user[photoType];
-            
-            if (!currentImage || currentImage.id !== imageId) {
-                return res.status(404).json({
-                    success: false,
-                    message: `Image not found in ${photoType}`,
-                    data: null
-                });
-            }
-
-            // Create update query
-            const updateQuery = {
-                $unset: {
-                    [photoType]: 1
-                }
-            };
-
-            // Update user
-            await User.findByIdAndUpdate(userId, updateQuery);
-        }
-
-        // Delete the asset
-        await Asset.findOneAndDelete({ id: imageId });
-
-        // Set cache control
-        res.set('Cache-Control', 'no-cache');
-
-        return res.status(200).json({
-            success: true,
-            message: 'Image deleted successfully',
-            data: null
-        });
-
-    } catch (error) {
-        console.error('[Delete user image API Error]', {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            
-            timestamp: new Date().toISOString()
-        });
-
-        return res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-            data: null
-        });
-    }
-});
 
 
 
