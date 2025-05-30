@@ -15,6 +15,7 @@ import { isBefore } from "date-fns";
 import Gifts from "../models/Gifts";
 import { newSocketMiddleware } from "../lib/middlewares/socket.middleware";
 import { SOCKET_USER_TYPE } from "../lib/types/socket.types";
+import mongoose from "mongoose";
 
 
 
@@ -211,14 +212,26 @@ export default async function configureChatMessagingSocket(io: Namespace) {
         });
 
 
-        socket.on('join-room', (uuid) => {
+        socket.on('join-room', async (uuid : string) => {
             try {
-                socket.join(roomIdSchema.parse(uuid));
-                socket.emit('joined-room')
-            } catch (error) {
+                const validatedRoomId = roomIdSchema.parse(uuid);
+                const room = await MessagingRoom.findById(validatedRoomId);
+
+                if (!room) {
+                    throw new Error('Room not found');
+                }
+
+                if (!room.members.includes(new mongoose.Types.ObjectId(socket.user_id))) {
+                    throw new Error('Not authorized to join this room');
+                }
+
+                await socket.join(validatedRoomId);
+                socket.emit('joined-room', { roomId: validatedRoomId });
+            } catch (error :any) {
                 console.error(error);
+                socket.emit('join-room-error', { message: error instanceof Error ? error.message : "Unknown Error" });
             }
-        })
+        });
 
 
         socket.on('send-message-event', async function (msg, roomId) {
@@ -240,10 +253,18 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                         { message: "Unsupported characters" }
                     )
                 ).parse(msg);
+
                 roomId = _idValidator.parse(roomId);
+
                 let room = await MessagingRoom.findOne({ _id: roomId });
                 
                 if (!room) throw new Error("Message Room Is not valid");
+
+
+                if (!room.members.includes(new mongoose.Types.ObjectId(socket.user_id))) {
+                    throw new Error('Not authorized to message in this room');
+                }
+           
 
                 let message = await Message.create({
                     room: room._id,
@@ -451,6 +472,26 @@ export default async function configureChatMessagingSocket(io: Namespace) {
             } catch (error) {
                 console.error(error);
                 socket.emit('check-msg-error' , { message : null});
+            }
+        });
+
+
+        socket.on('disconnect', async () => {
+            try {
+                switch (socket.userProfileType) {
+                    case 'matrimonyProfile':
+                        await User.findByIdAndUpdate(socket.user_id, {
+                            'socket_ids.messaging_socket': null
+                        });
+                        break;
+                    case 'videoProfile':
+                        await VideoProfile.findByIdAndUpdate(socket.user_id, {
+                            'socket_ids.messaging_socket': null
+                        });
+                        break;
+                }
+            } catch (error) {
+                console.error('Error handling disconnect:', error);
             }
         });
 
