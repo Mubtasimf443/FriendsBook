@@ -13,39 +13,13 @@ import { Message } from "../models/Message";
 import { roomIdSchema } from "./randomVideoCall.socket";
 import { isBefore } from "date-fns";
 import Gifts from "../models/Gifts";
+import { newSocketMiddleware } from "../lib/middlewares/socket.middleware";
+import { SOCKET_USER_TYPE } from "../lib/types/socket.types";
 
 
 
 export default async function configureChatMessagingSocket(io: Namespace) {
-    io.use(async function (socket, next: (error?: ExtendedError | undefined) => void): Promise<any> {
-        try {
-            let { token, profileType } = await socket.handshake.auth;
-            token = authSessionValidation.parse(token);
-
-            switch (profileType) {
-                case 'video_calling_member':
-                    let videoCallingMember = await VideoProfile.findOne({ 'auth.authSession': token });
-                    if (videoCallingMember) {
-                        socket.user_id = videoCallingMember._id.toString();
-                        socket.userProfileType = 'videoProfile';
-                        videoCallingMember.socket_ids.messaging_socket = socket.id;
-                        await videoCallingMember.save();
-                        return next();
-                    } else return next(new Error('Failed To Authenticate the User'));
-                    break;
-                default:
-                    let matrimonyProfile = await AuthSession.findOne({ key: token }, 'value.userId');
-                    if (matrimonyProfile) {
-                        socket.user_id = matrimonyProfile.value.userId.toString();
-                        socket.userProfileType = 'matrimonyProfile';
-                        await User.findByIdAndUpdate(socket.user_id, { 'socket_ids.messaging_socket': socket.id })
-                        return next();
-                    } else return next(new Error('Failed To Authenticate the User'));
-            }
-        } catch (error) {
-            next(new Error('Failed to Authenticate User'));
-        }
-    });
+    io.use(newSocketMiddleware(SOCKET_USER_TYPE.ALL));
 
     io.on('connection', async (socket: Socket) => {
         socket.emit('connected', { message: 'connection SuccessFull' });

@@ -87,7 +87,7 @@ export async function verifiyToken(auth: { profileType: any, token: any }): Prom
     }
 };
 
-export async function newSocketMiddleware(forUser: SOCKET_USER_TYPE) {
+export function newSocketMiddleware(forUser: SOCKET_USER_TYPE) {
     return async function (socket: Socket, next: (error?: ExtendedError | undefined) => void): Promise<any> {
         try {
             let authHeader = socket.handshake.headers['authorization'];
@@ -102,8 +102,8 @@ export async function newSocketMiddleware(forUser: SOCKET_USER_TYPE) {
             }
 
             let profileType = authHeader.split(':')[0];
-            
-            let token = (z.string().regex(/^[0-9A-Fa-f]{64}$/) ).parse(authHeader.split(':')[1]);
+
+            let token = (z.string().regex(/^[0-9A-Fa-f]{64}$/)).parse(authHeader.split(':')[1]);
 
             if (profileType === SOCKET_USER_TYPE.VIDEO_CALLING_MEMBER && forUser === SOCKET_USER_TYPE.MATRIMONY_MEMBERS) {
                 next(new Error('User Is not allowed in this socket'));
@@ -120,7 +120,7 @@ export async function newSocketMiddleware(forUser: SOCKET_USER_TYPE) {
             if (profileType === SOCKET_USER_TYPE.MATRIMONY_MEMBERS) {
                 let session = await AuthSession.findOne({ key: token, expiration_date: { $gt: new Date() } });
                 if (!session) return next(new Error('User is logged Out'));
-                
+
                 socket.userProfileType = 'matrimonyProfile';
                 socket.user_id = session?.value.userId;
                 return next();
@@ -134,7 +134,7 @@ export async function newSocketMiddleware(forUser: SOCKET_USER_TYPE) {
                 });
                 if (!user) return next(new Error('User is logged Out'));
                 socket.user_id = user._id.toString();
-            socket.userProfileType = 'videoProfile';
+                socket.userProfileType = 'videoProfile';
                 return next();
             }
 
