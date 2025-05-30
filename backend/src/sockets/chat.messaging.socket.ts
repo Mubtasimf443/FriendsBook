@@ -72,6 +72,7 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                             socket.emit('message-initialization-completed', activeRooms)
                         }
                         break;
+
                     case 'videoProfile':
                         let videoUser = await VideoProfile.findById(socket.user_id);
                         if (videoUser) {
@@ -131,8 +132,16 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                 switch (socket.userProfileType) {
                     case 'matrimonyProfile': {
                         let existingRoom = await MessagingRoom.findOne({
-                            memberType: 'matrimony_member',
-                            members: { $all: [messengerId, socket.user_id] }
+                            $or: [
+                                {
+                                    memberType: 'matrimony_member',
+                                    members: { $all: [messengerId , socket.user_id] }
+                                },
+                                {
+                                    memberType: 'matrimony_member',
+                                    members: { $all: [socket.user_id, messengerId] }
+                                }
+                            ],
                         });
                         if (existingRoom) {
                             room_id = existingRoom._id;
@@ -162,7 +171,14 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                     case 'videoProfile': {
                         let existingRoom = await MessagingRoom.findOne({
                             memberType: 'video_calling_member',
-                            members: { $all: [messengerId, socket.user_id] }
+                            $or: [
+                                {
+                                    members: { $all: [messengerId, socket.user_id] }
+                                },
+                                {
+                                    members: { $all: [socket.user_id, messengerId] }
+                                }
+                            ],
                         });
 
                         if (existingRoom) room_id = existingRoom._id;
@@ -315,126 +331,99 @@ export default async function configureChatMessagingSocket(io: Namespace) {
         });
 
 
-        // socket.on('send-gift-event', async (gift_id, roomId) => {
-        //     try {
-        //         if (socket.userProfileType !== 'videoProfile') {
-        //             socket.emit('sent-gift-failed', { message: "Sending Gifts is for Video calling User" });
-        //             return;
-        //         }
+        socket.on('send-gift-event', async (gift_id, roomId) => {
+            try {
+                if (socket.userProfileType !== 'videoProfile') {
+                    socket.emit('sent-gift-failed', { message: "Sending Gifts is for Video calling User" });
+                    return;
+                }
 
-        //         roomId = roomIdSchema.parse(roomId);
-        //         gift_id = _idValidator.parse(gift_id);
+                roomId = roomIdSchema.parse(roomId);
+                gift_id = _idValidator.parse(gift_id);
 
-        //         let room = await MessagingRoom.findOne({
-        //             _id: roomId,
-        //             memberType: "video_calling_member"
-        //         })
-        //         .populate('members');
+                let room = await MessagingRoom.findOne({
+                    _id: roomId,
+                    memberType: "video_calling_member"
+                })
+                .populate('members');
 
-        //         if (!room) {
-        //             throw new Error("Message Room Is not valid");
-        //         }
+                if (!room) {
+                    throw new Error("Message Room Is not valid");
+                }
 
-        //         // 4. Get sender's profile and gift details
-        //         let sender = await VideoProfile.findById(socket.user_id);
-        //         let gift = await Gifts.findById(gift_id);
+                // 4. Get sender's profile and gift details
+                let sender = await VideoProfile.findById(socket.user_id);
+                let gift = await Gifts.findById(gift_id);
 
-        //         if (!sender || !gift) {
-        //             throw new Error("Failed to load sender or gift details");
-        //         }
+                if (!sender || !gift) {
+                    throw new Error("Failed to load sender or gift details");
+                }
 
-        //         // 5. Check if sender has enough coins
-        //         if (sender.video_calling_coins < gift.coins) {
-        //             socket.emit('sent-gift-failed', {
-        //                 message: "Insufficient coins to send this gift"
-        //             });
-        //             return;
-        //         }
+                // 5. Check if sender has enough coins
+                if (sender.video_calling_coins < gift.coins) {
+                    socket.emit('sent-gift-failed', {
+                        message: "Insufficient coins to send this gift"
+                    });
+                    return;
+                }
 
-        //         // 6. Get receiver's profile (the other member in the room)
-        //         let receiver = room.members.find(
-        //             member => member._id.toString() !== socket.user_id
-        //         );
+                // 6. Get receiver's profile (the other member in the room)
+                let receiver = room.members.find(
+                    member => member._id.toString() !== socket.user_id
+                );
 
-        //         if (!receiver) {
-        //             throw new Error("Failed to find gift receiver");
-        //         }
+                if (!receiver) {
+                    throw new Error("Failed to find gift receiver");
+                }
 
-        //         // 7. Transfer coins and update both profiles
-        //         await VideoProfile.findByIdAndUpdate(sender._id, {
-        //             $inc: { video_calling_coins: -gift.coins }
-        //         });
+                // 7. Transfer coins and update both profiles
+                await VideoProfile.findByIdAndUpdate(sender._id, {
+                    $inc: { video_calling_coins: -gift.coins }
+                });
 
-        //         await VideoProfile.findByIdAndUpdate(receiver._id, {
-        //             $inc: { video_calling_coins: gift.coins }
-        //         });
+                await VideoProfile.findByIdAndUpdate(receiver._id, {
+                    $inc: { video_calling_coins: gift.coins }
+                });
 
-        //         // 8. Create a gift message in the chat
-        //         let message = await Message.create({
-        //             room: room._id,
-        //             sender: socket.user_id,
-        //             type: 'gift',
-        //             content: JSON.stringify({
-        //                 gift_id: gift._id,
-        //                 gift_name: gift.name,
-        //                 gift_image: gift.image,
-        //                 coins: gift.coins
-        //             })
-        //         });
+                // 8. Create a gift message in the chat
+                let message = await Message.create({
+                    room: room._id,
+                    sender: socket.user_id,
+                    type: 'gift',
+                    content: JSON.stringify({
+                        gift_id: gift._id,
+                        gift_name: gift.name,
+                        gift_image: gift.image,
+                        coins: gift.coins
+                    })
+                });
 
-        //         // 9. Emit events to both sender and receiver
-        //         // To receiver
-        //         socket.broadcast.to(roomId).emit('received-gift', {
-        //             gift_id: gift._id,
-        //             gift_name: gift.name,
-        //             gift_image: gift.image,
-        //             coins: gift.coins,
-        //             msg_id: message._id,
-        //             sender: socket.user_id,
-        //             senderName: sender.name,
-        //             roomId
-        //         });
+                // 9. Emit events to both sender and receiver
+                // To receiver
+                socket.broadcast.to(roomId).emit('received-gift', {
+                    gift_id: gift._id,
+                    gift_name: gift.name,
+                    gift_image: gift.image,
+                    coins: gift.coins,
+                    msg_id: message._id,
+                    sender: socket.user_id,
+                    senderName: sender.name,
+                    roomId
+                });
 
-        //         // To sender
-        //         socket.emit('gift-send-successful', {
-        //             msg_id: message._id,
-        //             roomId,
-        //             remaining_coins: sender.video_calling_coins - gift.coins
-        //         });
+                // To sender
+                socket.emit('gift-send-successful', {
+                    msg_id: message._id,
+                    roomId,
+                    remaining_coins: sender.video_calling_coins - gift.coins
+                });
 
-        //     } catch (error) {
-        //         console.error(error);
-        //         socket.emit('sent-gift-failed', { message: "Failed to send gift" });
-        //     }
-        // });
-        // // socket.on('send-gift-event', async function (gift_id, roomId) {
-        //     try {
-        //         if (socket.userProfileType === 'matrimonyProfile') {
-        //             socket.emit('sent-gift-failed', { message: "Sending Gifts is for Video calling User" });
-        //             return;
-        //         }
-
-        //         roomId = roomIdSchema.parse(roomId);
-        //         let room = await MessagingRoom.findOne({ _id: roomId , memberType : "video_calling_member"}).populate('members');
-        //         if (!room) throw new Error("Message Room Is not valid");
-
-        //         let userA = await VideoProfile.findById(socket.user_id);
-        //         if (!userA) { 
-        //             throw new Error("Video calling User Does not exist");
-        //         }
-
-        //         let gift = await Gifts.findById(_idValidator.parse(gift_id ));
-
-        //         if (!gift) return socket.emit('sent-gift-failed', { message: "Sending Gifts is for Video calling User" });
+            } catch (error) {
+                console.error(error);
+                socket.emit('sent-gift-failed', { message: "Failed to send gift" });
+            }
+        });
  
-
-        //     } catch (error) {
-        //         console.error(error);
-        //         socket.emit('sent-gift-failed', { message: "Unknown Error" });
-        //     }
-        // });
-
-
 
         socket.on('check-msg' , async (fromDate, roomId ) => {
             try {

@@ -9,7 +9,7 @@ interface IGift {
         url : string ;
         id : string;
     },
-    coins : Number
+    coins : number
     createdAt : Date ,
     updatedAt : Date,
 }
