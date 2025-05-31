@@ -21,7 +21,27 @@ const roomIdSchema = z.string().refine(data => isValidObjectId(data), { message:
 
 export default async function configureChatMessagingSocket(io: Namespace) {
     io.use(newSocketMiddleware(SOCKET_USER_TYPE.ALL));
+    io.use(async (socket, next) => {
+        try {
+            switch (socket.userProfileType) {
+                case 'videoProfile':
+                    await User.findByIdAndUpdate(socket.user_id, {
+                        'socket_ids.messaging_socket': socket.id
+                    });
+                    break;
 
+                case 'matrimonyProfile':
+                    await VideoProfile.findByIdAndUpdate(socket.user_id, {
+                        'socket_ids.messaging_socket': socket.id
+                    });
+                    break;
+            }
+            next();
+        } catch (error) {
+            console.error(`[chat message socket id adding error]`);
+            next(new Error('Unknown Error'))
+        }
+    });
     io.on('connection', async (socket: Socket) => {
         socket.emit('client:connected', { message: 'connection SuccessFull' });
 
@@ -68,7 +88,7 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                                 let db_room = db_rooms.find((room) => {
                                     if (room.user2_id == element._id?.toString()) return room;
                                 });
-                               
+
                                 if (db_room) {
                                     activeRooms.push({
                                         userName: element.name,
@@ -162,7 +182,7 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                         if (!otherUser) return socket.emit('client:message-room-opening-error', { message: "Another User Does Not Exist", messengerId });
 
                         if (otherUser && room_id) {
-                            socket.emit('client:messaging-room-opened',{ roomId : room_id, otherUser , messengerId});
+                            socket.emit('client:messaging-room-opened', { roomId: room_id, otherUser, messengerId });
                             return;
                         }
                         let room = await MessagingRoom.create({
@@ -172,10 +192,10 @@ export default async function configureChatMessagingSocket(io: Namespace) {
 
                         await User.findByIdAndUpdate(socket.user_id, { $addToSet: { 'messagingRooms.connectedRooms': room._id } });
                         await User.findByIdAndUpdate(otherUser._id, { $addToSet: { 'messagingRooms.connectedRooms': room._id } });
-                        
+
                         let userA = await User.findById(socket.user_id, 'name profileImage _id').lean();
                         if (otherUser.socket_ids?.messaging_socket) io.to(otherUser.socket_ids.messaging_socket).emit('client:messaging-room-opened', { roomId: room._id, otherUser: userA });
-                        socket.emit('client:messaging-room-opened', { roomId: room._id, otherUser ,messengerId});
+                        socket.emit('client:messaging-room-opened', { roomId: room._id, otherUser, messengerId });
                         return;
                     };
                     case 'videoProfile': {
@@ -198,7 +218,7 @@ export default async function configureChatMessagingSocket(io: Namespace) {
 
                         if (otherUser && room_id) {
 
-                            return socket.emit('client:messaging-room-opened', { roomId : room_id, otherUser , messengerId} );
+                            return socket.emit('client:messaging-room-opened', { roomId: room_id, otherUser, messengerId });
                         }
 
                         let room = await MessagingRoom.create({
@@ -209,8 +229,8 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                         await VideoProfile.findByIdAndUpdate(socket.user_id, { $addToSet: { 'messagingRooms.connectedRooms': room._id } });
                         await VideoProfile.findByIdAndUpdate(otherUser._id, { $addToSet: { 'messagingRooms.connectedRooms': room._id } });
                         let userA = await User.findById(socket.user_id);
-                        if (otherUser.socket_ids?.messaging_socket) io.to(otherUser.socket_ids.messaging_socket).emit('client:messaging-room-opened', { roomId: room._id, otherUser: userA , messengerId });
-                        socket.emit('client:messaging-room-opened', { roomId: room._id, otherUser , messengerId});
+                        if (otherUser.socket_ids?.messaging_socket) io.to(otherUser.socket_ids.messaging_socket).emit('client:messaging-room-opened', { roomId: room._id, otherUser: userA, messengerId });
+                        socket.emit('client:messaging-room-opened', { roomId: room._id, otherUser, messengerId });
                         return;
                     };
                 }
@@ -261,7 +281,7 @@ export default async function configureChatMessagingSocket(io: Namespace) {
             }
         });
 
-        socket.on('server:send-message-event', async function (msg , msg_id, roomId , ) {
+        socket.on('server:send-message-event', async function (msg, msg_id, roomId,) {
             try {
                 msg = (z.string().trim()
                     .min(1)
@@ -281,7 +301,7 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                     )
                 ).parse(msg);
 
-                msg_id= uuidValidator.parse(msg_id)
+                msg_id = uuidValidator.parse(msg_id)
                 roomId = roomIdSchema.parse(roomId);
 
                 let room = await MessagingRoom.findOne({ _id: roomId });
@@ -295,7 +315,7 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                     sender: socket.user_id,
                     type: 'text',
                     content: msg,
-                    id : msg_id
+                    id: msg_id
                 });
 
                 socket.broadcast.to(roomId).emit('client:unseen-message', {
@@ -306,7 +326,7 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                     roomId,
                 });
 
-                socket.emit('client:message-send-successful', { msg_id,message_id: message._id , roomId });
+                socket.emit('client:message-send-successful', { msg_id, message_id: message._id, roomId });
                 return;
             } catch (error) {
                 error instanceof Error ? console.log(error.message) : console.error(error);
@@ -315,10 +335,10 @@ export default async function configureChatMessagingSocket(io: Namespace) {
         });
 
 
-        socket.on('server:send-image-event', async function (url, msg_id , roomId) {
+        socket.on('server:send-image-event', async function (url, msg_id, roomId) {
             try {
                 (z.object({ url: z.string().url().trim(), roomId: z.string().uuid().trim() })).parse({ url, roomId });
-                
+
                 roomId = _idValidator.parse(roomId);
                 msg_id = uuidValidator.parse(msg_id);
 
@@ -333,29 +353,29 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                     room: room._id,
                     sender: socket.user_id,
                     type: 'image',
-                    content: url ,
-                    id : msg_id
+                    content: url,
+                    id: msg_id
                 });
 
                 socket.broadcast.to(roomId).emit('client:unseen-image', {
                     image: url,
-                    msg_id ,
-                    message_id : message._id ,
+                    msg_id,
+                    message_id: message._id,
                     sender: socket.user_id,
                     roomId
                 });
 
-                socket.emit('client:image-send-successful', { message_id: message._id,msg_id , roomId });
+                socket.emit('client:image-send-successful', { message_id: message._id, msg_id, roomId });
 
                 return;
             } catch (error) {
-                 error instanceof Error ? console.log(error.message) : console.error(error);;
-                socket.emit('client:sent-image-failed', {  msg_id });
+                error instanceof Error ? console.log(error.message) : console.error(error);;
+                socket.emit('client:sent-image-failed', { msg_id });
             }
         });
 
 
-        socket.on('server:send-pdf-event', async function (pdf_id, pdfName,msg_id , roomId) {
+        socket.on('server:send-pdf-event', async function (pdf_id, pdfName, msg_id, roomId) {
             try {
                 [pdf_id, pdfName, roomId, msg_id] = [
                     uuidValidator.parse(pdf_id),
@@ -376,7 +396,7 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                     sender: socket.user_id,
                     type: 'pdf',
                     content: pdf_id,
-                    id : msg_id
+                    id: msg_id
                 });
 
 
@@ -384,21 +404,21 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                     pdf_id,
                     pdfName,
                     message_id: message._id,
-                    msg_id ,
+                    msg_id,
                     sender: socket.user_id,
                     roomId
                 });
 
-                socket.emit('client:pdf-send-successful', { message_id: message._id , msg_id, roomId });
+                socket.emit('client:pdf-send-successful', { message_id: message._id, msg_id, roomId });
 
             } catch (error) {
                 error instanceof Error ? console.log(error.message) : console.error(error);;
-                socket.emit('client:sent-pdf-failed', {msg_id });
+                socket.emit('client:sent-pdf-failed', { msg_id });
             }
         });
 
 
-        socket.on('server:send-gift-event', async (gift_id , msg_id , roomId) => {
+        socket.on('server:send-gift-event', async (gift_id, msg_id, roomId) => {
             try {
                 if (socket.userProfileType !== 'videoProfile') {
                     socket.emit('client:sent-gift-failed', { message: "Sending Gifts is for Video calling User" });
@@ -415,9 +435,9 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                 })
 
 
-                if (!room)  throw new Error("Message Room Is not valid");
+                if (!room) throw new Error("Message Room Is not valid");
                 if (!room.members.includes(new mongoose.Types.ObjectId(socket.user_id))) throw new Error('Not authorized to message in this room');
-                
+
 
 
                 // 4. Get sender's profile and gift details
@@ -425,7 +445,7 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                 let gift = await Gifts.findById(gift_id);
 
                 if (!sender || !gift) throw new Error("Failed to load sender or gift details");
-                
+
 
                 // 5. Check if sender has enough coins
                 if (sender.video_calling_coins < gift.coins) {
@@ -444,7 +464,7 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                     throw new Error("Failed to find gift receiver");
                 }
 
-              
+
                 // await VideoProfile.findByIdAndUpdate(sender._id, {
                 //     $inc: { video_calling_coins: -gift.coins }
                 // });
@@ -457,16 +477,16 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                     room: room._id,
                     sender: socket.user_id,
                     type: 'gift',
-                    content: gift._id.toString() ,
-                    id : msg_id 
+                    content: gift._id.toString(),
+                    id: msg_id
                 });
 
-                
+
                 socket.broadcast.to(roomId).emit('client:received-gift', {
                     gift_id: gift._id,
                     gift_name: gift.name,
                     gift_image: gift.image,
-                    msg_id ,
+                    msg_id,
                     // coins: gift.coins,
                     message_id: message._id,
                     sender: socket.user_id,
@@ -501,7 +521,7 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                 let room = await MessagingRoom.findOne({ _id: roomId, memberType: "video_calling_member" }).populate('members');
                 if (!room) throw new Error("Message Room Is not valid");
 
-                let messages : any[] = await Message.find(
+                let messages: any[] = await Message.find(
                     {
                         createdAt: { $gte: fromDate },
                         room: room._id,
@@ -510,13 +530,13 @@ export default async function configureChatMessagingSocket(io: Namespace) {
                     "type content id"
                 ).lean();
 
-                messages =messages.map(function(message) {
-                    message.msg_id = message.id ;
-                    delete message.id ;
+                messages = messages.map(function (message) {
+                    message.msg_id = message.id;
+                    delete message.id;
                     return message;
                 });
 
-                socket.emit('client:found-prev-message', { roomId, messages  , fromDate});
+                socket.emit('client:found-prev-message', { roomId, messages, fromDate });
                 return;
             } catch (error) {
                 error instanceof Error ? console.log(error.message) : console.error(error);;
