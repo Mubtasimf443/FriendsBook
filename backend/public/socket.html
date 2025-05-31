@@ -1,28 +1,304 @@
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Socket Client </title>
+    <title>Socket Client with Event Listeners</title>
     <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"
         integrity="sha384-mkQ3/7FUtcGyoppY6bz/PORYoGqOl7/aSUMn2ymDOJcapfS6PHqxhRTMh1RR0Q6+"
         crossorigin="anonymous"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
 
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .event-log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .event-item {
+            padding: 8px;
+            margin: 5px 0;
+            border-left: 4px solid #007bff;
+            background: white;
+            border-radius: 4px;
+        }
+
+        .event-name {
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .event-data {
+            font-family: monospace;
+            color: #6c757d;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .clear-btn {
+            background-color: #6c757d;
+        }
+
+        .clear-btn:hover {
+            background-color: #545b62;
+        }
+    </style>
 </head>
 
 <body>
+    <div class="container">
+        <h1>Socket Client Event Monitor</h1>
 
-    <main>
-    </main>
+        <div id="connectionStatus" class="status disconnected">
+            Disconnected
+        </div>
+
+        <div>
+            <button onclick="initializeMessage()">Initialize Message</button>
+            <button onclick="joinTestRoom()">Join Test Room</button>
+            <button onclick="openTestRoom()">Open Test Room</button>
+            <button onclick="sendTestMessage()">Send Test Message</button>
+            <button onclick="clearLog()" class="clear-btn">Clear Log</button>
+        </div>
+
+        <div class="event-log">
+            <h3>Event Log:</h3>
+            <div id="eventLog"></div>
+        </div>
+    </div>
+
     <script>
-        let token = '';
-        let profileType = 'video_calling_member' ; 
+        let token = prompt('Give You auth Token') || '197c41fe3f883284866b89e336cfd63cec522eb0f58ff7d08fe269c3c6278b21';
+        let profileType = 'matrimony_members'; // video_calling_members or matrimony_members
         let socketAuthHeader = `${profileType}:${token}`;
-        const socket = io('/random-video-call', {
-            auth: {
-                token,
-                profileType
+
+        const socket = io('/socket/chat-messaging', {
+            extraHeaders: {
+                'Authorization': socketAuthHeader
             }
+        });
+
+        const eventLog = document.getElementById('eventLog');
+        const connectionStatus = document.getElementById('connectionStatus');
+
+        // Helper function to log events
+        function logEvent(eventName, data) {
+            const eventItem = document.createElement('div');
+            eventItem.className = 'event-item';
+
+            const timestamp = new Date().toLocaleTimeString();
+            eventItem.innerHTML = `
+                <div class="event-name">[${timestamp}] ${eventName}</div>
+                <div class="event-data">${JSON.stringify(data, null, 2)}</div>
+            `;
+
+            eventLog.insertBefore(eventItem, eventLog.firstChild);
+
+            // Also show browser alert for important events
+            if (eventName.includes('error') || eventName.includes('failed')) {
+                alert(`❌ ${eventName}: ${JSON.stringify(data)}`);
+            } else if (eventName.includes('successful') || eventName.includes('completed')) {
+                alert(`✅ ${eventName}: ${JSON.stringify(data)}`);
+            }
+        }
+
+        // Connection events
+        socket.on('connect', () => {
+            connectionStatus.textContent = 'Connected';
+            connectionStatus.className = 'status connected';
+            logEvent('Connected to server', { socketId: socket.id });
+        });
+
+        socket.on('disconnect', () => {
+            connectionStatus.textContent = 'Disconnected';
+            connectionStatus.className = 'status disconnected';
+            logEvent('Disconnected from server', {});
+        });
+
+        // Listen to all client events from your socket server
+        socket.on('client:connected', (data) => {
+            logEvent('client:connected', data);
+        });
+
+        socket.on('client:message-initialization-completed', (data) => {
+            logEvent('client:message-initialization-completed', data);
+        });
+
+        socket.on('client:initialize-message-error', (data) => {
+            logEvent('client:initialize-message-error', data);
+        });
+
+        socket.on('client:messaging-room-opened', (roomId, otherUser) => {
+            logEvent('client:messaging-room-opened', { roomId, otherUser });
+        });
+
+        socket.on('client:message-room-opening-error', (data) => {
+            logEvent('client:message-room-opening-error', data);
+        });
+
+        socket.on('client:joined-room', (data) => {
+            logEvent('client:joined-room', data);
+        });
+
+        socket.on('client:join-room-error', (data) => {
+            logEvent('client:join-room-error', data);
+        });
+
+        socket.on('client:user-typing', (data) => {
+            logEvent('client:user-typing', data);
+        });
+
+        socket.on('client:user-stopped-typing', (data) => {
+            logEvent('client:user-stopped-typing', data);
+        });
+
+        socket.on('client:unseen-message', (data) => {
+            logEvent('client:unseen-message', data);
+        });
+
+        socket.on('client:message-send-successful', (data) => {
+            logEvent('client:message-send-successful', data);
+        });
+
+        socket.on('client:sent-message-failed', (data) => {
+            logEvent('client:sent-message-failed', data);
+        });
+
+        socket.on('client:unseen-image', (data) => {
+            logEvent('client:unseen-image', data);
+        });
+
+        socket.on('client:image-send-successful', (data) => {
+            logEvent('client:image-send-successful', data);
+        });
+
+        socket.on('client:sent-image-failed', (data) => {
+            logEvent('client:sent-image-failed', data);
+        });
+
+        socket.on('client:unseen-pdf', (data) => {
+            logEvent('client:unseen-pdf', data);
+        });
+
+        socket.on('client:pdf-send-successful', (data) => {
+            logEvent('client:pdf-send-successful', data);
+        });
+
+        socket.on('client:sent-pdf-failed', (data) => {
+            logEvent('client:sent-pdf-failed', data);
+        });
+
+        socket.on('client:received-gift', (data) => {
+            logEvent('client:received-gift', data);
+        });
+
+        socket.on('client:gift-send-successful', (data) => {
+            logEvent('client:gift-send-successful', data);
+        });
+
+        socket.on('client:sent-gift-failed', (data) => {
+            logEvent('client:sent-gift-failed', data);
+        });
+
+        socket.on('client:found-prev-message', (data) => {
+            logEvent('client:found-prev-message', data);
+        });
+
+        socket.on('client:check-msg-error', (data) => {
+            logEvent('client:check-msg-error', data);
+        });
+
+
+        function openTestRoom() {
+            const messagerId = prompt('Enter Messenger ID to join:');
+            if (messagerId) {
+                socket.emit('server:open-message-room', messagerId);
+            }
+        }
+        // Test functions
+        function initializeMessage() {
+            socket.emit('server:initialize-message');
+            logEvent('Sent: server:initialize-message', {});
+        }
+
+        function joinTestRoom() {
+            const roomId = prompt('Enter Room ID to join:');
+            if (roomId) {
+                socket.emit('server:join-room', roomId);
+                logEvent('Sent: server:join-room', { roomId });
+            }
+        }
+
+        function sendTestMessage() {
+            const message = prompt('Enter message to send:');
+            const roomId = prompt('Enter Room ID:');
+            if (message && roomId) {
+                let msg_id = crypto.randomUUID();
+                socket.emit('server:send-message-event', message, msg_id, roomId);
+                logEvent('Sent: server:send-message-event', { message, msg_id, roomId });
+            }
+        }
+
+        function clearLog() {
+            eventLog.innerHTML = '<h3>Event Log:</h3>';
+        }
+
+        // Auto-initialize on connection
+        socket.on('client:connected', () => {
+            setTimeout(() => {
+                initializeMessage();
+            }, 1000);
         });
     </script>
 </body>

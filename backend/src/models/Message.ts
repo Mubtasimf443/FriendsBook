@@ -1,10 +1,11 @@
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
-import { Types , Schema , model} from "mongoose";
+import { Types, Schema, model } from "mongoose";
 
 
 type MessageType = 'text' | 'image' | 'gift' | 'coin' | 'system';
 
 interface IMessage extends Document {
+  id: string;
   _id: Types.ObjectId;
   room: Types.ObjectId;
   sender: Types.ObjectId;
@@ -17,6 +18,7 @@ interface IMessage extends Document {
 
 const MessageSchema = new Schema<IMessage>(
   {
+    id: String,
     room: {
       type: Schema.Types.ObjectId,
       ref: 'MessagingRoom',
@@ -39,6 +41,7 @@ const MessageSchema = new Schema<IMessage>(
       type: Schema.Types.Mixed,
       default: {},
     },
+
   },
   { timestamps: true }
 );

@@ -7,6 +7,7 @@ import AuthSession from "../../models/AuthSession";
 import { z } from "zod";
 import { authSessionValidation } from "../schema/auth.schema";
 import { SOCKET_USER_TYPE } from "../types/socket.types";
+import { log } from "console";
 
 export async function socketMiddlewares(socket: Socket, next: (error?: ExtendedError | undefined) => void): Promise<any> {
     try {
@@ -90,15 +91,15 @@ export async function verifiyToken(auth: { profileType: any, token: any }): Prom
 export function newSocketMiddleware(forUser: SOCKET_USER_TYPE) {
     return async function (socket: Socket, next: (error?: ExtendedError | undefined) => void): Promise<any> {
         try {
+          
             let authHeader = socket.handshake.headers['authorization'];
-
             if (
-                !authHeader || !authHeader.includes(':')
+                !authHeader 
+                || !authHeader.includes(':')
                 || (!authHeader.startsWith(SOCKET_USER_TYPE.MATRIMONY_MEMBERS) && !authHeader.startsWith(SOCKET_USER_TYPE.VIDEO_CALLING_MEMBER))
                 || authHeader.split(':').length !== 2
             ) {
-                next(new Error('Socket Io authentication error : AuthToken is invalid'));
-                return;
+                throw new Error('Socket Io authentication error : AuthToken is invalid');
             }
 
             let profileType = authHeader.split(':')[0];
@@ -106,14 +107,12 @@ export function newSocketMiddleware(forUser: SOCKET_USER_TYPE) {
             let token = (z.string().regex(/^[0-9A-Fa-f]{64}$/)).parse(authHeader.split(':')[1]);
 
             if (profileType === SOCKET_USER_TYPE.VIDEO_CALLING_MEMBER && forUser === SOCKET_USER_TYPE.MATRIMONY_MEMBERS) {
-                next(new Error('User Is not allowed in this socket'));
-                return;
+                throw (new Error('User Is not allowed in this socket'));
             }
 
 
             if (profileType === SOCKET_USER_TYPE.MATRIMONY_MEMBERS && forUser === SOCKET_USER_TYPE.VIDEO_CALLING_MEMBER) {
-                next(new Error('User Is not allowed in this socket'));
-                return;
+                throw (new Error('User Is not allowed in this socket'));
             }
 
 
@@ -138,7 +137,12 @@ export function newSocketMiddleware(forUser: SOCKET_USER_TYPE) {
                 return next();
             }
 
-        } catch (error) {
+        } catch (error :any) {
+            if (error instanceof Error ) {
+                console.error('Socket authentication error:', error.message);
+                next(new Error(error.message));
+                return;
+            }
             console.error('Socket authentication error:', error);
             next(new Error('Socket Io authentication error'))
         }
