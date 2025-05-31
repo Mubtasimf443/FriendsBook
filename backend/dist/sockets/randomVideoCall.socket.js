@@ -15,40 +15,29 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.randomVideoCallSocketService = exports.roomIdSchema = void 0;
 require("../lib/types/socket.decralation");
+const socket_middleware_1 = require("../lib/middlewares/socket.middleware");
 const RandomVideoCall_1 = require("../models/RandomVideoCall");
 const zod_1 = require("zod");
 const crypto_1 = require("crypto");
 const VideoProfile_1 = __importDefault(require("../models/VideoProfile"));
-const auth_schema_1 = require("../lib/schema/auth.schema");
+const socket_types_1 = require("../lib/types/socket.types");
 const VIDEO_CALL_DURATION = 20 * 1000; // 20 seconds in milliseconds
 exports.roomIdSchema = zod_1.z.string().uuid();
 class randomVideoCallSocketService {
     constructor(io) {
         this.activeCallTimers = new Map();
         this.io = io;
+        this.io.use((0, socket_middleware_1.newSocketMiddleware)(socket_types_1.SOCKET_USER_TYPE.VIDEO_CALLING_MEMBER));
         this.io.use(function (socket, next) {
             return __awaiter(this, void 0, void 0, function* () {
                 try {
-                    let { token, profileType } = yield socket.handshake.auth;
-                    token = auth_schema_1.authSessionValidation.parse(token);
-                    if (profileType === 'video_calling_member') {
-                        let videoCallingMember = yield VideoProfile_1.default.findOne({ 'auth.authSession': token });
-                        if (videoCallingMember) {
-                            socket.user_id = videoCallingMember._id.toString();
-                            socket.userProfileType = 'videoProfile';
-                            socket.user = videoCallingMember;
-                            videoCallingMember.socket_ids.video_calling_socket = socket.id;
-                            yield videoCallingMember.save();
-                            return next();
-                        }
-                        else
-                            return next(new Error('Failed To Authenticate the User'));
-                    }
-                    else
-                        return next(new Error('Failed To Authenticate the User'));
+                    yield VideoProfile_1.default.findByIdAndUpdate(socket.user_id, {
+                        'socket_ids.random_video_calling_socket': socket.id
+                    });
                 }
                 catch (error) {
-                    next(new Error('Failed to Authenticate User'));
+                    error instanceof Error ? console.error(`[random video call socket setup error]`, error.message) : console.error(`[random video call socket setup error]`, error);
+                    next(new Error('Video Calling Socket Setup error'));
                 }
             });
         });
@@ -59,7 +48,6 @@ class randomVideoCallSocketService {
             this.io.on('connection', (socket) => {
                 var _a;
                 this.cleanupUserSessions((_a = socket.user) === null || _a === void 0 ? void 0 : _a._id);
-                socket.emit('connected', { data: null });
                 socket.on('init-video-call', () => __awaiter(this, void 0, void 0, function* () {
                     try {
                         let roomId = (0, crypto_1.randomUUID)();
@@ -84,7 +72,7 @@ class randomVideoCallSocketService {
                         if (!randomVideoCall)
                             throw new Error("Cannot find Random video call created in the database");
                         socket.emit('connecting', { data: null });
-                        let arr = [1, 2, 1, 2];
+                        let arr = [1, 2, 1, 2, 1, 2];
                         let startSearchNow = ((arr) => {
                             let randomNum = Math.floor(arr.length * Math.random());
                             return arr[randomNum] === 1;
@@ -202,7 +190,14 @@ class randomVideoCallSocketService {
                         console.error(error);
                     }
                 }));
-                socket.on('disconnect', () => __awaiter(this, void 0, void 0, function* () { }));
+                socket.on('disconnect', () => __awaiter(this, void 0, void 0, function* () {
+                    try {
+                        yield VideoProfile_1.default.findByIdAndUpdate(socket.user_id, { 'socket_ids.random_video_calling_socket': null });
+                    }
+                    catch (error) {
+                        error instanceof Error ? console.error(`[random video call socket removing error]`, error.message) : console.error(`[random video call socket removing error]`, error);
+                    }
+                }));
             });
         });
     }

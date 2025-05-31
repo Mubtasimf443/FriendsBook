@@ -179,9 +179,12 @@
                 socket.disconnect();
             }
 
-            socket = io('https://friendsbook-admin.onrender.com/socket/chat-messaging', {
+            let authHeader =  `${profileType}:${token}` ;
+            console.log(authHeader);
+            
+            socket = io('/socket/chat-messaging', {
                 extraHeaders: {
-                    'Authorization': `${profileType}:${token}`
+                    'Authorization':authHeader
                 }
             });
 

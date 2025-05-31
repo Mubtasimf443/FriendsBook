@@ -99,37 +99,49 @@ function newSocketMiddleware(forUser) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 let authHeader = socket.handshake.headers['authorization'];
-                if (!authHeader
-                    || !authHeader.includes(':')
-                    || (!authHeader.startsWith(socket_types_1.SOCKET_USER_TYPE.MATRIMONY_MEMBERS) && !authHeader.startsWith(socket_types_1.SOCKET_USER_TYPE.VIDEO_CALLING_MEMBER))
-                    || authHeader.split(':').length !== 2) {
-                    throw new Error('Socket Io authentication error : AuthToken is invalid');
+                // log(authHeader)
+                if (!authHeader) {
+                    throw new Error('Socket Authentication Error: Auth header is missing');
+                }
+                if (!authHeader.includes(':')) {
+                    throw new Error('Socket Authentication Error: Invalid auth header format - missing separator');
+                }
+                const isValidUserType = (authHeader.startsWith(socket_types_1.SOCKET_USER_TYPE.MATRIMONY_MEMBERS) ||
+                    authHeader.startsWith(socket_types_1.SOCKET_USER_TYPE.VIDEO_CALLING_MEMBER));
+                if (!isValidUserType) {
+                    throw new Error('Socket Authentication Error: Invalid user type');
+                }
+                const authParts = authHeader.split(':');
+                if (authParts.length !== 2) {
+                    throw new Error('Socket Authentication Error: Invalid auth header format - wrong number of parts');
                 }
                 let profileType = authHeader.split(':')[0];
                 let token = (zod_1.z.string().regex(/^[0-9A-Fa-f]{64}$/)).parse(authHeader.split(':')[1]);
+                // log([profileType , token])
                 if (profileType === socket_types_1.SOCKET_USER_TYPE.VIDEO_CALLING_MEMBER && forUser === socket_types_1.SOCKET_USER_TYPE.MATRIMONY_MEMBERS) {
-                    throw (new Error('User Is not allowed in this socket'));
+                    throw new Error('User Is not allowed in this socket');
                 }
                 if (profileType === socket_types_1.SOCKET_USER_TYPE.MATRIMONY_MEMBERS && forUser === socket_types_1.SOCKET_USER_TYPE.VIDEO_CALLING_MEMBER) {
-                    throw (new Error('User Is not allowed in this socket'));
+                    throw new Error('User Is not allowed in this socket');
                 }
                 if (profileType === socket_types_1.SOCKET_USER_TYPE.MATRIMONY_MEMBERS) {
                     let session = yield AuthSession_1.default.findOne({ key: token, expiration_date: { $gt: new Date() } });
                     if (!session)
-                        return next(new Error('User is logged Out'));
+                        throw new Error('User is logged Out');
                     socket.userProfileType = 'matrimonyProfile';
                     socket.user_id = session === null || session === void 0 ? void 0 : session.value.userId;
                     return next();
                 }
-                if (profileType === socket_types_1.SOCKET_USER_TYPE.MATRIMONY_MEMBERS) {
+                if (profileType === socket_types_1.SOCKET_USER_TYPE.VIDEO_CALLING_MEMBER) {
                     let user = yield VideoProfile_1.default.findOne({
                         'auth.authSession': token,
                         'auth.session_exp_date': { $gt: new Date() }
                     });
                     if (!user)
-                        return next(new Error('User is logged Out'));
+                        throw new Error('User is logged Out');
                     socket.user_id = user._id.toString();
                     socket.userProfileType = 'videoProfile';
+                    // log(user._id)
                     return next();
                 }
             }
