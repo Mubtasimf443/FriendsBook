@@ -44,6 +44,7 @@ router.post('/upload/image', upload.single('image'), async function (req: Reques
         }
     };
     try {
+
         const validationResult = createImageAssetSchema.safeParse({
             name: file.originalname,
             asset_type: AssetType.IMAGE,

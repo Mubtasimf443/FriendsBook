@@ -4,6 +4,7 @@ exports.Message = void 0;
 /* بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ ﷺ InshaAllah */
 const mongoose_1 = require("mongoose");
 const MessageSchema = new mongoose_1.Schema({
+    id: String,
     room: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'MessagingRoom',

@@ -21,6 +21,7 @@ const roomIdSchema = z.string().refine(data => isValidObjectId(data), { message:
 
 export default async function configureChatMessagingSocket(io: Namespace) {
     io.use(newSocketMiddleware(SOCKET_USER_TYPE.ALL));
+   
     io.use(async (socket, next) => {
         try {
             switch (socket.userProfileType) {
@@ -42,6 +43,8 @@ export default async function configureChatMessagingSocket(io: Namespace) {
             next(new Error('Unknown Error'))
         }
     });
+
+
     io.on('connection', async (socket: Socket) => {
         socket.emit('client:connected', { message: 'connection SuccessFull' });
 
