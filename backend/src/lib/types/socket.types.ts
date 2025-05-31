@@ -6,3 +6,4 @@ export enum SOCKET_USER_TYPE {
     VIDEO_CALLING_MEMBER="video_calling_members",
     MATRIMONY_MEMBERS = 'matrimony_members'
 }
+

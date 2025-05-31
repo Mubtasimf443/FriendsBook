@@ -1,197 +1,30 @@
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Socket Client </title>
-    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js" integrity="sha384-mkQ3/7FUtcGyoppY6bz/PORYoGqOl7/aSUMn2ymDOJcapfS6PHqxhRTMh1RR0Q6+" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"
+        integrity="sha384-mkQ3/7FUtcGyoppY6bz/PORYoGqOl7/aSUMn2ymDOJcapfS6PHqxhRTMh1RR0Q6+"
+        crossorigin="anonymous"></script>
+
 </head>
+
 <body>
 
     <main>
-        <div id="div1" style="display: flex; flex-direction: column;row-gap: 10px;">
-            <label for=""> Auth Token</label>
-            <input type="text" name="" id="token_inp">
-            <button onclick="initSocket()">Connect</button>
-         
-        </div>
-        
-        <button id="cn-btn" style="display: none;">Connect </button>
-        <section id="video-sec" style="display: flex; flex-direction: row;column-gap: 15px;">
-            <video src="" id="v1"></video>
-            <video src="" id="v2" style="display: none;"></video>
-        </section>
-
-        <button id="stop-call" style="display: none;color: white;background: red;">Stop Call</button>
     </main>
     <script>
-
-        const cnBtn =  document.getElementById('cn-btn');
-        const videoSec =  document.getElementById('video-sec');
-        const stopCall = document.getElementById('stop-call');
-        let roomId = '';
-        let my_webrtc_signal = undefined;
-        let call ;
-        var myStream ;
-        let v1 =document.getElementById('v1'), v2 =document.getElementById('v2');
-
-
-
-
-
-
-        // 9e061bc7e0a22082c94fc63ff2bedef7f70aa9ca11d6f7d90b96ddd7d54a131b
-        function initSocket(event =new CustomEvent('click')) {
-            event.preventDefault();
-            let token = document.getElementById('token_inp').value ;
-            if (token.trim() === '') return alert('Please Give Auth Token');
-            document.getElementById('div1').style.display = 'none';
-       
-            const socket = io('/random-video-call' , {
-                auth : {
-                    token ,
-                    profileType: 'video_calling_member'
-                }
-            });
-
-            var peer = new Peer(undefined, {
-            config: {
-                iceServers: [
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" },
-      { urls: "stun:stun2.l.google.com:19302" },
-      { urls: "stun:stun3.l.google.com:19302" },
-      { urls: "stun:stun4.l.google.com:19302" },
-      { urls: "stun:stun.stunprotocol.org:3478" },
-      { urls: "stun:stun.sipnet.net:3478" },
-      { urls: "stun:stun.ideasip.com:3478" },
-      { urls: "stun:stun.voiparound.com:3478" },
-      { urls: "stun:stun.voipbuster.com:3478" },
-      { urls: "stun:stun.voipstunt.com:3478" },
-      { urls: "stun:stun.counterpath.com:3478" },
-      { urls: "stun:stun.callwithus.com:3478" },
-      { urls: "stun:stun.fwdnet.net:3478" },
-      { urls: "stun:stun.gmx.net:3478" },
-      { urls: "stun:stun.internetcalls.com:3478" },
-      { urls: "stun:stun1.voiceeclipse.net:3478" }
-    ]
-}
-});
-
-            peer.on('open' , function(id) { 
-                my_webrtc_signal = id;
-                socket.emit('init-video-call')
-            })
-           
-            navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-                .then(
-                    function (stream)  {
-                        v1.srcObject = stream
-                        v1.addEventListener('loadedmetadata', () => {
-                            v1.play()
-                        });
-                        myStream =stream;
-                    }
-                );
-                        
-                
-           
-            socket.on('video-call-initialized' , (response) => {
-                roomId = response.data.roomId;
-              
-                cnBtn.style.display= 'flex'
-            });
-
-
-            cnBtn.onclick= function() {
-                socket.emit('connect-video-call' , roomId )
+        let token = '';
+        let profileType = 'video_calling_member' ; 
+        let socketAuthHeader = `${profileType}:${token}`;
+        const socket = io('/random-video-call', {
+            auth: {
+                token,
+                profileType
             }
-
-            // socket.on('connected' , () => alert('connected') );
-            socket.on('connecting' , () => {
-                alert('Connenting You account')
-            });
-
-            socket.on('not-connected' , () => {
-
-            });
-
-          
-           
-           
-            socket.on('call-user' , (webrtcSignal) => {
-                if (confirm('Do You want to call the user peerId =' +webrtcSignal)) {
-                    if (typeof myStream.getTracks !=="function") {
-                        console.log({
-                            myStream
-                        });
-                       
-                    }
-                    let call = peer.call(webrtcSignal , myStream);
-
-                    setUpCall(call)
-                }
-               
-            });
-                
-         
-
-            peer.on('call', (call) => {
-                call.answer( myStream );
-                setUpCall(call);
-
-               
-            });
-
-           
-            socket.on('give-peer-details' , function(User_b_room_id) {
-                cnBtn.style.display= 'none'
-                
-                 socket.emit('peer-details' , my_webrtc_signal , User_b_room_id);
-                
-            });
-
-
-             function setUpCall(call) {
-                call.on('stream' , (stream) => {
-                    alert('recieving streem')
-                    v2.style.display= 'flex' ;
-                    v2.srcObject=stream;
-                    v2.addEventListener('loadedmetadata', () => {
-                        v2.play()
-                    });
-                    stopCall.style.display = 'flex';
-                    stopCall.addEventListener('click' , (event) => {
-                        event.preventDefault();
-                        if (confirm('Do You want to leave the call') ) {
-                            socket.emit('stop-video-call' , roomId);
-                            call.close();
-                        };
-
-                        socket.on('end-call' , (roomId ) => {
-                            alert('stoping the call after 20 seconds');
-                            call.close();
-                            socket.emit('leave-call-room' , roomId);
-                        });
-                    })
-
-
-                })
-            }
-
-            socket.on('connection-created' , () => {
-                cnBtn.style.display= 'none'
-            });
-
-
-          
-            socket.on('connection-creation-failed' , () => alert('connection-creation-failed'));
-
-          
-        }
-         
-        
-       
+        });
     </script>
 </body>
+
 </html>
