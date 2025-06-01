@@ -38,7 +38,6 @@ const RandomVideoCallSchema: Schema = new Schema(
       type: Schema.Types.ObjectId,
       ref: 'VideoProfile',
     },
-
     roomId : {
       type : String
     },
@@ -48,9 +47,5 @@ const RandomVideoCallSchema: Schema = new Schema(
   { timestamps: true }
 );
 
-// Index for geospatial queries
-RandomVideoCallSchema.index({ location: '2dsphere' });
-// Index for fast status lookups
-RandomVideoCallSchema.index({ status: 1 });
 
 export const RandomVideoCall = mongoose.model<IRandomVideoCall>('RandomVideoCall', RandomVideoCallSchema);

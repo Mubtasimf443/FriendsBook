@@ -27,10 +27,10 @@ export class randomVideoCallSocketService {
     constructor(io: Namespace) {
         this.io = io;
         this.io.use(newSocketMiddleware(SOCKET_USER_TYPE.VIDEO_CALLING_MEMBER));
-        this.io.use(async function (socket , next) {
+        this.io.use(async function (socket, next) {
             try {
-                await VideoProfile.findByIdAndUpdate(socket.user_id , {
-                    'socket_ids.random_video_calling_socket' : socket.id
+                await VideoProfile.findByIdAndUpdate(socket.user_id, {
+                    'socket_ids.random_video_calling_socket': socket.id
                 });
             } catch (error) {
                 error instanceof Error ? console.error(`[random video call socket setup error]`, error.message) : console.error(`[random video call socket setup error]`, error);
@@ -47,19 +47,19 @@ export class randomVideoCallSocketService {
             socket.on('init-video-call', async () => {
                 try {
                     let roomId = randomUUID();
-            
+
                     const randomVideoCall = new RandomVideoCall({
                         userId: socket.user._id,
                         status: 'searching',
                         roomId: roomId,
-                        gender : socket.user.gender
+                        gender: socket.user.gender
                     });
-                    
+
                     socket.join(roomId);
 
                     await randomVideoCall.save();
 
-                    socket.emit('video-call-initialized', { data : { roomId }});
+                    socket.emit('video-call-initialized', { data: { roomId } });
                 } catch (error) {
                     console.error('Error creating video request:', error);
                     socket.emit('call-initialization-error', { message: 'Failed to create video call request' });
@@ -70,19 +70,17 @@ export class randomVideoCallSocketService {
 
             socket.on('connect-video-call', async (roomId) => {
                 try {
-                    
                     let randomVideoCall = await RandomVideoCall.findOne({ roomId: roomIdSchema.parse(roomId) });
 
                     if (!randomVideoCall) throw new Error("Cannot find Random video call created in the database");
 
-                    socket.emit('connecting', { data :null });
                     let arr: number[] = [1, 2, 1, 2, 1, 2];
 
                     let startSearchNow: boolean = ((arr: number[]) => {
                         let randomNum = Math.floor(arr.length * Math.random());
                         return arr[randomNum] === 1;
                     })(arr);
-            
+
                     if (startSearchNow) {
                         let request2 = await this.searchUser(socket.user._id, socket.user.gender);
                         if (request2) this.connectUser(randomVideoCall, request2, socket);
@@ -102,7 +100,7 @@ export class randomVideoCallSocketService {
                         }, 5000);
                     }
                 } catch (error) {
-                    if (error instanceof ZodError === false) console.error(error);
+                    error instanceof Error ? console.error(error.message) : console.error(error);
                     socket.emit('connection-creation-failed', { message: 'Failed to connect User in 20s video call' });
                 }
             });
@@ -139,8 +137,8 @@ export class randomVideoCallSocketService {
                     }
 
                     timeOut = setTimeout(async function () {
-                        let request1= await RandomVideoCall.findOne({roomId  : userBRoomId});
-                        let request2 = await RandomVideoCall.findOne({ userId : socket.user_id});
+                        let request1 = await RandomVideoCall.findOne({ roomId: userBRoomId });
+                        let request2 = await RandomVideoCall.findOne({ userId: socket.user_id });
                         if (request1 && request2) endCall(request1, request2);
                     }, VIDEO_CALL_DURATION + 2500);
 
@@ -150,50 +148,50 @@ export class randomVideoCallSocketService {
                 }
             });
 
-            socket.on('caller-details-request' ,async  () =>  {
+            socket.on('caller-details-request', async () => {
                 try {
-                    let call2 =await RandomVideoCall.findOne({ connectedWith : socket.user._id , status : 'connected'});
+                    let call2 = await RandomVideoCall.findOne({ connectedWith: socket.user._id, status: 'connected' });
                     if (!call2) {
-                        return  socket.emit('caller-details-error', { message: 'can not find Caller Details' });
+                        return socket.emit('caller-details-error', { message: 'can not find Caller Details' });
                     }
                     let caller = await VideoProfile.findById(call2.connectedWith);
                     if (!caller) {
-                        return  socket.emit('caller-details-error', { message: 'can not find Caller Details' });
+                        return socket.emit('caller-details-error', { message: 'can not find Caller Details' });
                     }
-                    socket.emit('caller-details' , { 
-                       name : caller.name ,
-                       photo : caller.profileImage?.url,
-                       email : caller.email
+                    socket.emit('caller-details', {
+                        name: caller.name,
+                        photo: caller.profileImage?.url,
+                        email: caller.email
                     });
-                    
+
                 } catch (error) {
                     console.error(error);
-                    return  socket.emit('caller-details-error', { message: 'can not find Caller Details' });
+                    return socket.emit('caller-details-error', { message: 'can not find Caller Details' });
                 }
             });
 
-          
-            socket.on('leave-call-room' ,async (roomId) => {
+
+            socket.on('leave-call-room', async (roomId) => {
                 try {
                     roomId = roomIdSchema.parse(roomId);
                     socket.leave(roomId);
                 } catch (error) {
-                    console.error('[Leave calling Room Error]' , error);
-                    socket.emit('leave-calling-room-error' , { data : null})
+                    console.error('[Leave calling Room Error]', error);
+                    socket.emit('leave-calling-room-error', { data: null })
                 }
             });
 
 
-            socket.on('stop-video-call', async  (roomId) => {
+            socket.on('stop-video-call', async (roomId) => {
                 try {
                     let call2 = await RandomVideoCall.findOne({ connectedWith: socket.user._id, status: 'connected' });
                     if (call2) {
-                        this.io.to(call2.roomId).emit('end-call' ,call2.roomId );
+                        this.io.to(call2.roomId).emit('end-call', call2.roomId);
                         socket.leave(roomId);
                     }
                 } catch (error) {
                     console.error(error);
-                    
+
                 }
             });
 
@@ -206,23 +204,23 @@ export class randomVideoCallSocketService {
             });
         });
     }
-    
+
     private async searchUser(id: mongoose.Types.ObjectId, gender: string) {
         // Fixed query to properly search for users of opposite gender
         const matchingUser = await RandomVideoCall.findOne({
             userId: { $ne: id },
             status: 'searching',
-            gender : { $ne :gender }
+            gender: { $ne: gender }
         })
-        .populate({
-            path: 'userId',
-        });
-        
+            .populate({
+                path: 'userId',
+            });
+
         // If userId doesn't match our criteria after population, return null
         if (!matchingUser || !matchingUser.userId) {
             return null;
         }
-        
+
         return matchingUser;
     }
 
@@ -238,13 +236,10 @@ export class randomVideoCallSocketService {
             await request2.save();
 
             // Notify both users about the connection
-            this.io.to(request2.roomId).emit('give-peer-details', request1.roomId ); // User B Room Id
-            socket.emit('connection-created' , { data : null});
+            this.io.to(request2.roomId).emit('give-peer-details', request1.roomId); // User B Room Id
+            socket.emit('connection-created', { data: null });
 
 
-            let timeOut :any;
-
-            
         } catch (error) {
             console.error('Error connecting users:', error);
             socket.emit('connection-creation-failed', { message: 'Failed to establish connection' });
@@ -257,9 +252,9 @@ export class randomVideoCallSocketService {
         try {
             if (!userId) return;
             await RandomVideoCall.deleteMany(
-                { 
+                {
                     userId: userId,
-                    status: { $in: [ 'connected' , "searching"] }
+                    status: { $in: ['connected', "searching"] }
                 }
             );
         } catch (error) {
