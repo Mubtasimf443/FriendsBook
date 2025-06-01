@@ -31,10 +31,10 @@ router.use(rateLimiter(RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX_REQUESTS));
 router.use(queryMiddleware)
 
 
-router.get('/user-details/video-profile', validateVideoProfile ,async function (req: Request, res: Response): Promise<Response | any> {
+router.get('/user-details/video-profile', validateVideoProfile, async function (req: Request, res: Response): Promise<Response | any> {
     try {
         return res.status(200).json({
-            success: true ,
+            success: true,
             data: {
                 name: req.videoProfile.name,
                 gender: req.videoProfile.gender,
@@ -64,12 +64,13 @@ router.get('/user-details/video-profile', validateVideoProfile ,async function (
     }
 });
 
+
 router.put('/user-details/video-profile', validateVideoProfile, async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // Define validation schema with all fields as optional
         const updateSchema = z.object({
             name: z.string().optional(),
-            gender: z.enum(['male', 'female', ]).optional(),
+            gender: z.enum(['male', 'female',]).optional(),
             status: z.enum(['online', 'offline']).optional(),
             dateOfBirth: z.string().transform(val => new Date(val)).optional(),
             age: z.number().optional(),
@@ -82,13 +83,13 @@ router.put('/user-details/video-profile', validateVideoProfile, async function (
             coverImage: z.object({ url: z.string().url(), id: z.string().uuid() }).optional(),
             profileImage: z.object({ url: z.string().url(), id: z.string().uuid() }).optional(),
         });
-        
+
         // Validate request body
         const validatedData = updateSchema.parse(req.body);
-        
+
         // Find fields to update
         const updateData: any = {};
-        
+
         // Map validated fields to updateData
         if (validatedData.name) updateData.name = validatedData.name;
         if (validatedData.gender) updateData.gender = validatedData.gender;
@@ -127,28 +128,28 @@ router.put('/user-details/video-profile', validateVideoProfile, async function (
                 data: null
             });
         }
-        
+
         // Return updated profile with selected fields
         return res.status(200).json({
             success: true,
             message: 'Profile updated successfully',
             data: {
-                name:updateData.name && updatedProfile.name,
-                gender:updateData.gender && updatedProfile.gender,
-                age: updateData.age &&updatedProfile.age,
-                status:updateData.status && updatedProfile.status,
+                name: updateData.name && updatedProfile.name,
+                gender: updateData.gender && updatedProfile.gender,
+                age: updateData.age && updatedProfile.age,
+                status: updateData.status && updatedProfile.status,
                 country: updatedProfile.location?.country,
-                _id:  updatedProfile._id,
-                languages:updateData.languages &&  updatedProfile.languages,
-                lastActive:updateData.lastActive &&  updatedProfile.lastActive,
-                profileImage:updateData.profileImage &&  updatedProfile.profileImage,
-                coverImage:updateData.coverImage &&  updatedProfile.coverImage,
+                _id: updatedProfile._id,
+                languages: updateData.languages && updatedProfile.languages,
+                lastActive: updateData.lastActive && updatedProfile.lastActive,
+                profileImage: updateData.profileImage && updatedProfile.profileImage,
+                coverImage: updateData.coverImage && updatedProfile.coverImage,
             }
         });
 
     } catch (error) {
         console.error('Error updating profile:', error);
-        
+
         // Handle zod validation errors
         if (error instanceof z.ZodError) {
             return res.status(400).json({
@@ -168,48 +169,49 @@ router.put('/user-details/video-profile', validateVideoProfile, async function (
     }
 });
 
+
 router.get('/user-details/matrimony', validateUser, async function (req: Request, res: Response): Promise<Response | any> {
     try {
 
         let _id = req.authSession?.value?.userId;
         if (!_id) return res.sendStatus(401);
-        let user  = await User.findById(_id, 'name email phoneInfo profileImage coverImage occupation maritalStatus languages address education height age weight dateOfBirth gender profileCreatedBy mid onlineStatus aboutMe familyInfo membership').lean();
+        let user = await User.findById(_id, 'name email phoneInfo profileImage coverImage occupation maritalStatus languages address education height age weight dateOfBirth gender profileCreatedBy mid onlineStatus aboutMe familyInfo membership').lean();
 
         if (!user) return res.sendStatus(204);
 
-        
-        let membership :any;
+
+        let membership: any;
 
 
-        if (user.membership?.currentMembership.requestId && user.membership?.currentMembership?.membership_exipation_date.getTime() >  Date.now()) {
-            
-            membership= await MembershipRequest.findById(user.membership?.currentMembership?.requestId , 'tier endDate verifiedPhoneLimit').lean();
+        if (user.membership?.currentMembership.requestId && user.membership?.currentMembership?.membership_exipation_date.getTime() > Date.now()) {
+
+            membership = await MembershipRequest.findById(user.membership?.currentMembership?.requestId, 'tier endDate verifiedPhoneLimit').lean();
             membership && delete membership._id;
             delete user.membership;
-        } 
+        }
 
-        if (user.membership?.currentMembership?.requestId && user.membership?.currentMembership?.membership_exipation_date.getTime() <  Date.now()) {
-            await User.findByIdAndUpdate(user._id , {
-                'membership.currentMembership.requestId': undefined ,
-                'membership.currentMembership.membership_exipation_date': undefined ,
+        if (user.membership?.currentMembership?.requestId && user.membership?.currentMembership?.membership_exipation_date.getTime() < Date.now()) {
+            await User.findByIdAndUpdate(user._id, {
+                'membership.currentMembership.requestId': undefined,
+                'membership.currentMembership.membership_exipation_date': undefined,
             });
         }
 
         if (!membership) {
-            membership = { tier: 'FREE'  };
+            membership = { tier: 'FREE' };
         }
 
-     
-    
-       
+
+
+
         res.status(200).json({
-            success : true,
-            data : {
+            success: true,
+            data: {
                 ...user,
-                membership 
+                membership
             },
-            error : null,
-            message : 'OK'
+            error: null,
+            message: 'OK'
         })
         return;
     } catch (error) {
@@ -224,29 +226,30 @@ router.get('/user-details/matrimony', validateUser, async function (req: Request
         }
         console.error('[matrimony User Details Api Error]', error);
         return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
+            success: false,
+            message: 'Internal server error',
+            data: null
         });
     }
 });
+
 
 router.get('/user-details/matrimony/:id', validateUser, async function (req: Request, res: Response): Promise<Response | any> {
     try {
 
         let _id = _idValidator.parse(req.params.id);
-        
-        let user  = await User.findById(_id, 'name email phoneInfo profileImage coverImage occupation maritalStatus languages address education height age weight dateOfBirth gender profileCreatedBy mid onlineStatus aboutMe familyInfo').lean();
+
+        let user = await User.findById(_id, 'name email phoneInfo profileImage coverImage occupation maritalStatus languages address education height age weight dateOfBirth gender profileCreatedBy mid onlineStatus aboutMe familyInfo').lean();
 
         if (!user) return res.sendStatus(204);
 
         res.status(200).json({
-            success : true,
-            data : {
-                ...user, 
+            success: true,
+            data: {
+                ...user,
             },
-            error : null,
-            message : 'OK'
+            error: null,
+            message: 'OK'
         })
         return;
     } catch (error) {
@@ -261,15 +264,15 @@ router.get('/user-details/matrimony/:id', validateUser, async function (req: Req
         }
         console.error('[matrimony User Details Api Error]', error);
         return res.status(500).json({
-           success: false,
-           message: 'Internal server error',
-           data: null
+            success: false,
+            message: 'Internal server error',
+            data: null
         });
     }
 });
 
 
-router.put('/user-details/matrimony', validateUser , async function (req: Request, res: Response): Promise<Response | any> {
+router.put('/user-details/matrimony', validateUser, async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // 1. Parse and validate request body
         const updateData = await updateUserSchema.parse(req.body);
@@ -277,7 +280,7 @@ router.put('/user-details/matrimony', validateUser , async function (req: Reques
             res.status(401).json({
                 success: false,
                 message: 'Failed to authorize the user',
-                
+
                 data: null
             });
             return;
@@ -312,17 +315,8 @@ router.put('/user-details/matrimony', validateUser , async function (req: Reques
 
 
         // profile image
-        if (updateData.profileImage) updatesData['profileImage'] =updateData.profileImage ;
-        if (updateData.coverImage) updatesData['coverImage'] =updateData.coverImage ;
-       
-
-        // // Additional Information
-        // if (updateData.aboutMe) updatesData['aboutMe'] = updateData.aboutMe;
-        // if (updateData.familyInfo) updatesData['familyInfo'] = updateData.familyInfo;
-        
-        // // Settings
-        // if (updateData.enhancedSettings?.privacy) updatesData['enhancedSettings.privacy'] = updateData.enhancedSettings.privacy;
-        // if (updateData.enhancedSettings?.notifications) updatesData['enhancedSettings.notifications'] = updateData.enhancedSettings.notifications;
+        if (updateData.profileImage) updatesData['profileImage'] = updateData.profileImage;
+        if (updateData.coverImage) updatesData['coverImage'] = updateData.coverImage;
 
 
         // Filter out undefined values
@@ -342,9 +336,9 @@ router.put('/user-details/matrimony', validateUser , async function (req: Reques
         updatesData['lastUpdated'] = new Date();
 
         // Update the user and return the new document
-        let updatedUser:any = await User.findByIdAndUpdate(
+        let updatedUser: any = await User.findByIdAndUpdate(
             userId,
-            { $set: updatesData , },
+            { $set: updatesData, },
             {
                 runValidators: true // Run model validators
             }
@@ -361,9 +355,9 @@ router.put('/user-details/matrimony', validateUser , async function (req: Reques
 
         updatedUser = updatedUser.toObject();
 
-        let updatedFields :any = {}
+        let updatedFields: any = {}
         for (const [key, value] of Object.entries(updateData)) {
-           updatedFields[key] = updatedUser[key];
+            updatedFields[key] = updatedUser[key];
         }
 
         return res.status(200).json({
@@ -373,9 +367,9 @@ router.put('/user-details/matrimony', validateUser , async function (req: Reques
         });
 
     } catch (error: any) {
-        console.error('[User Details Update api error]' ,  { timestamp: new Date()});
+        console.error('[User Details Update api error]', { timestamp: new Date() });
         console.error(error);
-        
+
         if (error instanceof z.ZodError) {
             return res.status(400).json({
                 success: false,
@@ -395,7 +389,7 @@ router.put('/user-details/matrimony', validateUser , async function (req: Reques
 });
 
 
-router.put('/user-details/partner-preference/matrimony', validateUser , async function (req: Request, res: Response): Promise<Response | any> {
+router.put('/user-details/partner-preference/matrimony', validateUser, async function (req: Request, res: Response): Promise<Response | any> {
     try {
         // 1. Parse and validate request body against the partnerPreferenceSchema
         const updateData = await partnerPreferenceSchema.parseAsync(req.body);
@@ -403,7 +397,7 @@ router.put('/user-details/partner-preference/matrimony', validateUser , async fu
             res.status(401).json({
                 success: false,
                 message: 'Failed to authorize the user',
-                
+
                 data: null
             });
             return;
@@ -412,7 +406,7 @@ router.put('/user-details/partner-preference/matrimony', validateUser , async fu
         const userId = req.authSession.value.userId;
 
         // Check if any update parameters were provided
-       
+
         let updatesData: any = {};
 
         // Conditionally add fields to updatesData
@@ -471,7 +465,7 @@ router.put('/user-details/partner-preference/matrimony', validateUser , async fu
 
     } catch (error: any) {
         console.error('[Partner Preference Update api error]', { timestamp: new Date() });
-        console.error(error);
+
 
         if (error instanceof z.ZodError) {
             return res.status(400).json({
@@ -481,7 +475,7 @@ router.put('/user-details/partner-preference/matrimony', validateUser , async fu
                 errors: error.errors
             });
         }
-
+        console.error(error);
         return res.status(500).json({
             success: false,
             message: 'Internal server error',
@@ -491,12 +485,83 @@ router.put('/user-details/partner-preference/matrimony', validateUser , async fu
 });
 
 
+router.get('/user-details/profile-completion-score', validateUser, async function (req: Request, res: Response): Promise<Response | any> {
+    try {
+
+        let profileFields: string[] = [
+            'name',
+            'gender',
+            'dateOfBirth',
+            'weight',
+            'height',
+            'maritalStatus',
+            'phoneInfo.number',
+            'address.district.id',
+            'age',
+            'isEducated',
+            'education.level',
+            'education.certificate',
+            'religion',
+            'languages',
+            'occupation',
+            'annualIncome.amount' ,
+            'profileImage.url'
+        ];
+        let missingFields = [];
+        let foundFields=[];
+        let user: any = await User.findById(req.authSession?.value.userId).lean();
+
+        if (!user) throw 'user not found';
+
+        let highestScore = profileFields.length * 10;
+        let totalScore = 0;
+
+        for (let i = 0; i < profileFields.length; i++) {
+            let el: string = profileFields[i];
+            switch (el.split('.').length) {
+                case 2: {
+                    let [firstEl, lastEl] = el.split('.');
+                    if (user[firstEl] && user[firstEl][lastEl]) { totalScore += 10; foundFields.push(el) }
+                    else missingFields.push(el);
+                    break;
+                }
+                case 3: {
+                    let [firstEl, middleEl, lastEl] = el.split('.');
+                    if (user[firstEl] && user[firstEl][middleEl] && user[firstEl][middleEl][lastEl]) { totalScore += 10; foundFields.push(el) }
+                    else missingFields.push(el);
+                   
+                    break;
+                }
+                default:
+                    if (user[el]) { totalScore += 10; foundFields.push(el) }
+                    else missingFields.push(el);
+                    break;
+            }    
+        }
 
 
+        if (user.profileImage.url === 'https://res.cloudinary.com/dyptu4vd2/image/upload/v1748022824/ahxfhq76i0auizajvl6h.png' ) totalScore -= 10; // because Image is a avatar
+       
+        let score = totalScore / highestScore * 100;
 
+        return res.status(200).json({
+            success: true,
+            data: {
+                score: score.toFixed(2) + '%',
+                missing_profile_fields: missingFields,
+                completed_profile_fields: foundFields
+            }
+        });
 
-
-
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            data: null
+        });
+    }
+});
 
 
 export default router;

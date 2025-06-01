@@ -71,7 +71,6 @@ class randomVideoCallSocketService {
                         let randomVideoCall = yield RandomVideoCall_1.RandomVideoCall.findOne({ roomId: exports.roomIdSchema.parse(roomId) });
                         if (!randomVideoCall)
                             throw new Error("Cannot find Random video call created in the database");
-                        socket.emit('connecting', { data: null });
                         let arr = [1, 2, 1, 2, 1, 2];
                         let startSearchNow = ((arr) => {
                             let randomNum = Math.floor(arr.length * Math.random());
@@ -102,8 +101,7 @@ class randomVideoCallSocketService {
                         }
                     }
                     catch (error) {
-                        if (error instanceof zod_1.ZodError === false)
-                            console.error(error);
+                        error instanceof Error ? console.error(error.message) : console.error(error);
                         socket.emit('connection-creation-failed', { message: 'Failed to connect User in 20s video call' });
                     }
                 }));
@@ -231,7 +229,6 @@ class randomVideoCallSocketService {
                 // Notify both users about the connection
                 this.io.to(request2.roomId).emit('give-peer-details', request1.roomId); // User B Room Id
                 socket.emit('connection-created', { data: null });
-                let timeOut;
             }
             catch (error) {
                 console.error('Error connecting users:', error);

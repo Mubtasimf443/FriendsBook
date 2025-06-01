@@ -62,8 +62,4 @@ const RandomVideoCallSchema = new mongoose_1.Schema({
     },
     gender: String
 }, { timestamps: true });
-// Index for geospatial queries
-RandomVideoCallSchema.index({ location: '2dsphere' });
-// Index for fast status lookups
-RandomVideoCallSchema.index({ status: 1 });
 exports.RandomVideoCall = mongoose_1.default.model('RandomVideoCall', RandomVideoCallSchema);

@@ -307,12 +307,6 @@ router.put('/user-details/matrimony', auth_middleware_1.validateUser, function (
                 updatesData['profileImage'] = updateData.profileImage;
             if (updateData.coverImage)
                 updatesData['coverImage'] = updateData.coverImage;
-            // // Additional Information
-            // if (updateData.aboutMe) updatesData['aboutMe'] = updateData.aboutMe;
-            // if (updateData.familyInfo) updatesData['familyInfo'] = updateData.familyInfo;
-            // // Settings
-            // if (updateData.enhancedSettings?.privacy) updatesData['enhancedSettings.privacy'] = updateData.enhancedSettings.privacy;
-            // if (updateData.enhancedSettings?.notifications) updatesData['enhancedSettings.notifications'] = updateData.enhancedSettings.notifications;
             // Filter out undefined values
             updatesData = Object.fromEntries(Object.entries(updatesData).filter(([_, value]) => value !== undefined));
             if (Object.keys(updatesData).length === 0) {
@@ -444,7 +438,6 @@ router.put('/user-details/partner-preference/matrimony', auth_middleware_1.valid
         }
         catch (error) {
             console.error('[Partner Preference Update api error]', { timestamp: new Date() });
-            console.error(error);
             if (error instanceof zod_1.z.ZodError) {
                 return res.status(400).json({
                     success: false,
@@ -453,6 +446,92 @@ router.put('/user-details/partner-preference/matrimony', auth_middleware_1.valid
                     errors: error.errors
                 });
             }
+            console.error(error);
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error',
+                data: null
+            });
+        }
+    });
+});
+router.get('/user-details/profile-completion-score', auth_middleware_1.validateUser, function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a;
+        try {
+            let profileFields = [
+                'name',
+                'gender',
+                'dateOfBirth',
+                'weight',
+                'height',
+                'maritalStatus',
+                'phoneInfo.number',
+                'address.district.id',
+                'age',
+                'isEducated',
+                'education.level',
+                'education.certificate',
+                'religion',
+                'languages',
+                'occupation',
+                'annualIncome.amount',
+                'profileImage.url'
+            ];
+            let missingFields = [];
+            let foundFields = [];
+            let user = yield user_1.User.findById((_a = req.authSession) === null || _a === void 0 ? void 0 : _a.value.userId).lean();
+            if (!user)
+                throw 'user not found';
+            let highestScore = profileFields.length * 10;
+            let totalScore = 0;
+            for (let i = 0; i < profileFields.length; i++) {
+                let el = profileFields[i];
+                switch (el.split('.').length) {
+                    case 2: {
+                        let [firstEl, lastEl] = el.split('.');
+                        if (user[firstEl] && user[firstEl][lastEl]) {
+                            totalScore += 10;
+                            foundFields.push(el);
+                        }
+                        else
+                            missingFields.push(el);
+                        break;
+                    }
+                    case 3: {
+                        let [firstEl, middleEl, lastEl] = el.split('.');
+                        if (user[firstEl] && user[firstEl][middleEl] && user[firstEl][middleEl][lastEl]) {
+                            totalScore += 10;
+                            foundFields.push(el);
+                        }
+                        else
+                            missingFields.push(el);
+                        break;
+                    }
+                    default:
+                        if (user[el]) {
+                            totalScore += 10;
+                            foundFields.push(el);
+                        }
+                        else
+                            missingFields.push(el);
+                        break;
+                }
+            }
+            if (user.profileImage.url === 'https://res.cloudinary.com/dyptu4vd2/image/upload/v1748022824/ahxfhq76i0auizajvl6h.png')
+                totalScore -= 10; // because Image is a avatar
+            let score = totalScore / highestScore * 100;
+            return res.status(200).json({
+                success: true,
+                data: {
+                    score: score.toFixed(2) + '%',
+                    missing_profile_fields: missingFields,
+                    completed_profile_fields: foundFields
+                }
+            });
+        }
+        catch (error) {
+            console.error(error);
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error',
